@@ -100,12 +100,12 @@
                                 ID
                             </th>
                             <th
-                                @click="toggleSort('prompt')"
+                                @click="toggleSort('name')"
                                 scope="col"
                                 class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider cursor-pointer hover:text-white"
                             >
-                                Prompt
-                                <span v-if="filters.sortBy === 'prompt'" class="ml-1">
+                                Name
+                                <span v-if="filters.sortBy === 'name'" class="ml-1">
                                     {{ filters.sortOrder === 'asc' ? '↑' : '↓' }}
                                 </span>
                             </th>
@@ -139,7 +139,7 @@
                                 {{ prompt.id.substring(0, 6) }}...
                             </td>
                             <td class="px-6 py-4 text-sm text-white">
-                                <div class="max-w-xs truncate">{{ prompt.prompt }}</div>
+                                <div class="max-w-xs truncate font-medium">{{ prompt.name || 'Unnamed Prompt' }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-400">
                                 {{ prompt.temperature }}
@@ -190,7 +190,7 @@
 
         <!-- Add/Edit Prompt Dialog -->
         <div v-if="showDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
-            <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-md mx-auto">
+            <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-5xl mx-auto">
                 <div class="p-6 border-b border-neutral-700 flex justify-between items-center">
                     <h3 class="text-lg font-medium text-white">{{ isEditing ? 'Edit Prompt' : 'Add Prompt' }}</h3>
                     <button @click="closeDialog" class="text-neutral-400 hover:text-white">
@@ -200,108 +200,124 @@
                     </button>
                 </div>
                 <div class="p-6">
-                    <form @submit.prevent="savePrompt">
-                        <div class="mb-4">
+                    <form @submit.prevent="savePrompt" class="flex flex-col md:flex-row gap-6">
+                        <!-- Left column - all fields except Prompt Text -->
+                        <div class="flex-1">
+                            <div class="mb-6">
+                                <label for="promptName" class="block text-sm font-medium text-neutral-300 mb-1">Name</label>
+                                <input
+                                    id="promptName"
+                                    v-model="promptForm.name"
+                                    type="text"
+                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    placeholder="Enter a name for this prompt"
+                                    required
+                                />
+                                <p v-if="formErrors.name" class="mt-1 text-sm text-red-500">{{ formErrors.name }}</p>
+                            </div>
+
+                            <div class="mb-6">
+                                <label for="temperature" class="block text-sm font-medium text-neutral-300 mb-1">Temperature ({{ promptForm.temperature }})</label>
+                                <input
+                                    id="temperature"
+                                    v-model.number="promptForm.temperature"
+                                    type="range"
+                                    min="0"
+                                    max="2"
+                                    step="0.1"
+                                    class="w-full bg-neutral-700 rounded-md appearance-none cursor-pointer"
+                                    required
+                                />
+                                <p class="mt-1 text-sm text-neutral-500">Controls randomness: Lower values are more deterministic, higher values more creative.</p>
+                                <p v-if="formErrors.temperature" class="mt-1 text-sm text-red-500">{{ formErrors.temperature }}</p>
+                            </div>
+
+                            <div class="mb-6">
+                                <label for="topP" class="block text-sm font-medium text-neutral-300 mb-1">Top P ({{ promptForm.topP }})</label>
+                                <input
+                                    id="topP"
+                                    v-model.number="promptForm.topP"
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.05"
+                                    class="w-full bg-neutral-700 rounded-md appearance-none cursor-pointer"
+                                    required
+                                />
+                                <p class="mt-1 text-sm text-neutral-500">Alternative to temperature, controls diversity via nucleus sampling.</p>
+                                <p v-if="formErrors.topP" class="mt-1 text-sm text-red-500">{{ formErrors.topP }}</p>
+                            </div>
+
+                            <div class="mb-6">
+                                <label for="maxTokens" class="block text-sm font-medium text-neutral-300 mb-1">Max Tokens</label>
+                                <input
+                                    id="maxTokens"
+                                    v-model.number="promptForm.maxTokens"
+                                    type="number"
+                                    min="1"
+                                    max="32000"
+                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    placeholder="Max tokens to generate"
+                                    required
+                                />
+                                <p class="mt-1 text-sm text-neutral-500">The maximum number of tokens to generate.</p>
+                                <p v-if="formErrors.maxTokens" class="mt-1 text-sm text-red-500">{{ formErrors.maxTokens }}</p>
+                            </div>
+
+                            <div class="mb-6">
+                                <label for="relevance" class="block text-sm font-medium text-neutral-300 mb-1">Relevance</label>
+                                <input
+                                    id="relevance"
+                                    v-model.number="promptForm.relevance"
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    placeholder="Relevance score (1-10)"
+                                    required
+                                />
+                                <p class="mt-1 text-sm text-neutral-500">Priority relevance score from 1-10.</p>
+                                <p v-if="formErrors.relevance" class="mt-1 text-sm text-red-500">{{ formErrors.relevance }}</p>
+                            </div>
+
+                            <div class="flex justify-end space-x-3 mt-6">
+                                <button
+                                    type="button"
+                                    @click="closeDialog"
+                                    class="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-md transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                                    :disabled="formLoading"
+                                >
+                                    <span v-if="formLoading" class="flex items-center">
+                                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Saving...
+                                    </span>
+                                    <span v-else>
+                                        {{ isEditing ? 'Update' : 'Create' }}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Right column - just the Prompt Text -->
+                        <div class="flex-1 flex flex-col">
                             <label for="promptText" class="block text-sm font-medium text-neutral-300 mb-1">Prompt Text</label>
                             <textarea
                                 id="promptText"
                                 v-model="promptForm.prompt"
-                                rows="4"
-                                class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                class="flex-1 min-h-[500px] w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
                                 placeholder="Enter your prompt text"
                                 required
                             ></textarea>
                             <p v-if="formErrors.prompt" class="mt-1 text-sm text-red-500">{{ formErrors.prompt }}</p>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="temperature" class="block text-sm font-medium text-neutral-300 mb-1">Temperature ({{ promptForm.temperature }})</label>
-                            <input
-                                id="temperature"
-                                v-model.number="promptForm.temperature"
-                                type="range"
-                                min="0"
-                                max="2"
-                                step="0.1"
-                                class="w-full bg-neutral-700 rounded-md appearance-none cursor-pointer"
-                                required
-                            />
-                            <p class="mt-1 text-sm text-neutral-500">Controls randomness: Lower values are more deterministic, higher values more creative.</p>
-                            <p v-if="formErrors.temperature" class="mt-1 text-sm text-red-500">{{ formErrors.temperature }}</p>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="topP" class="block text-sm font-medium text-neutral-300 mb-1">Top P ({{ promptForm.topP }})</label>
-                            <input
-                                id="topP"
-                                v-model.number="promptForm.topP"
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.05"
-                                class="w-full bg-neutral-700 rounded-md appearance-none cursor-pointer"
-                                required
-                            />
-                            <p class="mt-1 text-sm text-neutral-500">Alternative to temperature, controls diversity via nucleus sampling.</p>
-                            <p v-if="formErrors.topP" class="mt-1 text-sm text-red-500">{{ formErrors.topP }}</p>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="maxTokens" class="block text-sm font-medium text-neutral-300 mb-1">Max Tokens</label>
-                            <input
-                                id="maxTokens"
-                                v-model.number="promptForm.maxTokens"
-                                type="number"
-                                min="1"
-                                max="32000"
-                                class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                placeholder="Max tokens to generate"
-                                required
-                            />
-                            <p class="mt-1 text-sm text-neutral-500">The maximum number of tokens to generate.</p>
-                            <p v-if="formErrors.maxTokens" class="mt-1 text-sm text-red-500">{{ formErrors.maxTokens }}</p>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="relevance" class="block text-sm font-medium text-neutral-300 mb-1">Relevance</label>
-                            <input
-                                id="relevance"
-                                v-model.number="promptForm.relevance"
-                                type="number"
-                                min="1"
-                                max="10"
-                                class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                placeholder="Relevance score (1-10)"
-                                required
-                            />
-                            <p class="mt-1 text-sm text-neutral-500">Priority relevance score from 1-10.</p>
-                            <p v-if="formErrors.relevance" class="mt-1 text-sm text-red-500">{{ formErrors.relevance }}</p>
-                        </div>
-
-                        <div class="flex justify-end space-x-3 mt-6">
-                            <button
-                                type="button"
-                                @click="closeDialog"
-                                class="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-md transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-                                :disabled="formLoading"
-                            >
-                                <span v-if="formLoading" class="flex items-center">
-                                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Saving...
-                                </span>
-                                <span v-else>
-                                    {{ isEditing ? 'Update' : 'Create' }}
-                                </span>
-                            </button>
                         </div>
                     </form>
                 </div>
@@ -347,6 +363,7 @@ const error = ref(null)
 const showDialog = ref(false)
 const isEditing = ref(false)
 const promptForm = ref({
+    name: '',
     prompt: '',
     temperature: 0.7,
     topP: 0.9,
@@ -379,7 +396,7 @@ const pagination = ref({
 
 const filters = ref({
     search: '',
-    sortBy: 'prompt',
+    sortBy: 'name',
     sortOrder: 'asc',
     page: 1
 })
@@ -430,7 +447,6 @@ const loadPrompts = async () => {
             const currentOffset = paginationData.offset || 0
             const currentLimit = paginationData.limit || 10
 
-            // Calculate current page from offset and limit
             const currentPage = Math.floor(currentOffset / currentLimit) + 1
             const lastPage = Math.ceil(totalCount / currentLimit)
 
@@ -444,7 +460,6 @@ const loadPrompts = async () => {
             }
         } else {
             prompts.value = []
-            // Reset pagination if data format is unexpected
             pagination.value = {
                 current: 1,
                 lastPage: 1,
@@ -464,25 +479,22 @@ const loadPrompts = async () => {
     }
 }
 
-// Refresh data
 const refreshData = () => {
     loadPrompts()
 }
 
-// Pagination methods
 const handlePageChange = (newPage) => {
     filters.value.page = newPage;
 }
 
-// Watch for filter changes
 watch(filters, () => {
     loadPrompts()
 }, { deep: true })
 
-// Dialog methods
 const openAddDialog = () => {
     isEditing.value = false
     promptForm.value = {
+        name: '',
         prompt: '',
         temperature: 0.7,
         topP: 0.9,
@@ -497,6 +509,7 @@ const openEditDialog = (prompt) => {
     isEditing.value = true
     promptToEdit.value = prompt
     promptForm.value = {
+        name: prompt.name || '',
         prompt: prompt.prompt,
         temperature: prompt.temperature !== undefined ? prompt.temperature : 0.7,
         topP: prompt.topP !== undefined ? prompt.topP : 0.9,
@@ -510,6 +523,7 @@ const openEditDialog = (prompt) => {
 const closeDialog = () => {
     showDialog.value = false
     promptForm.value = {
+        name: '',
         prompt: '',
         temperature: 0.7,
         topP: 0.9,
@@ -520,13 +534,17 @@ const closeDialog = () => {
     promptToEdit.value = null
 }
 
-// Save prompt
 const savePrompt = async () => {
     try {
         formLoading.value = true
         formErrors.value = {}
 
-        // Validate
+        if (!promptForm.value.name.trim()) {
+            formErrors.value.name = 'Prompt name is required'
+            formLoading.value = false
+            return
+        }
+
         if (!promptForm.value.prompt.trim()) {
             formErrors.value.prompt = 'Prompt text is required'
             formLoading.value = false
@@ -558,6 +576,7 @@ const savePrompt = async () => {
         }
 
         const promptData = {
+            name: promptForm.value.name.trim(),
             prompt: promptForm.value.prompt.trim(),
             temperature: parseFloat(promptForm.value.temperature),
             topP: parseFloat(promptForm.value.topP),
@@ -638,7 +657,6 @@ const toggleSort = (column) => {
 onMounted(() => {
     loadPrompts()
 
-    // Close search dropdown when clicking outside
     document.addEventListener('click', (e) => {
         if (showSearchDropdown.value && !e.target.closest('.relative')
             && e.target !== document.querySelector('button[data-search-toggle]')) {
