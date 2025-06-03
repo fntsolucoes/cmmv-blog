@@ -21,8 +21,8 @@
 
             <div v-else class="bg-white rounded-lg p-6">
                 <div class="flex flex-col md:flex-row items-center md:items-start gap-6 mb-8">
-                    <div class="w-32 h-32 flex-shrink-0 flex items-center justify-center bg-gray-100 rounded-lg overflow-hidden">
-                        <img v-if="campaign.logo" :src="campaign.logo" :alt="campaign.name" class="w-full h-full object-cover">
+                    <div class="w-[160px] h-[125px] flex-shrink-0 flex items-center justify-center bg-gray-100 rounded-lg overflow-hidden">
+                        <img v-if="campaign.logo" :src="campaign.logo" :alt="campaign.name" class="w-full h-full">
                         <div v-else class="w-full h-full bg-gray-200 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -31,17 +31,15 @@
                     </div>
                     <div class="flex-1">
                         <div class="flex flex-col text-center md:text-left">
-                            <h1 class="text-3xl font-bold text-gray-800 mb-2">Cupons de desconto {{ campaign.name }}</h1>
-                            <p class="text-gray-500 mb-2">Atualizado em {{ formatDate(new Date()) }}</p>
-                            <p class="text-gray-700">Encontramos {{ coupons.length }} cupons de desconto para {{ campaign.name }} →</p>
-                            <p v-if="campaign.description" class="text-gray-600 mt-2 text-sm">{{ campaign.description }}</p>
+                            <h1 v-if="campaign.seoTitle" class="text-3xl font-bold text-gray-800 mb-2">{{ campaign.seoTitle }}</h1>
+                            <h1 v-else class="text-3xl font-bold text-gray-800 mb-2">Cupons de desconto {{ campaign.name }}</h1>
+                            <p class="text-gray-500 mb-2 text-sm">Atualizado em {{ formatDate(new Date()) }}</p>
+                            <h2 v-if="campaign.seoSubtitle" class="text-md text-gray-800 mb-2">{{ campaign.seoSubtitle }}</h2>
+
+                            <p v-if="campaign.seoSmallText" class="text-gray-600 mt-2 text-sm">{{ campaign.seoSmallText }}</p>
+                            <p v-else-if="campaign.description" class="text-gray-600 mt-2 text-sm">{{ campaign.description }}</p>
+                            <p class="text-gray-700 mt-4">Encontramos {{ coupons.length }} cupons de desconto para {{ campaign.name }} →</p>
                         </div>
-                    </div>
-                    <div class="flex items-center gap-2 bg-amber-100 text-amber-800 px-3 py-2 rounded-md">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span class="text-sm font-medium">Termina em: 02:03:31</span>
                     </div>
                 </div>
 
@@ -218,6 +216,10 @@
                         </div>
                     </div>
                 </div>
+
+                <div v-if="campaign.seoLongText" class="mt-8 longText-content">
+                    <div v-html="campaign.seoLongText" class="text-gray-600 text-md"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -349,7 +351,7 @@ const loadData = async () => {
                         campaignName: campaign.value.name,
                         campaignLogo: c.campaignLogo || campaign.value.logo
                     }));
-                    
+
                     coupons.value = enrichedCoupons;
                     couponsStore.setCampaignCoupons(campaignId, enrichedCoupons);
                 }
@@ -394,7 +396,7 @@ const openCouponModal = (coupon: any) => {
             // Se não temos campaign.value (o que seria estranho nesta página),
             // buscar a campanha correspondente pelo ID
             const relatedCampaign = campaignsStore.getCampaigns?.find(c => c.id === coupon.campaignId);
-            
+
             // Criar uma cópia enriquecida do cupom com os dados da campanha
             selectedCouponForScratch.value = {
                 ...coupon,
@@ -406,15 +408,15 @@ const openCouponModal = (coupon: any) => {
         // Se já tem os dados da campanha, usar diretamente
         selectedCouponForScratch.value = { ...coupon };
     }
-    
+
     // Mostrar o modal
     isScratchModalOpen.value = true;
-    
+
     // Abrir uma nova janela com o código do cupom
     if (coupon && coupon.code) {
         window.open(window.location.href + `?display=${coupon.code}`, '_blank');
     }
-    
+
     // Redirecionar para o deeplink
     if (coupon && coupon.deeplink) {
         window.location.href = coupon.deeplink;
@@ -473,6 +475,157 @@ watch(() => route.params.slug, (newSlug, oldSlug) => {
 </script>
 
 <style scoped>
+.longText-content :deep(img) {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+
+.longText-content :deep(iframe) {
+    max-width: 100%;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+
+.longText-content :deep(table) {
+    max-width: 100%;
+    overflow-x: auto;
+    display: block;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+
+.longText-content :deep(table td),
+.longText-content :deep(table th) {
+    border: 1px solid #e5e5e5;
+    padding: 0.5rem;
+}
+
+.longText-content :deep(pre) {
+    max-width: 100%;
+    overflow-x: auto;
+    background-color: #f5f5f5;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+
+.longText-content :deep(code) {
+    white-space: pre-wrap;
+    word-break: break-word;
+    background-color: #f5f5f5;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+.longText-content :deep(blockquote) {
+    border-left: 4px solid #0a5d28;
+    padding-left: 1rem;
+    margin: 1rem 0;
+    color: #666;
+}
+
+.longText-content :deep(h2),
+.longText-content :deep(h3),
+.longText-content :deep(h4),
+.longText-content :deep(h5),
+.longText-content :deep(h6) {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+.longText-content :deep(p) {
+    margin-bottom: 1rem;
+    line-height: 1.7;
+}
+
+.longText-content :deep(ul),
+.longText-content :deep(ol) {
+    margin: 1rem 0;
+    padding-left: 2rem;
+}
+
+.longText-content :deep(li) {
+    margin-bottom: 0.5rem;
+}
+
+.longText-content :deep(a) {
+    color: #0a5d28;
+    text-decoration: underline;
+}
+
+.longText-content :deep(a:hover) {
+    color: #064019;
+}
+
+/* Twitter/X embed styles */
+.longText-content :deep(.twitter-embed) {
+    margin: 1.5rem auto;
+    max-width: 550px;
+    position: relative;
+    min-height: 200px;
+}
+
+.longText-content :deep(.twitter-embed)::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231da1f2'%3E%3Cpath d='M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    opacity: 0.2;
+}
+
+.longText-content :deep(.twitter-embed iframe) {
+    border: none !important;
+    margin: 0 auto !important;
+}
+
+.featured-img {
+    width: 100%;
+    max-height: 500px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.post-title {
+    word-wrap: break-word;
+    hyphens: auto;
+}
+
+.tags-list {
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.ad-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed #ccc;
+    border-radius: 4px;
+}
+
+/* Only hide the left sidebar on screens smaller than 1280px */
+@media (max-width: 1280px) {
+    .ad-sidebar-left {
+        display: none;
+    }
+}
+
 .coupon-button {
     position: relative;
     z-index: 1;
