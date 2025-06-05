@@ -140,12 +140,12 @@
 
                     <!-- Mobile Menu Button -->
                     <div class="md:hidden flex items-center space-x-3">
-                        <button @click="openSearchModal" class="text-gray-700 hover:text-indigo-600" title="Search" aria-label="Search">
+                        <button @click="openSearchModal" class="text-white hover:text-indigo-200" title="Search" aria-label="Search">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                         </button>
-                        <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-gray-700" title="Navbar" aria-label="Navbar">
+                        <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-white" title="Navbar" aria-label="Navbar">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path v-if="mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                 <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -157,40 +157,9 @@
                 <!-- Mobile Menu -->
                 <div v-show="mobileMenuOpen" class="md:hidden py-3 border-t border-gray-200">
                     <div class="flex flex-col gap-1">
-                        <template v-for="category in mainNavCategories.rootCategories" :key="category.id">
-                            <div v-if="mainNavCategories.childrenMap[category.id]" class="w-full">
-                                <button
-                                    @click="(e) => toggleDropdown(category.id, e)"
-                                    class="dropdown-toggle flex items-center justify-between w-full text-gray-700 hover:text-indigo-600 rounded px-3 py-2 text-sm"
-                                    :class="{'text-indigo-600': openDropdowns[category.id]}"
-                                >
-                                    {{ category.name }}
-                                    <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                    </svg>
-                                </button>
-                                <div v-show="openDropdowns[category.id]" class="pl-4 py-1 bg-gray-50 rounded mt-1">
-                                    <a
-                                        v-for="child in mainNavCategories.childrenMap[category.id]"
-                                        :key="child.id"
-                                        :href="`/category/${child.slug}`"
-                                        class="block px-4 py-2 text-sm text-gray-700 hover:text-indigo-600 rounded"
-                                    >
-                                        {{ child.name }}
-                                    </a>
-                                </div>
-                            </div>
-                            <a
-                                v-else
-                                :href="`/category/${category.slug}`"
-                                class="block text-gray-700 hover:text-indigo-600 rounded px-3 py-2 text-sm"
-                            >
-                                {{ category.name }}
-                            </a>
-                        </template>
-                        <a href="/cashback" class="block text-gray-700 hover:text-indigo-600 rounded px-3 py-2 text-sm">Cashback</a>
-                        <a href="/blog" class="block text-gray-700 hover:text-indigo-600 rounded px-3 py-2 text-sm">Blog</a>
-                        <a href="/login" class="block bg-indigo-600 text-white rounded px-3 py-2 text-sm mt-2 mx-3">Entrar</a>
+                        <a href="/desconto" class="block text-white hover:text-indigo-200 rounded px-3 py-2 text-sm">Lojas</a>
+                        <a href="/cupom" class="block text-white hover:text-indigo-200 rounded px-3 py-2 text-sm">Categorias</a>
+                        <a href="/blog" class="block text-white hover:text-indigo-200 rounded px-3 py-2 text-sm">Blog</a>
                     </div>
                 </div>
             </div>
@@ -208,10 +177,50 @@
             <div class="container mx-auto px-4 text-center">
                 <h2 class="text-2xl font-bold text-gray-800 mb-2">Receba as melhores ofertas</h2>
                 <p class="text-gray-600 mb-6 max-w-lg mx-auto">Assine nossa newsletter e receba cupons exclusivos diretamente no seu e-mail.</p>
-                <div class="max-w-md mx-auto flex">
-                    <input type="email" placeholder="Seu e-mail" class="flex-grow py-3 px-4 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <button class="bg-indigo-600 text-white px-6 py-3 rounded-r-lg hover:bg-indigo-700">Assinar</button>
+
+                <div v-if="newsletterSubmitted" class="max-w-md mx-auto bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <p class="text-green-700">{{ newsletterMessage }}</p>
+                    </div>
                 </div>
+
+                <div v-if="newsletterError" class="max-w-md mx-auto bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-red-700">{{ newsletterError }}</p>
+                    </div>
+                </div>
+
+                <form @submit.prevent="subscribeNewsletter" class="max-w-md mx-auto flex">
+                    <input
+                        type="email"
+                        v-model="newsletterEmail"
+                        placeholder="Seu e-mail"
+                        class="flex-grow py-3 px-4 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        required
+                    >
+                    <button
+                        type="submit"
+                        class="bg-indigo-600 text-white px-6 py-3 rounded-r-lg hover:bg-indigo-700"
+                        :disabled="isSubscribing"
+                    >
+                        <span v-if="isSubscribing">
+                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Aguarde...
+                        </span>
+                        <span v-else>Assinar</span>
+                    </button>
+                </form>
+
+                <p class="text-xs text-gray-500 mt-4">Ao se inscrever, você concorda com nossa <a href="/terms-of-privacy" class="text-indigo-600 underline">política de privacidade</a>.</p>
             </div>
         </section>
 
@@ -242,39 +251,15 @@
                         </div>
                     </div>
 
-                    <!-- Links Úteis -->
-                    <div>
-                        <h3 class="text-xl font-bold mb-4">Links Úteis</h3>
-                        <ul class="space-y-2">
-                            <li><a href="#" class="text-gray-400 hover:text-white">Como funciona</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white">Cashback</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white">Blog</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white">Perguntas frequentes</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white">Contato</a></li>
-                        </ul>
-                    </div>
-
-                    <!-- Categorias -->
-                    <div>
-                        <h3 class="text-xl font-bold mb-4">Categorias</h3>
-                        <ul class="space-y-2">
-                            <li v-for="category in categoriesColumns[0].slice(0, 5)" :key="category.id">
-                                <a :href="`/category/${category.slug}`" class="text-gray-400 hover:text-white">
-                                    {{ category.name }}
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-
                     <!-- Lojas Populares -->
                     <div>
-                        <h3 class="text-xl font-bold mb-4">Lojas Populares</h3>
+                        <h3 class="text-xl font-bold mb-4">Lojas Recentes</h3>
                         <ul class="space-y-2">
-                            <li><a href="#" class="text-gray-400 hover:text-white">Amazon</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white">Magalu</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white">Shopee</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white">AliExpress</a></li>
-                            <li><a href="#" class="text-gray-400 hover:text-white">Americanas</a></li>
+                            <li v-for="campaign in recentCampaigns.slice(0, 10)" :key="campaign.id">
+                                <a :href="`/desconto/${campaign.slug}`" class="text-gray-400 hover:text-white">
+                                    {{ campaign.name }}
+                                </a>
+                            </li>
                         </ul>
                     </div>
                 </div>
@@ -418,28 +403,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, onBeforeUnmount, onServerPrefetch } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { vue3 } from '@cmmv/blog/client';
 import { useHead } from '@unhead/vue'
 import { useSettingsStore } from '../../store/settings';
-import { useCategoriesStore } from '../../store/categories';
 import { useCampaignsStore } from '../../store/campaigns';
 import { useCouponsStore } from '../../store/coupons';
 import { vue3 as affiliateVue3 } from '@cmmv/affiliate/client';
 import { useRoute } from 'vue-router';
 import CouponScratchModal from '../components/CouponScratchModal.vue';
-
 import CookieConsent from '../../components/CookieConsent.vue';
+import { vue3 as newsletterVue3 } from '@cmmv/newsletter/client';
 
 const blogAPI = vue3.useBlog();
 const affiliateAPI = affiliateVue3.useAffiliate();
-const categoriesStore = useCategoriesStore();
 const settingsStore = useSettingsStore();
 const campaignsStore = useCampaignsStore();
 const couponsStore = useCouponsStore();
 const route = useRoute();
-const isSSR = typeof window === 'undefined';
 const settings = ref<any>(settingsStore.getSettings);
+const campaigns = ref<any[]>(campaignsStore.getCampaigns || []);
+
+const recentCampaigns = computed(() => {
+    if (!campaigns.value || campaigns.value.length === 0) return [];
+    // Ordenar por couponCount (quantidade de cupons) como critério de "popularidade"
+    return [...campaigns.value]
+        .filter(campaign => campaign.couponCount > 0)
+        .sort((a, b) => (b.couponCount || 0) - (a.couponCount || 0))
+        .slice(0, 10);
+});
 
 const scripts = computed(() => {
     const baseScripts = [];
@@ -466,16 +458,10 @@ useHead({
         { rel: 'preconnect', href: 'https://securepubads.g.doubleclick.net/' },
         { rel: 'preconnect', href: 'https://tpc.googlesyndication.com/' },
         { rel: 'preconnect', href: 'https://www.googletag.com/' },
+        { rel: 'preconnect', href: 'https://static.cupomnahora.com.br/' },
         { rel: 'dns-prefetch', href: 'https://www.googletagmanager.com/' },
-        { rel: 'dns-prefetch', href: 'https://securepubads.g.doubleclick.net' }
-    ],
-
-    script: [
-        {
-            src: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js',
-            defer: true
-        },
-        //...scripts
+        { rel: 'dns-prefetch', href: 'https://securepubads.g.doubleclick.net' },
+        { rel: 'dns-prefetch', href: 'https://static.cupomnahora.com.br/' }
     ]
 })
 
@@ -490,46 +476,6 @@ const mobileMenuOpen = ref(false);
 const showAutocomplete = ref(false);
 const featuredStores = ref<any[]>([]);
 const autocompleteBlurTimeout = ref<any>(null);
-
-const categories = ref<any[]>(categoriesStore.getCategories || []);
-
-const mainNavCategories = computed(() => {
-    const navCategories = categories.value?.filter((category: any) => category.mainNav) || [];
-    navCategories.sort((a: any, b: any) => (a.mainNavIndex ?? 999) - (b.mainNavIndex ?? 999));
-
-    const rootCategories = navCategories.filter((cat: any) => !cat.parentCategory);
-    const childCategories = navCategories.filter((cat: any) => cat.parentCategory);
-
-    return {
-        rootCategories,
-        childrenMap: childCategories.reduce((map: Record<string, any[]>, child: any) => {
-            if (!map[child.parentCategory]) {
-                map[child.parentCategory] = [];
-            }
-            map[child.parentCategory].push(child);
-            return map;
-        }, {} as Record<string, any[]>),
-    };
-});
-
-const openDropdowns = ref<Record<string, boolean>>({});
-
-const toggleDropdown = (categoryId: string, event: Event) => {
-    event.stopPropagation();
-    if (openDropdowns.value[categoryId]) {
-        openDropdowns.value = {
-            ...openDropdowns.value,
-            [categoryId]: false
-        };
-    } else {
-        const newDropdownState: Record<string, boolean> = {};
-        Object.keys(openDropdowns.value).forEach(key => {
-            newDropdownState[key] = false;
-        });
-        newDropdownState[categoryId] = true;
-        openDropdowns.value = newDropdownState;
-    }
-};
 
 const openSearchModal = () => {
     searchModalOpen.value = true;
@@ -547,9 +493,8 @@ const closeSearchModal = () => {
 };
 
 const debouncedSearch = () => {
-    if (searchTimeout.value) {
+    if (searchTimeout.value)
         clearTimeout(searchTimeout.value);
-    }
 
     searchTimeout.value = setTimeout(() => {
         performSearch();
@@ -557,15 +502,14 @@ const debouncedSearch = () => {
 };
 
 const onSearchFocus = () => {
-    if (autocompleteBlurTimeout.value) {
+    if (autocompleteBlurTimeout.value)
         clearTimeout(autocompleteBlurTimeout.value);
-    }
+
     showAutocomplete.value = true;
     loadFeaturedStores();
 };
 
 const onSearchBlur = () => {
-    // Delay hiding to allow clicks on dropdown items
     autocompleteBlurTimeout.value = setTimeout(() => {
         showAutocomplete.value = false;
     }, 150);
@@ -578,21 +522,25 @@ const closeAutocomplete = () => {
     }
 };
 
-const loadFeaturedStores = () => {
+const loadFeaturedStores = async () => {
     if (featuredStores.value.length === 0) {
-        // Get featured stores from campaigns store
-        const campaigns = campaignsStore.getCampaigns || [];
-        // Filter and sort by highlight or coupon count
-        featuredStores.value = campaigns
-            .filter((campaign: any) => campaign.active !== false)
-            .sort((a: any, b: any) => {
-                // Prioritize highlighted campaigns
-                if (a.highlight && !b.highlight) return -1;
-                if (!a.highlight && b.highlight) return 1;
-                // Then sort by coupon count
-                return (b.couponCount || 0) - (a.couponCount || 0);
-            })
-            .slice(0, 8);
+        try {
+            const campaigns = await affiliateAPI.campaigns.getAllWithCouponCounts();
+
+            if (campaigns && Array.isArray(campaigns)) {
+                featuredStores.value = campaigns
+                    .filter((campaign: any) => campaign.active !== false)
+                    .sort((a: any, b: any) => {
+                        if (a.highlight && !b.highlight) return -1;
+                        if (!a.highlight && b.highlight) return 1;
+                        return (b.couponCount || 0) - (a.couponCount || 0);
+                    })
+                    .slice(0, 8);
+            }
+        } catch (error) {
+            console.error('Erro ao carregar lojas em destaque:', error);
+            featuredStores.value = [];
+        }
     }
 };
 
@@ -606,15 +554,11 @@ const performSearch = async () => {
     isSearching.value = true;
 
     try {
-        // Buscar posts do blog
-        const postPromise = blogAPI.posts.search(searchQuery.value);
+        const query = searchQuery.value.trim();
+        const postPromise = blogAPI.posts.search(query);
+        const campaignsPromise = affiliateAPI.campaigns.searchCampaigns(query);
+        const [postResponse, campaignsResponse] = await Promise.all([postPromise, campaignsPromise]);
 
-        // Buscar todas as campanhas
-        const campaignsPromise = affiliateAPI.campaigns.getAllWithCouponCounts();
-
-        const [postResponse, allCampaigns] = await Promise.all([postPromise, campaignsPromise]);
-
-        // Processar resultados dos posts
         if (Array.isArray(postResponse)) {
             searchResults.value = postResponse;
         } else if (postResponse && typeof postResponse === 'object') {
@@ -624,27 +568,8 @@ const performSearch = async () => {
             searchResults.value = [];
         }
 
-        // Processar resultados das campanhas
-        if (allCampaigns && Array.isArray(allCampaigns)) {
-            const query = searchQuery.value.toLowerCase().trim();
-
-            // Filtragem de campanhas
-            const filtered: any[] = [];
-
-            for (const campaign of allCampaigns) {
-                if (!campaign || !campaign.name) continue;
-
-                const campName = campaign.name.toLowerCase();
-                const campSlug = campaign.slug ? campaign.slug.toLowerCase() : '';
-                const campDescription = campaign.description ? campaign.description.toLowerCase() : '';
-
-                // Verificação normal
-                if (campName.includes(query) || campSlug.includes(query) || campDescription.includes(query)) {
-                    filtered.push(campaign);
-                }
-            }
-
-            searchCampaigns.value = filtered;
+        if (campaignsResponse && Array.isArray(campaignsResponse)) {
+            searchCampaigns.value = campaignsResponse;
         } else {
             searchCampaigns.value = [];
         }
@@ -667,7 +592,7 @@ const formatDate = (dateString: string) => {
 };
 
 const categoriesColumns = computed(() => {
-    const allCategories = categories.value;
+    const allCategories: any[] = [];
     const columnSize = Math.ceil(allCategories.length / 3);
 
     return [
@@ -685,21 +610,15 @@ const checkCouponInUrl = async () => {
 
     if (displayCode && typeof displayCode === 'string') {
         try {
-            // Tentar encontrar o cupom com este código entre os cupons carregados
             let foundCoupon: any = null;
             let relatedCampaign: any = null;
 
-            // Verificar nos cupons em destaque
-            if (couponsStore.getFeaturedCoupons.length > 0) {
+            if (couponsStore.getFeaturedCoupons.length > 0)
                 foundCoupon = couponsStore.getFeaturedCoupons.find(c => c.code === displayCode);
-            }
 
-            // Verificar nos top 25 cupons
-            if (!foundCoupon && couponsStore.getTop25Coupons.length > 0) {
+            if (!foundCoupon && couponsStore.getTop25Coupons.length > 0)
                 foundCoupon = couponsStore.getTop25Coupons.find(c => c.code === displayCode);
-            }
 
-            // Se ainda não encontrou, tentar verificar nos cupons de cada campanha
             if (!foundCoupon) {
                 const campaigns = campaignsStore.getCampaigns || [];
                 for (const campaign of campaigns) {
@@ -715,39 +634,20 @@ const checkCouponInUrl = async () => {
             }
 
             if (foundCoupon) {
-                // Se encontramos o cupom, verificar se ele tem as informações da campanha
                 if (!foundCoupon.campaignName || !foundCoupon.campaignLogo) {
-                    // Se já temos a campanha relacionada, usá-la
                     if (!relatedCampaign) {
-                        // Caso contrário, buscar a campanha correspondente
                         const campaigns = campaignsStore.getCampaigns || [];
                         relatedCampaign = campaigns.find(c => c.id === foundCoupon.campaignId);
                     }
 
-                    // Adicionar os dados da campanha ao cupom
                     selectedCouponForScratch.value = {
                         ...foundCoupon,
                         campaignName: relatedCampaign?.name || 'Loja',
                         campaignLogo: relatedCampaign?.logo || null
                     };
                 } else {
-                    // Exibir o modal com as informações do cupom
                     selectedCouponForScratch.value = foundCoupon;
                 }
-                isScratchModalOpen.value = true;
-            } else {
-                // Como não temos um método getByCode na API ou não encontramos o cupom,
-                // criar um cupom temporário com os dados básicos
-                const tempCoupon = {
-                    id: 'temp-' + Date.now(),
-                    code: displayCode,
-                    title: 'Cupom de desconto',
-                    campaignName: 'Loja',
-                    description: 'Use este cupom para obter desconto em sua compra.'
-                };
-
-                // Exibir o modal com as informações do cupom
-                selectedCouponForScratch.value = tempCoupon;
                 isScratchModalOpen.value = true;
             }
         } catch (error) {
@@ -761,79 +661,62 @@ const closeScratchModal = () => {
     selectedCouponForScratch.value = null;
 };
 
-const loadInitialData = async () => {
+onMounted(async () => {
+    await checkCouponInUrl();
+});
+
+const newsletterAPI = newsletterVue3.useNewsletter();
+const newsletterEmail = ref('');
+const newsletterSubmitted = ref(false);
+const newsletterMessage = ref('');
+const newsletterError = ref('');
+const isSubscribing = ref(false);
+
+const subscribeNewsletter = async () => {
+    if (!newsletterEmail.value || !isValidEmail(newsletterEmail.value)) {
+        newsletterError.value = 'Por favor, informe um e-mail válido.';
+        return;
+    }
+
     try {
-        if (!categories.value.length) {
-            const categoriesResponse = await blogAPI.categories.getAll();
-            if (categoriesResponse) {
-                categories.value = categoriesResponse;
-                categoriesStore.setCategories(categoriesResponse);
-            }
+        newsletterError.value = '';
+        isSubscribing.value = true;
+        const emailToSubmit = newsletterEmail.value;
+
+        const response = await fetch('/api/newsletter/subscribers/subscribe', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: emailToSubmit,
+                source: 'footer'
+            })
+        });
+
+        if (response.ok) {
+            newsletterSubmitted.value = true;
+            newsletterMessage.value = 'Obrigado! Você foi inscrito com sucesso.';
+            newsletterEmail.value = '';
+
+            setTimeout(() => {
+                newsletterSubmitted.value = false;
+            }, 5000);
+        } else {
+            throw new Error('Falha na requisição');
         }
 
-        if (!campaignsStore.getCampaigns) {
-            const campaignsData = await affiliateAPI.campaigns.getAllWithCouponCounts();
-            if (campaignsData && campaignsData.length > 0) {
-                campaignsStore.setCampaigns(campaignsData);
-            }
-        }
-
-        if (couponsStore.getFeaturedCoupons.length === 0) {
-            const featuredCouponsData = await affiliateAPI.coupons.getMostViewed();
-            if (featuredCouponsData && featuredCouponsData.length > 0) {
-                couponsStore.setFeaturedCoupons(featuredCouponsData);
-            }
-        }
-
-        if (couponsStore.getTop25Coupons.length === 0) {
-            const top25CouponsData = await affiliateAPI.coupons.getTop25WeeklyCoupons();
-            if (top25CouponsData && top25CouponsData.length > 0) {
-                couponsStore.setTop25Coupons(top25CouponsData);
-            }
-        }
     } catch (error) {
-        console.error("Erro ao carregar dados iniciais:", error);
+        console.error('Newsletter subscription error:', error);
+        newsletterError.value = 'Não foi possível processar sua inscrição. Tente novamente.';
+    } finally {
+        isSubscribing.value = false;
     }
 };
 
-onServerPrefetch(async () => {
-    await loadInitialData();
-});
-
-onMounted(async () => {
-    await loadInitialData();
-    document.addEventListener('click', closeDropdownsOnClickOutside);
-    await checkCouponInUrl();
-});
-
-watch(() => route.query.display, async () => {
-    await checkCouponInUrl();
-});
-
-onBeforeUnmount(() => {
-    document.removeEventListener('click', closeDropdownsOnClickOutside);
-});
-
-const closeDropdownsOnClickOutside = (event: Event) => {
-    const dropdownElements = document.querySelectorAll('.dropdown-menu');
-    const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
-    let clickedInsideDropdown = false;
-
-    dropdownElements.forEach(el => {
-        if (el.contains(event.target as Node)) {
-            clickedInsideDropdown = true;
-        }
-    });
-
-    dropdownToggles.forEach(el => {
-        if (el.contains(event.target as Node)) {
-            clickedInsideDropdown = true;
-        }
-    });
-
-    if (!clickedInsideDropdown) {
-        openDropdowns.value = {};
-    }
+const isValidEmail = (email: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
 };
 </script>
 
@@ -861,7 +744,6 @@ const closeDropdownsOnClickOutside = (event: Event) => {
     overflow: hidden;
 }
 
-/* Autocomplete styles */
 .autocomplete-dropdown {
     backdrop-filter: blur(10px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
@@ -872,7 +754,6 @@ const closeDropdownsOnClickOutside = (event: Event) => {
     background: linear-gradient(90deg, rgba(67, 56, 202, 0.05), rgba(99, 102, 241, 0.05));
 }
 
-/* Search input focus styles */
 input[type="text"]:focus + button svg {
     color: #4338ca;
 }

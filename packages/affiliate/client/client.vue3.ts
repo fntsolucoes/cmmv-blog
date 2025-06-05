@@ -53,6 +53,17 @@ export const useAffiliate = () => {
         getAllWithCouponCounts: async () => {
             const { data } = await api.get<any[]>("affiliate/campaigns/public-with-counts", "campaigns_with_counts");
             return data.value || [];
+        },
+        searchCampaigns: async (query: string) => {
+            if (!query || query.trim().length < 2) {
+                return [];
+            }
+            const { data } = await api.get<any[]>(`affiliate/campaigns/public/search?q=${encodeURIComponent(query.trim())}`, `campaigns_search_${query}`);
+            return data.value || [];
+        },
+        getBySlug: async (slug: string) => {
+            const { data } = await api.get<any[]>(`affiliate/campaigns/public/${slug}`, `campaign`);
+            return data.value || [];
         }
     };
 
@@ -62,17 +73,16 @@ export const useAffiliate = () => {
             return data.value || [];
         },
         getCountByCampaignId: async (campaignId: string) => {
-            // Ensure campaignId is provided
             if (!campaignId) {
                 console.warn('Campaign ID is required to get coupon count.');
-                return { count: 0 }; // Return a default count or handle as an error
+                return { count: 0 };
             }
             try {
                 const { data } = await api.get<{ count: number }>(`affiliate/coupons/count/${campaignId}`, `coupon_count_${campaignId}`);
                 return data.value || { count: 0 };
             } catch (error) {
                 console.error(`Failed to fetch coupon count for campaign ${campaignId}:`, error);
-                return { count: 0 }; // Return default count on error
+                return { count: 0 };
             }
         },
         getTop25WeeklyCoupons: async () => {
@@ -81,7 +91,7 @@ export const useAffiliate = () => {
                 return data.value || [];
             } catch (error) {
                 console.error("Failed to fetch top 25 weekly coupons:", error);
-                return []; // Retorna array vazio em caso de erro
+                return [];
             }
         },
         getByCampaignId: async (campaignId: string) => {
@@ -94,7 +104,19 @@ export const useAffiliate = () => {
                 return data.value || [];
             } catch (error) {
                 console.error(`Failed to fetch coupons for campaign ${campaignId}:`, error);
-                return []; // Retorna array vazio em caso de erro
+                return [];
+            }
+        },
+        incrementView: async (couponId: string) => {
+            if (!couponId) {
+                return { success: false };
+            }
+            try {
+                const { data } = await api.post("affiliate/coupons/increment-view", { couponId });
+                return data.value || { success: false };
+            } catch (error) {
+                console.error(`Failed to increment view count for coupon ${couponId}:`, error);
+                return { success: false };
             }
         }
     };

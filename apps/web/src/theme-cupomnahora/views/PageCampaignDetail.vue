@@ -22,7 +22,7 @@
             <div v-else class="bg-white rounded-lg p-6">
                 <div class="flex flex-col md:flex-row items-center md:items-start gap-6 mb-8">
                     <div class="w-[160px] h-[125px] flex-shrink-0 flex items-center justify-center bg-gray-100 rounded-lg overflow-hidden">
-                        <img v-if="campaign.logo" :src="campaign.logo" :alt="campaign.name" class="w-full h-full">
+                        <img v-if="campaign.logo" :src="campaign.logo" :alt="campaign.name" width="160" height="125">
                         <div v-else class="w-full h-full bg-gray-200 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -155,7 +155,7 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
-                                            <span>{{ 100 + Math.floor(Math.random() * 500) }} usados hoje</span>
+                                            <span>{{ (coupon.views || 0) }} total de visualizações</span>
                                         </div>
                                     </div>
                                 </div>
@@ -244,6 +244,8 @@ import { useCampaignsStore } from '../../store/campaigns';
 import { useCouponsStore } from '../../store/coupons';
 import CouponScratchModal from '../components/CouponScratchModal.vue';
 
+// @ts-ignore
+const isSSR = import.meta.env.SSR;
 const route = useRoute();
 const affiliateAPI = affiliateVue3.useAffiliate();
 const settingsStore = useSettingsStore();
@@ -256,6 +258,9 @@ const coupons = ref<any[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
 
+if(!isSSR)
+    campaign.value = window.__CMMV_DATA__["campaign"]
+
 const activeFilter = ref('all');
 const isScratchModalOpen = ref(false);
 const selectedCouponForScratch = ref<any | null>(null);
@@ -264,11 +269,14 @@ const codesCount = computed(() => coupons.value.filter(coupon => coupon.code).le
 const offersCount = computed(() => coupons.value.filter(coupon => !coupon.code).length);
 const expiredCount = computed(() => coupons.value.filter(coupon => new Date(coupon.expiration) < new Date()).length);
 
+const totalViews = computed(() => coupons.value.reduce((acc, coupon) => acc + coupon.views, 0));
+
 const filteredCoupons = computed(() => {
     if (activeFilter.value === 'all') return coupons.value;
     if (activeFilter.value === 'codes') return coupons.value.filter(coupon => coupon.code);
     if (activeFilter.value === 'offers') return coupons.value.filter(coupon => !coupon.code);
     if (activeFilter.value === 'expired') return coupons.value.filter(coupon => new Date(coupon.expiration) < new Date());
+    if (activeFilter.value === 'views') return coupons.value.filter(coupon => coupon.views > 0);
     return coupons.value;
 });
 
@@ -291,6 +299,10 @@ const headData = computed(() => ({
         {
             property: 'og:url',
             content: `${settings.value?.['blog.url'] || 'https://cupomnahora.com.br'}/desconto/${route.params.slug}`
+        },
+        {
+            name: 'views',
+            content: `Total de visualizações: ${totalViews.value}`
         }
     ]
 }));
@@ -309,64 +321,34 @@ const loadData = async () => {
             return;
         }
 
-        let allCampaigns = campaignsStore.getCampaigns;
+        if(isSSR)
+            campaign.value = await affiliateAPI.campaigns.getBySlug(slug as string);
 
-        if (!allCampaigns || allCampaigns.length === 0) {
-            allCampaigns = await affiliateAPI.campaigns.getAllWithCouponCounts();
-            if (allCampaigns && allCampaigns.length > 0) {
-                campaignsStore.setCampaigns(allCampaigns);
-            }
-        }
-
-        if (!allCampaigns || allCampaigns.length === 0) {
-            error.value = 'Não foi possível carregar as lojas';
-            loading.value = false;
-            return;
-        }
-
-        const foundCampaign = allCampaigns.find((c: any) => c.slug === slug);
-
-        if (!foundCampaign) {
+        if (!campaign.value) {
             error.value = 'Loja não encontrada';
             loading.value = false;
             return;
         }
 
-        campaign.value = foundCampaign;
+        let campaignCoupons = campaign.value.coupons;
 
-        try {
-            const campaignId = campaign.value.id;
-            let campaignCoupons = couponsStore.getCampaignCoupons(campaignId);
-
-            if (campaignCoupons && campaignCoupons.length > 0) {
-                // Adicionar informações da campanha em cada cupom
-                coupons.value = campaignCoupons.map((c: any) => ({
+        if (campaignCoupons && campaignCoupons.length > 0) {
+            
+            coupons.value = campaignCoupons.map((c: any) => {                
+                // Converter views para número, independentemente do tipo
+                const viewsAsNumber = parseInt(String(c.views), 10) || 0;
+                
+                return {
                     ...c,
                     campaignName: campaign.value.name,
-                    campaignLogo: c.campaignLogo || campaign.value.logo
-                }));
-            } else {
-                const realCoupons = await affiliateAPI.coupons.getByCampaignId(campaignId);
-
-                if (realCoupons && realCoupons.length > 0) {
-                    // Adicionar informações da campanha em cada cupom
-                    const enrichedCoupons = realCoupons.map((c: any) => ({
-                        ...c,
-                        campaignName: campaign.value.name,
-                        campaignLogo: c.campaignLogo || campaign.value.logo
-                    }));
-
-                    coupons.value = enrichedCoupons;
-                    couponsStore.setCampaignCoupons(campaignId, enrichedCoupons);
-                }
-            }
-        } catch (couponError) {
-            console.error("Erro ao carregar cupons:", couponError);
+                    campaignLogo: c.campaignLogo || campaign.value.logo,
+                    views: viewsAsNumber
+                };
+            });
         }
 
         loading.value = false;
     } catch (err: any) {
-        //console.error('Erro ao carregar campanha:', err);
         error.value = err.message || 'Erro ao carregar a loja e seus cupons';
         loading.value = false;
     }
@@ -374,6 +356,10 @@ const loadData = async () => {
 
 onServerPrefetch(async () => {
     await loadData();
+});
+
+onMounted(() => {
+    loadData();
 });
 
 const formatDate = (dateString: string | Date) => {
@@ -386,22 +372,16 @@ const setFilter = (filter: string) => {
 };
 
 const openCouponModal = (coupon: any) => {
-    // Verificar se o cupom já tem as informações da campanha
     if (!coupon.campaignName || !coupon.campaignLogo) {
-        // Primeiro tentar usar a campanha atual da página
         if (campaign.value) {
-            // Criar uma cópia enriquecida do cupom com os dados da campanha
             selectedCouponForScratch.value = {
                 ...coupon,
                 campaignName: campaign.value.name || 'Loja',
                 campaignLogo: campaign.value.logo || null
             };
         } else {
-            // Se não temos campaign.value (o que seria estranho nesta página),
-            // buscar a campanha correspondente pelo ID
             const relatedCampaign = campaignsStore.getCampaigns?.find(c => c.id === coupon.campaignId);
 
-            // Criar uma cópia enriquecida do cupom com os dados da campanha
             selectedCouponForScratch.value = {
                 ...coupon,
                 campaignName: relatedCampaign?.name || coupon.campaignName || 'Loja',
@@ -409,27 +389,55 @@ const openCouponModal = (coupon: any) => {
             };
         }
     } else {
-        // Se já tem os dados da campanha, usar diretamente
         selectedCouponForScratch.value = { ...coupon };
     }
 
-    // Mostrar o modal
     isScratchModalOpen.value = true;
 
-    // Abrir uma nova janela com o código do cupom
-    if (coupon && coupon.code) {
-        window.open(window.location.href + `?display=${coupon.code}`, '_blank');
+    // Incrementar a contagem de visualizações
+    
+    // Verificar se temos um ID disponível ou usar outra propriedade única
+    if (coupon) {
+        // Se não tiver ID, vamos usar o código como identificador único
+        const identifier = coupon.id || coupon.code;
+        if (identifier) {
+            incrementCouponView(identifier, coupon);
+        } else {
+            console.error('Não foi possível identificar o cupom para incrementar visualizações:', coupon);
+        }
     }
 
-    // Redirecionar para o deeplink
-    if (coupon && coupon.deeplink) {
+    if (coupon && coupon.code)
+        window.open(window.location.href + `?display=${coupon.code}`, '_blank');
+
+    if (coupon && coupon.deeplink)
         window.location.href = coupon.deeplink;
-    }
 };
 
 const closeCouponModal = () => {
     isScratchModalOpen.value = false;
     selectedCouponForScratch.value = null;
+};
+
+// Função para incrementar as visualizações do cupom
+const incrementCouponView = async (couponId: string, coupon: any) => {
+    try {
+        if (!isSSR) {
+            const result = await affiliateAPI.coupons.incrementView(couponId);
+
+            if (result && result.success && result.views !== undefined) {
+                // Atualizar o valor local para refletir imediatamente na UI
+                // Garantir que views seja um número
+                coupon.views = parseInt(String(result.views), 10) || 0;
+                
+                // Forçar atualização da UI - como estamos modificando um objeto dentro de um array
+                const updatedCoupons = [...coupons.value];
+                coupons.value = updatedCoupons;
+            }
+        }
+    } catch (err) {
+        console.error('Erro ao incrementar visualizações do cupom:', err);
+    }
 };
 
 const extractDiscountPercentage = (title: string) => {
@@ -466,16 +474,6 @@ const extractDiscountValue = (title: string) => {
 
     return 'Oferta';
 };
-
-onMounted(() => {
-    loadData();
-});
-
-watch(() => route.params.slug, (newSlug, oldSlug) => {
-    if (newSlug !== oldSlug) {
-        loadData();
-    }
-});
 </script>
 
 <style>

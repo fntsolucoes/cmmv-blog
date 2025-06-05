@@ -1,5 +1,8 @@
 import { Service, Application, Config, Logger } from "@cmmv/core";
-import { Repository } from "@cmmv/repository";
+import {
+    Repository,
+    MoreThanOrEqual
+} from "@cmmv/repository";
 //@ts-ignore
 import { MediasService } from "@cmmv/blog";
 //@ts-ignore
@@ -235,15 +238,12 @@ Respond only with the HTML formatted text using Tailwind CSS classes, without JS
         const CampaignEntity = Repository.getEntity("AffiliateCampaignsEntity");
         const campaign = await Repository.findOne(CampaignEntity, { id: campaignId });
 
-        if (!campaign) {
+        if (!campaign)
             throw new Error(`Campaign with ID ${campaignId} not found`);
-        }
 
-        if (!campaign.domain) {
+        if (!campaign.domain)
             throw new Error("Campaign domain is required for SEO generation");
-        }
 
-        // Generate unique job ID
         const jobId = `seo-job-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
 
         const job: AIJob = {
@@ -282,9 +282,8 @@ Respond only with the HTML formatted text using Tailwind CSS classes, without JS
                 id: job.campaignId
             });
 
-            if (!campaign) {
+            if (!campaign)
                 throw new Error(`Campaign with ID ${job.campaignId} not found`);
-            }
 
             const shortContentPrompt = `Generate SEO content for a coupon discount website for the store "${campaign.name}" (domain: ${campaign.domain}).
 
@@ -491,9 +490,8 @@ Respond only with the HTML formatted text using Tailwind CSS classes, without JS
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
         for (const [jobId, job] of this.aiJobs.entries()) {
-            if ((job.status === 'completed' || job.status === 'error') && job.startTime < oneHourAgo) {
+            if ((job.status === 'completed' || job.status === 'error') && job.startTime < oneHourAgo)
                 this.aiJobs.delete(jobId);
-            }
         }
     }
 
@@ -526,15 +524,16 @@ Respond only with the HTML formatted text using Tailwind CSS classes, without JS
             active: true,
             limit: 10000
         }, [], {
+            order: {
+                highlight: "DESC"
+            },
             select: [
-                "id", "name", "logo", "description", "highlight", "slug", "categories",
-                "seoTitle", "seoSubtitle", "seoSmallText", "seoLongText"
+                "id", "name", "logo", "highlight", "slug"
             ]
         });
 
-        if (!campaignsResult || campaignsResult.data.length === 0) {
+        if (!campaignsResult || campaignsResult.data.length === 0)
             return [];
-        }
 
         const couponsService = Application.resolveProvider(CouponsServiceTools);
         const campaignsWithCounts = [];
@@ -569,6 +568,93 @@ Respond only with the HTML formatted text using Tailwind CSS classes, without JS
 
             return (a.name || "").localeCompare(b.name || "");
         });
+
+        return campaignsWithCounts;
+    }
+
+    /**
+     * Get a campaign by its slug
+     * @param slug The slug of the campaign
+     * @returns The campaign
+     */
+    async getCampaignBySlug(slug: string) {
+        const CampaignEntity = Repository.getEntity("AffiliateCampaignsEntity");
+        const AffiliateCouponsEntity = Repository.getEntity("AffiliateCouponsEntity");
+        const campaign = await Repository.findOne(CampaignEntity, {
+            slug,
+            active: true
+        });
+
+        if (!campaign)
+            throw new Error(`Campaign with slug ${slug} not found`);
+
+        const coupons = await Repository.findAll(AffiliateCouponsEntity, {
+            campaign: campaign.id,
+            active: true,
+            expiration: MoreThanOrEqual(new Date(Date.now() - 60 * 60 * 24 * 60 * 1000)),
+            limit: 100
+        }, [], {
+            order: {
+                expiration: "DESC"
+            },
+            select: [
+                "type", "typeDiscount", "title", "description",
+                "code", "expiration", "deeplink", "views"
+            ]
+        });
+
+        return {
+            id: campaign.id,
+            name: campaign.name,
+            logo: campaign.logo,
+            description: campaign.description,
+            seoTitle: campaign.seoTitle,
+            seoSubtitle: campaign.seoSubtitle,
+            seoSmallText: campaign.seoSmallText,
+            seoLongText: campaign.seoLongText,
+            coupons: coupons?.data || []
+        };
+    }
+
+    /**
+     * Search for campaigns by name
+     * @param query The query to search for
+     * @returns The campaigns that match the query
+     */
+    async searchCampaigns(query: string) {
+        const AffiliateCampaignsEntity = Repository.getEntity("AffiliateCampaignsEntity");
+
+        const campaignsResult = await Repository.findAll(AffiliateCampaignsEntity, {
+            search: query,
+            searchField: "name",
+            active: true,
+            limit: 10,
+        }, [], {
+            select: [
+                "id", "name", "logo", "slug"
+            ]
+        });
+
+        if (!campaignsResult || campaignsResult.data.length === 0)
+            return [];
+
+        const couponsService = Application.resolveProvider(CouponsServiceTools);
+        const campaignsWithCounts = [];
+
+        for (const campaign of campaignsResult.data) {
+            try {
+                const couponCountResponse = await couponsService.getCouponsCountByCampaignId(campaign.id);
+                campaignsWithCounts.push({
+                    ...campaign,
+                    couponCount: couponCountResponse?.count || 0
+                });
+            } catch (err) {
+                campaignsWithCounts.push({
+                    ...campaign,
+                    couponCount: 0
+                });
+            }
+        }
 
         return campaignsWithCounts;
     }
