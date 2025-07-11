@@ -172,6 +172,7 @@
                             :src="item.featureImage"
                             alt="Feature image"
                             class="w-full h-full object-cover"
+                            @error="handleImageError"
                         />
                     </div>
 
