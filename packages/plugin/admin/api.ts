@@ -141,9 +141,9 @@ export function useApi() {
                     return {
                         status: response.status,
                         ...data.result,
-                    }
+                    };
                 } else {
-                    return data
+                    return data;
                 }
             } else {
                 router.push('/login')
