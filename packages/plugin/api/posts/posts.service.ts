@@ -1707,4 +1707,416 @@ export class PostsPublicService {
             caption
         );
     }
+
+    // ===== MIGRAÇÃO DE POSTS COM IMAGENS LOCAIS =====
+
+    /**
+     * Progress tracking para migração de posts
+     */
+    static postsMigrationProgress = {
+        isRunning: false,
+        totalPosts: 0,
+        processedPosts: 0,
+        migratedPosts: 0,
+        failedPosts: 0,
+        currentPost: '',
+        startTime: null as Date | null,
+        endTime: null as Date | null,
+        error: null as string | null
+    };
+
+    /**
+     * Obtém o progresso da migração de posts
+     */
+    static getPostsMigrationProgress() {
+        return { ...PostsPublicService.postsMigrationProgress };
+    }
+
+    /**
+     * Inicializa o progresso da migração de posts
+     */
+    static initializePostsMigrationProgress() {
+        PostsPublicService.postsMigrationProgress = {
+            isRunning: false,
+            totalPosts: 0,
+            processedPosts: 0,
+            migratedPosts: 0,
+            failedPosts: 0,
+            currentPost: '',
+            startTime: null,
+            endTime: null,
+            error: null
+        };
+    }
+
+    /**
+     * Reseta o progresso da migração de posts
+     */
+    static resetPostsMigrationProgress() {
+        PostsPublicService.postsMigrationProgress = {
+            isRunning: false,
+            totalPosts: 0,
+            processedPosts: 0,
+            migratedPosts: 0,
+            failedPosts: 0,
+            currentPost: '',
+            startTime: null,
+            endTime: null,
+            error: null
+        };
+    }
+
+    /**
+     * Busca posts que usam imagens locais
+     */
+    async getPostsWithLocalImages() {
+        try {
+            const PostsEntity = Repository.getEntity("PostsEntity");
+            
+            // Busca todos os posts
+            const postsResponse = await Repository.findAll(PostsEntity, {
+                type: "post",
+                deleted: false
+            });
+            
+            const allPosts = postsResponse?.data || [];
+            this.logger.log(`Found ${allPosts.length} total posts`);
+            
+            // Log structure of first post for debugging
+            if (allPosts.length > 0) {
+                const firstPost = allPosts[0];
+                this.logger.log(`Sample post structure - ID: ${firstPost.id}, Title: ${firstPost.title}, Image: ${firstPost.image}, FeatureImage: ${firstPost.featureImage}, HasContent: ${!!firstPost.content}, ContentLength: ${firstPost.content ? firstPost.content.length : 0}`);
+            }
+            
+            // Filtra posts que usam imagens locais
+            const postsWithLocalImages = allPosts.filter((post: any) => {
+                let hasLocalImage = false;
+                
+                // Verifica se tem imagem principal local
+                if (post.image && typeof post.image === 'string' && 
+                    !post.image.startsWith('https://') && 
+                    !post.image.startsWith('https://static') &&
+                    !post.image.startsWith('data:') &&
+                    (post.image.startsWith('http://localhost') || 
+                     post.image.startsWith('http://127.0.0.1') || 
+                     !post.image.startsWith('http://'))) {
+                    this.logger.log(`Post ${post.id} has local main image: ${post.image}`);
+                    hasLocalImage = true;
+                }
+                
+                // Verifica se tem imagem de destaque local
+                if (post.featureImage && typeof post.featureImage === 'string' && 
+                    !post.featureImage.startsWith('https://') && 
+                    !post.featureImage.startsWith('https://static') &&
+                    !post.featureImage.startsWith('data:') &&
+                    (post.featureImage.startsWith('http://localhost') || 
+                     post.featureImage.startsWith('http://127.0.0.1') || 
+                     !post.featureImage.startsWith('http://'))) {
+                    this.logger.log(`Post ${post.id} has local feature image: ${post.featureImage}`);
+                    hasLocalImage = true;
+                }
+                
+                // Verifica se o conteúdo tem imagens locais
+                if (post.content && typeof post.content === 'string') {
+                    const localImageRegex = /src=["'](?!https?:\/\/)([^"']+\.(jpg|jpeg|png|gif|webp|avif))["']/gi;
+                    const localhostImageRegex = /src=["'](http:\/\/localhost[^"']+\.(jpg|jpeg|png|gif|webp|avif))["']/gi;
+                    if (localImageRegex.test(post.content) || localhostImageRegex.test(post.content)) {
+                        this.logger.log(`Post ${post.id} has local images in content`);
+                        hasLocalImage = true;
+                    }
+                }
+                
+                return hasLocalImage;
+            });
+
+            this.logger.log(`Found ${postsWithLocalImages.length} posts with local images`);
+            return postsWithLocalImages;
+        } catch (error: any) {
+            this.logger.error('Error getting posts with local images:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Migra posts que usam imagens locais para cloud
+     */
+    async migratePostsWithLocalImages(batchSize: number = 10) {
+        try {
+            if (PostsPublicService.postsMigrationProgress.isRunning) {
+                throw new Error('Posts migration is already running');
+            }
+
+            // Reset progress before starting
+            PostsPublicService.postsMigrationProgress.processedPosts = 0;
+            PostsPublicService.postsMigrationProgress.migratedPosts = 0;
+            PostsPublicService.postsMigrationProgress.failedPosts = 0;
+            PostsPublicService.postsMigrationProgress.currentPost = '';
+            PostsPublicService.postsMigrationProgress.isRunning = true;
+            PostsPublicService.postsMigrationProgress.startTime = new Date();
+            PostsPublicService.postsMigrationProgress.error = null;
+
+            const postsWithLocalImages = await this.getPostsWithLocalImages();
+            PostsPublicService.postsMigrationProgress.totalPosts = postsWithLocalImages.length;
+
+            this.logger.log(`Starting migration of ${postsWithLocalImages.length} posts with local images`);
+
+            // Processa em lotes
+            for (let i = 0; i < postsWithLocalImages.length; i += batchSize) {
+                const batch = postsWithLocalImages.slice(i, i + batchSize);
+                
+                for (const post of batch) {
+                    try {
+                        PostsPublicService.postsMigrationProgress.currentPost = post.title || post.id;
+                        PostsPublicService.postsMigrationProgress.processedPosts++;
+                        
+                        await this.migrateSinglePostImages(post);
+                        PostsPublicService.postsMigrationProgress.migratedPosts++;
+                        
+                        this.logger.log(`Migrated images for post: ${post.title || post.id}`);
+                    } catch (error: any) {
+                        PostsPublicService.postsMigrationProgress.failedPosts++;
+                        this.logger.error(`Failed to migrate post ${post.title || post.id}:`, error);
+                    }
+                }
+            }
+
+            PostsPublicService.postsMigrationProgress.endTime = new Date();
+            PostsPublicService.postsMigrationProgress.isRunning = false;
+
+            this.logger.log(`Posts migration completed - Total: ${PostsPublicService.postsMigrationProgress.totalPosts}, Migrated: ${PostsPublicService.postsMigrationProgress.migratedPosts}, Failed: ${PostsPublicService.postsMigrationProgress.failedPosts}`);
+
+            return {
+                success: true,
+                totalPosts: PostsPublicService.postsMigrationProgress.totalPosts,
+                migratedPosts: PostsPublicService.postsMigrationProgress.migratedPosts,
+                failedPosts: PostsPublicService.postsMigrationProgress.failedPosts
+            };
+
+        } catch (error: any) {
+            PostsPublicService.postsMigrationProgress.isRunning = false;
+            PostsPublicService.postsMigrationProgress.error = error.message;
+            PostsPublicService.postsMigrationProgress.endTime = new Date();
+            
+            this.logger.error('Error in posts migration:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Migra imagens de um post específico
+     */
+    private async migrateSinglePostImages(post: any) {
+        const PostsEntity = Repository.getEntity("PostsEntity");
+        const updateData: any = {};
+        let hasChanges = false;
+
+        // Migra imagem principal
+        if (post.image && typeof post.image === 'string' && 
+            !post.image.startsWith('https://') && 
+            !post.image.startsWith('https://static') && 
+            !post.image.startsWith('data:') &&
+            (post.image.startsWith('http://localhost') || 
+             post.image.startsWith('http://127.0.0.1') || 
+             !post.image.startsWith('http://'))) {
+            try {
+                const migratedImage = await this.migrateImageToCloud(post.image);
+                if (migratedImage) {
+                    updateData.image = migratedImage;
+                    hasChanges = true;
+                    this.logger.log(`Migrated main image for post ${post.id}: ${post.image} -> ${migratedImage}`);
+                }
+            } catch (error) {
+                this.logger.error(`Failed to migrate main image for post ${post.id}:`, String(error));
+            }
+        }
+
+        // Migra imagem de destaque
+        if (post.featureImage && typeof post.featureImage === 'string' && 
+            !post.featureImage.startsWith('https://') && 
+            !post.featureImage.startsWith('https://static') &&
+            !post.featureImage.startsWith('data:') &&
+            (post.featureImage.startsWith('http://localhost') || 
+             post.featureImage.startsWith('http://127.0.0.1') || 
+             !post.featureImage.startsWith('http://'))) {
+            try {
+                const migratedFeatureImage = await this.migrateImageToCloud(post.featureImage);
+                if (migratedFeatureImage) {
+                    updateData.featureImage = migratedFeatureImage;
+                    hasChanges = true;
+                    this.logger.log(`Migrated feature image for post ${post.id}: ${post.featureImage} -> ${migratedFeatureImage}`);
+                }
+            } catch (error) {
+                this.logger.error(`Failed to migrate feature image for post ${post.id}:`, String(error));
+            }
+        }
+
+        // Migra imagens no conteúdo
+        if (post.content && typeof post.content === 'string') {
+            try {
+                const migratedContent = await this.migrateImagesInContent(post.content);
+                if (migratedContent !== post.content) {
+                    updateData.content = migratedContent;
+                    hasChanges = true;
+                }
+            } catch (error) {
+                this.logger.error(`Failed to migrate content images for post ${post.id}:`, String(error));
+            }
+        }
+
+        // Atualiza o post se houve mudanças
+        if (hasChanges) {
+            updateData.updatedAt = new Date();
+            await Repository.update(PostsEntity, post.id, updateData);
+        }
+    }
+
+    /**
+     * Migra uma imagem local para cloud
+     */
+    private async migrateImageToCloud(imagePath: string): Promise<string | null> {
+        try {
+            // Verifica se a imagem já existe no banco de dados
+            const MediasEntity = Repository.getEntity("MediasEntity");
+            const existingMedia = await Repository.findOne(MediasEntity, { filepath: imagePath });
+            
+            if (existingMedia) {
+                // Se já existe, retorna a URL atualizada
+                return existingMedia.filepath;
+            }
+
+            let base64Image: string;
+
+            // Verifica se é uma URL local (localhost)
+            if (imagePath.startsWith('http://localhost') || imagePath.startsWith('http://127.0.0.1')) {
+                try {
+                    // Faz download da imagem da URL local
+                    const https = require('https');
+                    const http = require('http');
+                    
+                    const url = new URL(imagePath);
+                    const client = url.protocol === 'https:' ? https : http;
+                    
+                    const imageBuffer = await new Promise<Buffer>((resolve, reject) => {
+                        client.get(imagePath, (res: any) => {
+                            if (res.statusCode !== 200) {
+                                reject(new Error(`HTTP ${res.statusCode}`));
+                                return;
+                            }
+                            
+                            const chunks: Buffer[] = [];
+                            res.on('data', (chunk: Buffer) => chunks.push(chunk));
+                            res.on('end', () => resolve(Buffer.concat(chunks)));
+                            res.on('error', reject);
+                        }).on('error', reject);
+                    });
+                    
+                    // Determina o tipo MIME baseado na extensão
+                    const path = require('path');
+                    const ext = path.extname(url.pathname).toLowerCase();
+                    const mimeTypes: { [key: string]: string } = {
+                        '.jpg': 'image/jpeg',
+                        '.jpeg': 'image/jpeg',
+                        '.png': 'image/png',
+                        '.gif': 'image/gif',
+                        '.webp': 'image/webp'
+                    };
+                    const mimeType = mimeTypes[ext] || 'image/jpeg';
+                    
+                    base64Image = `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+                } catch (error) {
+                    this.logger.error(`Error downloading image from local URL ${imagePath}:`, String(error));
+                    return null;
+                }
+            } else {
+                // Se não existe, tenta migrar usando o serviço de mídias
+                const fs = require('fs');
+                const path = require('path');
+                
+                const fullPath = path.resolve(imagePath);
+                if (!fs.existsSync(fullPath)) {
+                    this.logger.log(`Image file not found: ${fullPath}`);
+                    return null;
+                }
+
+                // Lê o arquivo e converte para base64
+                const imageBuffer = fs.readFileSync(fullPath);
+                const ext = path.extname(fullPath).toLowerCase();
+                const mimeTypes: { [key: string]: string } = {
+                    '.jpg': 'image/jpeg',
+                    '.jpeg': 'image/jpeg',
+                    '.png': 'image/png',
+                    '.gif': 'image/gif',
+                    '.webp': 'image/webp'
+                };
+                const mimeType = mimeTypes[ext] || 'image/jpeg';
+                
+                base64Image = `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+            }
+            
+            // Usa o serviço de mídias para processar e migrar
+            const processedImage = await this.mediasService.getImageUrl(
+                base64Image,
+                'webp',
+                1920,
+                1080,
+                80,
+                '',
+                ''
+            );
+
+            return processedImage;
+        } catch (error) {
+            this.logger.error(`Error migrating image ${imagePath}:`, String(error));
+            return null;
+        }
+    }
+
+    /**
+     * Migra imagens encontradas no conteúdo HTML
+     */
+    private async migrateImagesInContent(content: string): Promise<string> {
+        try {
+            const localImageRegex = /src=["'](?!https?:\/\/)([^"']+\.(jpg|jpeg|png|gif|webp))["']/gi;
+            const localhostImageRegex = /src=["'](http:\/\/localhost[^"']+\.(jpg|jpeg|png|gif|webp))["']/gi;
+            let match;
+            let updatedContent = content;
+
+            // Processa imagens locais (caminhos de arquivo)
+            while ((match = localImageRegex.exec(content)) !== null) {
+                const originalSrc = match[1];
+                const fullMatch = match[0];
+                
+                try {
+                    const migratedImage = await this.migrateImageToCloud(originalSrc);
+                    if (migratedImage) {
+                        const newSrc = fullMatch.replace(originalSrc, migratedImage);
+                        updatedContent = updatedContent.replace(fullMatch, newSrc);
+                    }
+                } catch (error) {
+                    this.logger.error(`Failed to migrate image in content: ${originalSrc}`, String(error));
+                }
+            }
+
+            // Processa imagens de localhost (URLs)
+            while ((match = localhostImageRegex.exec(content)) !== null) {
+                const originalSrc = match[1];
+                const fullMatch = match[0];
+                
+                try {
+                    const migratedImage = await this.migrateImageToCloud(originalSrc);
+                    if (migratedImage) {
+                        const newSrc = fullMatch.replace(originalSrc, migratedImage);
+                        updatedContent = updatedContent.replace(fullMatch, newSrc);
+                    }
+                } catch (error) {
+                    this.logger.error(`Failed to migrate localhost image in content: ${originalSrc}`, String(error));
+                }
+            }
+
+            return updatedContent;
+        } catch (error) {
+            this.logger.error('Error migrating images in content:', String(error));
+            return content;
+        }
+    }
 }

@@ -1863,4 +1863,407 @@ export class MediasService extends AbstractService {
             throw error;
         }
     }
+
+    /**
+     * Track progress for cloud migration
+     */
+    private static cloudMigrationProgress = {
+        total: 0,
+        processed: 0,
+        migrated: 0,
+        failed: 0,
+        status: 'idle',
+        message: '',
+        details: {
+            scanned: 0,
+            uploaded: 0,
+            updated: 0,
+            errors: 0,
+            bytes_uploaded: 0
+        }
+    };
+
+    /**
+     * Get the current progress of cloud migration
+     * @returns Progress information
+     */
+    async getCloudMigrationProgress() {
+        const progress = MediasService.cloudMigrationProgress;
+        const percentage = progress.total > 0
+            ? Math.round((progress.processed / progress.total) * 100)
+            : 0;
+
+        const result = {
+            ...progress,
+            percentage
+        };
+
+        return result;
+    }
+
+    /**
+     * Initialize cloud migration progress tracker
+     * @param totalItems The expected total number of items to process
+     */
+    async initializeCloudMigrationProgress(totalItems: number = 0) {
+        this.resetCloudMigrationProgress();
+        MediasService.cloudMigrationProgress.status = 'processing';
+        MediasService.cloudMigrationProgress.message = 'Starting cloud migration...';
+        MediasService.cloudMigrationProgress.total = totalItems;
+
+        return {
+            success: true,
+            message: `Cloud migration initialized with ${totalItems} items`
+        };
+    }
+
+    /**
+     * Reset cloud migration progress tracker
+     */
+    private resetCloudMigrationProgress() {
+        MediasService.cloudMigrationProgress = {
+            total: 0,
+            processed: 0,
+            migrated: 0,
+            failed: 0,
+            status: 'idle',
+            message: '',
+            details: {
+                scanned: 0,
+                uploaded: 0,
+                updated: 0,
+                errors: 0,
+                bytes_uploaded: 0
+            }
+        };
+    }
+
+    /**
+     * Get local medias that can be migrated to cloud
+     * @returns Array of local medias
+     */
+    async getLocalMediasForMigration() {
+                try {
+            const MediasEntity = Repository.getEntity("MediasEntity");
+            const mediasPath = path.resolve(process.cwd(), "medias", "images");
+
+            // Get all medias that are not already in cloud
+            const mediasResponse = await Repository.findAll(MediasEntity, {});
+            
+            // Filter locally to avoid complex query issues
+            const allMedias = mediasResponse?.data || [];
+            const localMediasData = allMedias.filter((media: any) => {
+                return !media.filepath || !media.filepath.startsWith('https://');
+            });
+
+            const localMedias: any[] = [];
+            const medias = localMediasData;
+
+            for (const media of medias as any[]) {
+                if (media.sha1 && media.format) {
+                    const hashFilePath = path.join(mediasPath, `${media.sha1}.${media.format}`);
+                    
+                    if (fs.existsSync(hashFilePath)) {
+                        const stats = fs.statSync(hashFilePath);
+                        localMedias.push({
+                            ...media,
+                            localPath: hashFilePath,
+                            localSize: stats.size,
+                            canMigrate: true
+                        } as any);
+                    }
+                } else if (media.filepath && !media.filepath.startsWith('https://')) {
+                    const fullPath = path.resolve(media.filepath);
+                    
+                    if (fs.existsSync(fullPath)) {
+                        const stats = fs.statSync(fullPath);
+                        localMedias.push({
+                            ...media,
+                            localPath: fullPath,
+                            localSize: stats.size,
+                            canMigrate: true
+                        } as any);
+                    }
+                }
+            }
+
+            // Convert to array if it's an object
+            const result = Array.isArray(localMedias) ? localMedias : Object.values(localMedias);
+            
+            // Ensure we return an array
+            const finalResult = Array.isArray(result) ? result : [];
+            
+            // Return the array directly
+            return finalResult;
+            
+        } catch (error) {
+            console.error('Error in getLocalMediasForMigration:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Migrate local medias to cloud storage
+     * @param options Migration options
+     * @returns Migration result
+     */
+    async migrateLocalMediasToCloud(options: {
+        deleteLocalAfterMigration?: boolean;
+        batchSize?: number;
+        selectedIds?: string[];
+    } = {}) {
+        const {
+            deleteLocalAfterMigration = false,
+            batchSize = 10,
+            selectedIds = []
+        } = options;
+
+        try {
+            // Initialize progress
+            const localMedias = await this.getLocalMediasForMigration();
+            const mediasToMigrate = selectedIds.length > 0 
+                ? localMedias.filter(m => selectedIds.includes(m.id.toString()))
+                : localMedias;
+
+            await this.initializeCloudMigrationProgress(mediasToMigrate.length);
+
+            if (mediasToMigrate.length === 0) {
+                MediasService.cloudMigrationProgress.status = 'completed';
+                MediasService.cloudMigrationProgress.message = 'No local medias found for migration';
+                return {
+                    success: true,
+                    message: 'No local medias found for migration',
+                    migrated: 0,
+                    failed: 0
+                };
+            }
+
+            const blogStorageService = Application.resolveProvider(BlogStorageService);
+            const MediasEntity = Repository.getEntity("MediasEntity");
+
+            // Process in batches
+            for (let i = 0; i < mediasToMigrate.length; i += batchSize) {
+                const batch = mediasToMigrate.slice(i, i + batchSize);
+                
+                await Promise.all(batch.map(async (media) => {
+                    try {
+                        await this.migrateSingleMediaToCloud(media, blogStorageService, MediasEntity, deleteLocalAfterMigration);
+                        
+                        MediasService.cloudMigrationProgress.migrated++;
+                        MediasService.cloudMigrationProgress.details.uploaded++;
+                    } catch (error: any) {
+                        console.error(`Failed to migrate media ${media.id}:`, error);
+                        MediasService.cloudMigrationProgress.failed++;
+                        MediasService.cloudMigrationProgress.details.errors++;
+                    } finally {
+                        MediasService.cloudMigrationProgress.processed++;
+                        MediasService.cloudMigrationProgress.message = `Migrated ${MediasService.cloudMigrationProgress.processed}/${MediasService.cloudMigrationProgress.total} medias`;
+                    }
+                }));
+
+                // Small delay between batches to avoid overwhelming the storage service
+                if (i + batchSize < mediasToMigrate.length) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+
+            MediasService.cloudMigrationProgress.status = 'completed';
+            MediasService.cloudMigrationProgress.message = `Migration completed. ${MediasService.cloudMigrationProgress.migrated} migrated, ${MediasService.cloudMigrationProgress.failed} failed`;
+
+            return {
+                success: true,
+                message: 'Cloud migration completed successfully',
+                migrated: MediasService.cloudMigrationProgress.migrated,
+                failed: MediasService.cloudMigrationProgress.failed,
+                total: MediasService.cloudMigrationProgress.total
+            };
+
+        } catch (error: any) {
+            MediasService.cloudMigrationProgress.status = 'error';
+            MediasService.cloudMigrationProgress.message = `Migration failed: ${error.message}`;
+            
+            throw error;
+        }
+    }
+
+    /**
+     * Migrate a single media to cloud storage
+     * @param media Media object
+     * @param storageService Storage service instance
+     * @param MediasEntity Medias entity
+     * @param deleteLocal Whether to delete local file after migration
+     */
+    private async migrateSingleMediaToCloud(
+        media: any,
+        storageService: BlogStorageService,
+        MediasEntity: any,
+        deleteLocal: boolean
+    ) {
+        try {
+            // Read the file
+            const fileBuffer = fs.readFileSync(media.localPath);
+            const filename = path.basename(media.localPath);
+            const mimetype = this.getMimeType(media.format || path.extname(filename));
+
+            // Prepare file object for upload
+            const fileObject = {
+                originalname: filename,
+                buffer: fileBuffer,
+                mimetype: mimetype
+            };
+
+            // Upload to cloud storage
+            const uploadResult = await storageService.uploadFile(fileObject);
+
+            if (!uploadResult || !uploadResult.url) {
+                throw new Error('Failed to upload file to cloud storage');
+            }
+
+            // Update database record
+            const updateData: any = {
+                filepath: uploadResult.url,
+                updatedAt: new Date()
+            };
+
+            // If we have a thumbnail, migrate it too
+            if (media.thumbnail && !media.thumbnail.startsWith('https://')) {
+                const thumbnailPath = path.resolve(media.thumbnail);
+                if (fs.existsSync(thumbnailPath)) {
+                    const thumbnailBuffer = fs.readFileSync(thumbnailPath);
+                    const thumbnailFilename = path.basename(thumbnailPath);
+                    const thumbnailMimetype = this.getMimeType(path.extname(thumbnailFilename));
+
+                    const thumbnailFileObject = {
+                        originalname: thumbnailFilename,
+                        buffer: thumbnailBuffer,
+                        mimetype: thumbnailMimetype
+                    };
+
+                    const thumbnailUploadResult = await storageService.uploadFile(thumbnailFileObject);
+                    if (thumbnailUploadResult && thumbnailUploadResult.url) {
+                        updateData.thumbnail = thumbnailUploadResult.url;
+                    }
+                }
+            }
+
+            await Repository.update(MediasEntity, { id: media.id }, updateData);
+
+            // Update progress
+            MediasService.cloudMigrationProgress.details.bytes_uploaded += fileBuffer.length;
+            MediasService.cloudMigrationProgress.details.updated++;
+
+            // Delete local file if requested
+            if (deleteLocal) {
+                try {
+                    if (fs.existsSync(media.localPath)) {
+                        fs.unlinkSync(media.localPath);
+                    }
+                    
+                    // Delete thumbnail if it exists locally
+                    if (media.thumbnail && !media.thumbnail.startsWith('https://')) {
+                        const thumbnailPath = path.resolve(media.thumbnail);
+                        if (fs.existsSync(thumbnailPath)) {
+                            fs.unlinkSync(thumbnailPath);
+                        }
+                    }
+                } catch (deleteError) {
+                    console.warn(`Failed to delete local file ${media.localPath}:`, deleteError);
+                }
+            }
+
+        } catch (error: any) {
+            throw new Error(`Failed to migrate media ${media.id}: ${error.message}`);
+        }
+    }
+
+    /**
+     * Get MIME type from file extension or format
+     * @param format File format or extension
+     * @returns MIME type
+     */
+    private getMimeType(format: string): string {
+        const mimeTypes: { [key: string]: string } = {
+            'webp': 'image/webp',
+            'jpeg': 'image/jpeg',
+            'jpg': 'image/jpeg',
+            'png': 'image/png',
+            'gif': 'image/gif',
+            'svg': 'image/svg+xml',
+            'avif': 'image/avif',
+            'mp4': 'video/mp4',
+            'webm': 'video/webm',
+            'ogg': 'video/ogg',
+            'mov': 'video/quicktime',
+            'avi': 'video/x-msvideo',
+            'wmv': 'video/x-ms-wmv',
+            'flv': 'video/x-flv',
+            'mkv': 'video/x-matroska',
+            'm4v': 'video/x-m4v',
+            '3gp': 'video/3gpp',
+            '3g2': 'video/3gpp2',
+            'm3u8': 'application/x-mpegURL',
+            'm3u': 'audio/x-mpegurl'
+        };
+
+        const cleanFormat = format.replace('.', '').toLowerCase();
+        return mimeTypes[cleanFormat] || 'application/octet-stream';
+    }
+
+    /**
+     * Delete local files for migrated medias
+     * @param mediaIds Array of media IDs to delete local files for
+     * @returns Deletion result
+     */
+    async deleteLocalFilesForMigratedMedias(mediaIds: string[]) {
+        const MediasEntity = Repository.getEntity("MediasEntity");
+        const mediasPath = path.resolve(process.cwd(), "medias", "images");
+        
+        let deletedCount = 0;
+        let errorCount = 0;
+
+        for (const mediaId of mediaIds) {
+            try {
+                const media = await Repository.findOne(MediasEntity, { id: mediaId });
+                
+                if (!media) {
+                    errorCount++;
+                    continue;
+                }
+
+                // Check if media is already in cloud
+                if (!media.filepath || !media.filepath.startsWith('https://')) {
+                    errorCount++;
+                    continue;
+                }
+
+                // Delete local file if it exists
+                if (media.sha1 && media.format) {
+                    const hashFilePath = path.join(mediasPath, `${media.sha1}.${media.format}`);
+                    if (fs.existsSync(hashFilePath)) {
+                        fs.unlinkSync(hashFilePath);
+                        deletedCount++;
+                    }
+                }
+
+                // Delete local thumbnail if it exists
+                if (media.thumbnail && !media.thumbnail.startsWith('https://')) {
+                    const thumbnailPath = path.resolve(media.thumbnail);
+                    if (fs.existsSync(thumbnailPath)) {
+                        fs.unlinkSync(thumbnailPath);
+                    }
+                }
+
+            } catch (error: any) {
+                console.error(`Failed to delete local file for media ${mediaId}:`, error);
+                errorCount++;
+            }
+        }
+
+        return {
+            success: true,
+            deleted: deletedCount,
+            errors: errorCount,
+            total: mediaIds.length
+        };
+    }
 }

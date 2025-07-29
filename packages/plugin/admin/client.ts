@@ -53,6 +53,12 @@ export const useAdminClient = () => {
         startGenerate: (data: any) => api.authRequest('blog/posts/generate/start', 'POST', data),
         getGenerateStatus: (jobId: string) => api.authRequest(`blog/posts/generate/status/${jobId}`, 'GET'),
         recalculateCategoryCounts: () => api.authRequest('blog/posts/actions/recalculate-category-counts', 'POST'),
+        
+        // Posts Migration methods
+        getPostsWithLocalImages: () => api.authRequest('blog/posts/migration/local', 'GET'),
+        startPostsMigration: (options: { batchSize?: number } = {}) => api.authRequest('blog/posts/migration/start', 'POST', options),
+        getPostsMigrationProgress: () => api.authRequest('blog/posts/migration/progress', 'GET'),
+        resetPostsMigrationProgress: () => api.authRequest('blog/posts/migration/reset', 'POST'),
     };
 
     const pages = {
@@ -91,6 +97,16 @@ export const useAdminClient = () => {
         }) => api.authRequest('import-from-url', 'POST', data),
         delete: (id: string) => api.authRequest(`medias/${id}`, 'DELETE'),
         bulkDelete: (ids: string[], createBackup?: boolean) => api.authRequest('bulk-delete', 'POST', { ids, createBackup }),
+        
+        // Cloud Migration methods
+        getCloudMigrationProgress: () => api.authRequest('medias/cloud-migration/progress', 'GET'),
+        getLocalMediasForMigration: () => api.authRequest('medias/cloud-migration/local', 'GET'),
+        startCloudMigration: (options: {
+            deleteLocalAfterMigration?: boolean;
+            batchSize?: number;
+            selectedIds?: string[];
+        } = {}) => api.authRequest('medias/cloud-migration/start', 'POST', options),
+        deleteLocalFilesForMigratedMedias: (mediaIds: string[]) => api.authRequest('medias/cloud-migration/delete-local', 'POST', { mediaIds }),
     };
 
     const members = {

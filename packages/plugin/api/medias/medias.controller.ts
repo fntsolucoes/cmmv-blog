@@ -147,6 +147,35 @@ export class MediasController {
     @Post("bulk-delete", { exclude: true })
     @Auth("media:delete")
     async bulkDeleteMedias(@Body() body: {ids: string[], createBackup?: boolean}) {
-        return await this.mediasService.bulkDeleteMedias(body.ids, body.createBackup || false);
+        return await this.mediasService.bulkDeleteMedias(body.ids, body.createBackup);
+    }
+
+    // Cloud Migration Endpoints
+    @Get("medias/cloud-migration/progress", { exclude: true })
+    @Auth("media:process")
+    async getCloudMigrationProgress() {
+        return await this.mediasService.getCloudMigrationProgress();
+    }
+
+    @Get("medias/cloud-migration/local", { exclude: true })
+    @Auth("media:process")
+    async getLocalMediasForMigration() {
+        return await this.mediasService.getLocalMediasForMigration();
+    }
+
+    @Post("medias/cloud-migration/start", { exclude: true })
+    @Auth("media:process")
+    async startCloudMigration(@Body() body: {
+        deleteLocalAfterMigration?: boolean;
+        batchSize?: number;
+        selectedIds?: string[];
+    } = {}) {
+        return await this.mediasService.migrateLocalMediasToCloud(body);
+    }
+
+    @Post("medias/cloud-migration/delete-local", { exclude: true })
+    @Auth("media:process")
+    async deleteLocalFilesForMigratedMedias(@Body() body: { mediaIds: string[] }) {
+        return await this.mediasService.deleteLocalFilesForMigratedMedias(body.mediaIds);
     }
 }

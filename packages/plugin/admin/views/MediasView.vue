@@ -110,6 +110,25 @@
                                 Generate Thumbnails
                             </button>
                             <button
+                                @click="openCloudMigrationDialog"
+                                class="w-full px-4 py-2 text-left text-sm text-blue-300 hover:bg-neutral-700 hover:text-blue-200 flex items-center"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                                </svg>
+                                Migrate Media to Cloud
+                            </button>
+                            <button
+                                @click="openPostsMigrationDialog"
+                                class="w-full px-4 py-2 text-left text-sm text-green-300 hover:bg-neutral-700 hover:text-green-200 flex items-center"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Migrate Posts Images
+                            </button>
+
+                            <button
                                 @click="openDeleteAllDialog"
                                 class="w-full px-4 py-2 text-left text-sm text-red-300 hover:bg-neutral-700 hover:text-red-200 flex items-center"
                             >
@@ -1011,6 +1030,395 @@
             </div>
         </div>
     </div>
+
+    <!-- Cloud Migration Dialog -->
+    <div v-if="showCloudMigrationDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
+        <div class="bg-neutral-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-white">Migrate Images to Cloud</h3>
+                <button @click="closeCloudMigrationDialog" class="text-neutral-400 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div v-if="cloudMigrationStatus.status === 'idle'" class="space-y-4">
+                <div class="bg-neutral-700 rounded-lg p-4">
+                    <h4 class="text-white font-medium mb-2">Local Images Found</h4>
+                    <p class="text-neutral-300 text-sm mb-3">
+                        Found {{ localMediasCount }} local images that can be migrated to cloud storage.
+                    </p>
+                    <div class="text-sm text-neutral-400">
+                        <p>• Total size: {{ formatBytes(totalLocalSize) }}</p>
+                        <p>• This will upload all local images to your configured cloud storage (S3/Cloudflare)</p>
+                        <p>• After successful migration, you can optionally delete local files to save disk space</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <label class="flex items-center">
+                        <input
+                            v-model="cloudMigrationOptions.deleteLocalAfterMigration"
+                            type="checkbox"
+                            class="h-4 w-4 text-blue-600 bg-neutral-700 border-neutral-600 rounded focus:ring-blue-500"
+                        />
+                        <span class="ml-2 text-sm text-white">Delete local files after successful migration</span>
+                    </label>
+
+                    <div>
+                        <label class="block text-sm font-medium text-white mb-1">Batch Size</label>
+                        <select
+                            v-model="cloudMigrationOptions.batchSize"
+                            class="bg-neutral-700 border border-neutral-600 text-white px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                            <option value="5">5 images per batch</option>
+                            <option value="10">10 images per batch</option>
+                            <option value="20">20 images per batch</option>
+                            <option value="50">50 images per batch</option>
+                        </select>
+                    </div>
+
+                    <div v-if="selectedMedias.size > 0">
+                        <label class="flex items-center">
+                            <input
+                                v-model="cloudMigrationOptions.migrateSelectedOnly"
+                                type="checkbox"
+                                class="h-4 w-4 text-blue-600 bg-neutral-700 border-neutral-600 rounded focus:ring-blue-500"
+                            />
+                            <span class="ml-2 text-sm text-white">
+                                Migrate only selected images ({{ selectedMedias.size }} selected)
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button
+                        @click="closeCloudMigrationDialog"
+                        class="px-4 py-2 bg-neutral-600 hover:bg-neutral-500 text-white rounded-md transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="startCloudMigration"
+                        :disabled="!hasLocalMedias"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-600 disabled:cursor-not-allowed text-white rounded-md transition-colors"
+                    >
+                        Start Migration
+                    </button>
+                </div>
+            </div>
+
+            <div v-else-if="cloudMigrationStatus.status === 'processing'" class="space-y-4">
+                <div class="bg-blue-900 bg-opacity-20 border border-blue-500 rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-500 mr-3"></div>
+                        <h4 class="text-blue-300 font-medium">Migration in Progress</h4>
+                    </div>
+                    <p class="text-blue-200 text-sm mb-3">{{ cloudMigrationStatus.message }}</p>
+                    
+                    <div class="w-full bg-neutral-700 rounded-full h-2 mb-3">
+                        <div
+                            class="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                            :style="{ width: `${cloudMigrationStatus.percentage}%` }"
+                        ></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-neutral-400">Progress:</span>
+                            <span class="text-white ml-1">{{ cloudMigrationStatus.processed }}/{{ cloudMigrationStatus.total }}</span>
+                        </div>
+                        <div>
+                            <span class="text-neutral-400">Migrated:</span>
+                            <span class="text-green-400 ml-1">{{ cloudMigrationStatus.migrated }}</span>
+                        </div>
+                        <div>
+                            <span class="text-neutral-400">Failed:</span>
+                            <span class="text-red-400 ml-1">{{ cloudMigrationStatus.failed }}</span>
+                        </div>
+                        <div>
+                            <span class="text-neutral-400">Uploaded:</span>
+                            <span class="text-blue-400 ml-1">{{ formatBytes(cloudMigrationStatus.details?.bytes_uploaded || 0) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-else-if="cloudMigrationStatus.status === 'completed'" class="space-y-4">
+                <div class="bg-green-900 bg-opacity-20 border border-green-500 rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <h4 class="text-green-300 font-medium">Migration Completed</h4>
+                    </div>
+                    <p class="text-green-200 text-sm mb-3">{{ cloudMigrationStatus.message }}</p>
+                    
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-neutral-400">Total migrated:</span>
+                            <span class="text-green-400 ml-1">{{ cloudMigrationStatus.migrated }}</span>
+                        </div>
+                        <div>
+                            <span class="text-neutral-400">Failed:</span>
+                            <span class="text-red-400 ml-1">{{ cloudMigrationStatus.failed }}</span>
+                        </div>
+                        <div>
+                            <span class="text-neutral-400">Total uploaded:</span>
+                            <span class="text-blue-400 ml-1">{{ formatBytes(cloudMigrationStatus.details?.bytes_uploaded || 0) }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="!cloudMigrationOptions.deleteLocalAfterMigration && cloudMigrationStatus.migrated > 0" class="bg-yellow-900 bg-opacity-20 border border-yellow-500 rounded-lg p-4">
+                    <h4 class="text-yellow-300 font-medium mb-2">Local Files Still Exist</h4>
+                    <p class="text-yellow-200 text-sm mb-3">
+                        {{ cloudMigrationStatus.migrated }} images were successfully migrated to cloud storage, but local files were not deleted.
+                        You can now safely delete local files to free up disk space.
+                    </p>
+                    <button
+                        @click="deleteLocalFilesForMigrated"
+                        class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md transition-colors text-sm"
+                    >
+                        Delete Local Files
+                    </button>
+                </div>
+
+                <div class="flex justify-end">
+                    <button
+                        @click="closeCloudMigrationDialog"
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+
+            <div v-else-if="cloudMigrationStatus.status === 'error'" class="space-y-4">
+                <div class="bg-red-900 bg-opacity-20 border border-red-500 rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-400 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h4 class="text-red-300 font-medium">Migration Failed</h4>
+                    </div>
+                    <p class="text-red-200 text-sm">{{ cloudMigrationStatus.message }}</p>
+                </div>
+
+                <div class="flex justify-end">
+                    <button
+                        @click="closeCloudMigrationDialog"
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Posts Migration Dialog -->
+    <div v-if="showPostsMigrationDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
+        <div class="bg-neutral-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-white">Migrate Posts Images to Cloud</h3>
+                <button @click="closePostsMigrationDialog" class="text-neutral-400 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div v-if="postsMigrationStatus.status === 'idle'" class="space-y-4">
+                <div class="bg-neutral-700 rounded-lg p-4">
+                    <h4 class="text-white font-medium mb-3">Posts with Local Images Found</h4>
+                    <p v-if="postsWithLocalImages.length > 0" class="text-neutral-300 text-sm mb-4">
+                        Found {{ postsWithLocalImages.length }} posts that use local images and can be migrated to cloud storage.
+                    </p>
+                    <p v-else class="text-neutral-300 text-sm mb-4">
+                        No posts with local images found. All posts are already using cloud storage or don't have images.
+                    </p>
+                    <div v-if="postsWithLocalImages.length === 0" class="bg-blue-900 bg-opacity-20 border border-blue-500 rounded-lg p-4">
+                        <div class="flex items-center mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <h5 class="text-blue-300 font-medium">All Posts Already Migrated</h5>
+                        </div>
+                        <p class="text-blue-200 text-sm">
+                            Great! All your posts are already using cloud storage. No migration is needed.
+                        </p>
+                    </div>
+                    <div v-if="postsWithLocalImages.length > 0" class="bg-neutral-600 rounded p-3 mb-4">
+                        <h5 class="text-white font-medium mb-2">Posts to migrate:</h5>
+                        <ul class="text-neutral-300 text-sm space-y-1">
+                            <li v-for="post in postsWithLocalImages.slice(0, 5)" :key="post.id" class="flex items-center">
+                                <span class="truncate">{{ post.title || post.id }}</span>
+                                <span v-if="post.featureImage" class="ml-2 text-xs text-blue-400">(has feature image)</span>
+                            </li>
+                            <li v-if="postsWithLocalImages.length > 5" class="text-neutral-400 text-xs">
+                                ... and {{ postsWithLocalImages.length - 5 }} more
+                            </li>
+                        </ul>
+                    </div>
+                    <ul class="text-neutral-300 text-sm space-y-2">
+                        <li>• This will update all posts that reference local images</li>
+                        <li>• Images will be uploaded to your configured cloud storage (S3/Cloudflare)</li>
+                        <li>• Post content will be updated with new cloud URLs</li>
+                        <li>• Original local images will remain untouched</li>
+                    </ul>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-sm text-neutral-300">Batch Size:</label>
+                        <select v-model="postsMigrationOptions.batchSize" class="bg-neutral-700 border border-neutral-600 text-white px-3 py-1 rounded-md text-sm">
+                            <option value="5">5 posts per batch</option>
+                            <option value="10">10 posts per batch</option>
+                            <option value="20">20 posts per batch</option>
+                            <option value="50">50 posts per batch</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3">
+                    <button
+                        @click="closePostsMigrationDialog"
+                        class="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-md transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        @click="startPostsMigration"
+                        :disabled="!hasPostsWithLocalImages"
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-neutral-600 disabled:cursor-not-allowed text-white rounded-md transition-colors"
+                    >
+                        {{ hasPostsWithLocalImages ? 'Start Migration' : 'No Posts to Migrate' }}
+                    </button>
+                </div>
+            </div>
+
+            <div v-else-if="postsMigrationStatus.status === 'processing'" class="space-y-4">
+                <!-- Debug info -->
+                <div class="bg-red-900 bg-opacity-20 border border-red-500 rounded-lg p-4">
+                    <h5 class="text-red-300 font-medium mb-2">Debug Info:</h5>
+                    <pre class="text-red-200 text-xs">{{ JSON.stringify(postsMigrationStatus, null, 2) }}</pre>
+                </div>
+                <div class="bg-green-900 bg-opacity-20 border border-green-500 rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-green-500 mr-3"></div>
+                        <h4 class="text-green-300 font-medium">Posts Migration in Progress</h4>
+                    </div>
+                    <p class="text-green-200 text-sm mb-3">{{ postsMigrationStatus.message }}</p>
+                    
+                    <div class="w-full bg-neutral-700 rounded-full h-2 mb-3">
+                        <div
+                            class="bg-green-500 h-2 rounded-full transition-all duration-300"
+                            :style="{ width: `${postsMigrationStatus.percentage}%` }"
+                        ></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-neutral-400">Progress:</span>
+                            <span class="text-white ml-1">{{ postsMigrationStatus.processed }}/{{ postsMigrationStatus.total }}</span>
+                        </div>
+                        <div>
+                            <span class="text-neutral-400">Migrated:</span>
+                            <span class="text-green-400 ml-1">{{ postsMigrationStatus.migrated }}</span>
+                        </div>
+                        <div>
+                            <span class="text-neutral-400">Failed:</span>
+                            <span class="text-red-400 ml-1">{{ postsMigrationStatus.failed }}</span>
+                        </div>
+                        <div>
+                            <span class="text-neutral-400">Current:</span>
+                            <span class="text-blue-400 ml-1">{{ postsMigrationStatus.currentPost || 'N/A' }}</span>
+                        </div>
+                    </div>
+                    
+                    <div v-if="postsMigrationStatus.percentage > 0" class="mt-3 text-xs text-neutral-400">
+                        {{ postsMigrationStatus.percentage }}% complete
+                    </div>
+                </div>
+            </div>
+
+            <div v-else-if="postsMigrationStatus.status === 'completed'" class="space-y-4">
+                <div class="bg-green-900 bg-opacity-20 border border-green-500 rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <h4 class="text-green-300 font-medium">Posts Migration Completed</h4>
+                    </div>
+                    <p class="text-green-200 text-sm mb-3">{{ postsMigrationStatus.message }}</p>
+                    
+                    <div class="grid grid-cols-2 gap-4 text-sm mb-3">
+                        <div>
+                            <span class="text-neutral-400">Total posts:</span>
+                            <span class="text-green-400 ml-1">{{ postsMigrationStatus.total }}</span>
+                        </div>
+                        <div>
+                            <span class="text-neutral-400">Migrated:</span>
+                            <span class="text-green-400 ml-1">{{ postsMigrationStatus.migrated }}</span>
+                        </div>
+                        <div>
+                            <span class="text-neutral-400">Failed:</span>
+                            <span class="text-red-400 ml-1">{{ postsMigrationStatus.failed }}</span>
+                        </div>
+                        <div>
+                            <span class="text-neutral-400">Success rate:</span>
+                            <span class="text-green-400 ml-1" v-if="postsMigrationStatus.total > 0">
+                                {{ Math.round((postsMigrationStatus.migrated / postsMigrationStatus.total) * 100) }}%
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-neutral-700 rounded p-3">
+                        <h5 class="text-white font-medium mb-2">What was migrated:</h5>
+                        <ul class="text-neutral-300 text-sm space-y-1">
+                            <li>• Feature images (imagens de destaque)</li>
+                            <li>• Main images (imagens principais)</li>
+                            <li>• Images embedded in post content</li>
+                            <li>• All local URLs converted to cloud storage URLs</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button
+                        @click="closePostsMigrationDialog"
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+
+            <div v-else-if="postsMigrationStatus.status === 'error'" class="space-y-4">
+                <div class="bg-red-900 bg-opacity-20 border border-red-500 rounded-lg p-4">
+                    <div class="flex items-center mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-400 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h4 class="text-red-300 font-medium">Posts Migration Failed</h4>
+                    </div>
+                    <p class="text-red-200 text-sm">{{ postsMigrationStatus.message }}</p>
+                </div>
+
+                <div class="flex justify-end">
+                    <button
+                        @click="closePostsMigrationDialog"
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script setup>
@@ -1431,6 +1839,28 @@ const formatFileSize = (bytes) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+const formatBytes = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+const processApiResponse = (response) => {
+    // Handle both array and object with data property
+    if (Array.isArray(response)) {
+        return response;
+    } else if (response && response.data && Array.isArray(response.data)) {
+        return response.data;
+    } else if (response && typeof response === 'object') {
+        // Handle object with numeric keys (framework serialization issue)
+        return Object.values(response);
+    } else {
+        return [];
+    }
+}
+
 const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString();
@@ -1685,6 +2115,358 @@ watch(() => route.query, (newQuery) => {
         loadMedias()
     }
 }, { deep: true })
+
+// Cloud Migration variables
+const showCloudMigrationDialog = ref(false)
+const cloudMigrationStatus = ref({
+    total: 0,
+    processed: 0,
+    migrated: 0,
+    failed: 0,
+    percentage: 0,
+    status: 'idle',
+    message: '',
+    details: {
+        scanned: 0,
+        uploaded: 0,
+        updated: 0,
+        errors: 0,
+        bytes_uploaded: 0
+    }
+})
+
+const cloudMigrationOptions = ref({
+    deleteLocalAfterMigration: false,
+    batchSize: 10,
+    migrateSelectedOnly: false
+})
+
+const localMediasForMigration = ref([])
+const totalLocalSize = computed(() => {
+    if (!Array.isArray(localMediasForMigration.value)) {
+        return 0
+    }
+    return localMediasForMigration.value.reduce((total, media) => total + (media.localSize || 0), 0)
+})
+
+const localMediasCount = computed(() => {
+    return Array.isArray(localMediasForMigration.value) ? localMediasForMigration.value.length : 0
+})
+
+const hasLocalMedias = computed(() => {
+    return localMediasCount.value > 0
+})
+
+// Posts Migration variables
+const showPostsMigrationDialog = ref(false)
+const postsMigrationStatus = ref({
+    total: 0,
+    processed: 0,
+    migrated: 0,
+    failed: 0,
+    percentage: 0,
+    status: 'idle',
+    message: '',
+    currentPost: ''
+})
+
+const postsMigrationOptions = ref({
+    batchSize: 10
+})
+
+const postsWithLocalImages = ref([])
+const postsWithLocalImagesCount = computed(() => {
+    return Array.isArray(postsWithLocalImages.value) ? postsWithLocalImages.value.length : 0
+})
+
+const hasPostsWithLocalImages = computed(() => {
+    return postsWithLocalImagesCount.value > 0
+})
+
+const postsMigrationCleanup = ref(null)
+
+const openCloudMigrationDialog = async () => {
+    showMoreActionsDropdown.value = false
+    showCloudMigrationDialog.value = true
+    
+    try {
+        // Load local medias for migration
+        const response = await adminClient.medias.getLocalMediasForMigration()
+        localMediasForMigration.value = processApiResponse(response)
+        
+        // Reset status
+        cloudMigrationStatus.value = {
+            total: 0,
+            processed: 0,
+            migrated: 0,
+            failed: 0,
+            percentage: 0,
+            status: 'idle',
+            message: '',
+            details: {
+                scanned: 0,
+                uploaded: 0,
+                updated: 0,
+                errors: 0,
+                bytes_uploaded: 0
+            }
+        }
+    } catch (err) {
+        console.error('Failed to load local medias for migration:', err)
+        showNotification('error', 'Failed to load local medias for migration')
+        
+        // Initialize with empty array even on error
+        localMediasForMigration.value = []
+    }
+}
+
+const closeCloudMigrationDialog = () => {
+    if (cloudMigrationStatus.value.status !== 'processing') {
+        showCloudMigrationDialog.value = false
+    }
+}
+
+
+
+const startCloudMigration = async () => {
+    try {
+        const options = {
+            deleteLocalAfterMigration: cloudMigrationOptions.value.deleteLocalAfterMigration,
+            batchSize: parseInt(cloudMigrationOptions.value.batchSize),
+            selectedIds: cloudMigrationOptions.value.migrateSelectedOnly 
+                ? Array.from(selectedMedias.value)
+                : []
+        }
+
+        // Start migration
+        await adminClient.medias.startCloudMigration(options)
+        
+        // Start progress monitoring
+        await monitorCloudMigrationProgress()
+        
+    } catch (err) {
+        console.error('Failed to start cloud migration:', err)
+        cloudMigrationStatus.value.status = 'error'
+        cloudMigrationStatus.value.message = err.message || 'Failed to start cloud migration'
+        showNotification('error', err.message || 'Failed to start cloud migration')
+    }
+}
+
+const monitorCloudMigrationProgress = async () => {
+    let progressInterval = null
+
+    const checkProgress = async () => {
+        try {
+            const progress = await adminClient.medias.getCloudMigrationProgress()
+
+            if (progress && typeof progress === 'object') {
+                cloudMigrationStatus.value = {
+                    ...cloudMigrationStatus.value,
+                    ...progress
+                }
+
+                if (progress.status === 'completed' || progress.status === 'error') {
+                    if (progressInterval) {
+                        clearInterval(progressInterval)
+                        progressInterval = null
+                    }
+
+                    if (progress.status === 'completed') {
+                        showNotification('success', `Cloud migration completed: ${progress.migrated} images migrated successfully.`)
+                        refreshData()
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Error getting cloud migration progress:', err)
+        }
+    }
+
+    await checkProgress()
+    progressInterval = setInterval(checkProgress, 1000)
+}
+
+const deleteLocalFilesForMigrated = async () => {
+    try {
+        if (!Array.isArray(localMediasForMigration.value)) {
+            showNotification('error', 'No migration data available')
+            return
+        }
+
+        const migratedMediaIds = localMediasForMigration.value
+            .filter(media => media && media.filepath && media.filepath.startsWith('https://'))
+            .map(media => media.id.toString())
+
+        if (migratedMediaIds.length === 0) {
+            showNotification('info', 'No migrated medias found to delete local files for')
+            return
+        }
+
+        const result = await adminClient.medias.deleteLocalFilesForMigratedMedias(migratedMediaIds)
+        
+        showNotification('success', `Successfully deleted ${result.deleted} local files`)
+        
+        // Refresh the migration dialog data
+        const response = await adminClient.medias.getLocalMediasForMigration()
+        localMediasForMigration.value = processApiResponse(response)
+        
+    } catch (err) {
+        console.error('Failed to delete local files:', err)
+        showNotification('error', err.message || 'Failed to delete local files')
+    }
+}
+
+// Posts Migration methods
+const openPostsMigrationDialog = async () => {
+    showMoreActionsDropdown.value = false
+    showPostsMigrationDialog.value = true
+    
+    try {
+        // Load posts with local images
+        const response = await adminClient.posts.getPostsWithLocalImages()
+        postsWithLocalImages.value = processApiResponse(response)
+        
+        // Reset status
+        postsMigrationStatus.value = {
+            total: 0,
+            processed: 0,
+            migrated: 0,
+            failed: 0,
+            percentage: 0,
+            status: 'idle',
+            message: '',
+            currentPost: ''
+        }
+    } catch (err) {
+        console.error('Failed to load posts with local images:', err)
+        showNotification('error', 'Failed to load posts with local images')
+        
+        // Initialize with empty array even on error
+        postsWithLocalImages.value = []
+    }
+}
+
+const closePostsMigrationDialog = () => {
+    if (postsMigrationStatus.value.status !== 'processing') {
+        showPostsMigrationDialog.value = false
+    }
+}
+
+const startPostsMigration = async () => {
+    try {      
+        // Check if there are posts to migrate
+        if (postsWithLocalImages.value.length === 0) {
+            postsMigrationStatus.value.status = 'completed'
+            postsMigrationStatus.value.message = 'No posts with local images found to migrate'
+            postsMigrationStatus.value.total = 0
+            postsMigrationStatus.value.migrated = 0
+            postsMigrationStatus.value.failed = 0
+            postsMigrationStatus.value.percentage = 100
+            showNotification('info', 'No posts with local images found to migrate')
+            return
+        }
+
+        const options = {
+            batchSize: parseInt(postsMigrationOptions.value.batchSize)
+        }
+
+        // Reset and set initial status
+        postsMigrationStatus.value = {
+            total: 0,
+            processed: 0,
+            migrated: 0,
+            failed: 0,
+            percentage: 0,
+            status: 'processing',
+            message: 'Starting posts migration...',
+            currentPost: '',
+            isRunning: true
+        }
+
+        // Start migration
+        await adminClient.posts.startPostsMigration(options)
+
+        // Start monitoring progress
+        const cleanupProgress = monitorPostsMigrationProgress()
+        
+        // Store cleanup function for later use
+        postsMigrationCleanup.value = cleanupProgress
+
+    } catch (err) {
+        console.error('Failed to start posts migration:', err)
+        postsMigrationStatus.value.status = 'error'
+        postsMigrationStatus.value.message = err.message || 'Failed to start posts migration'
+        showNotification('error', 'Failed to start posts migration')
+    }
+}
+
+const monitorPostsMigrationProgress = () => {
+    let progressInterval = null
+
+    const checkProgress = async () => {
+        try {
+            const progress = await adminClient.posts.getPostsMigrationProgress()
+
+            if (progress && typeof progress === 'object') {
+                // Update only specific fields, don't overwrite the entire object
+                if (progress.totalPosts !== undefined) postsMigrationStatus.value.total = progress.totalPosts
+                if (progress.processedPosts !== undefined) postsMigrationStatus.value.processed = progress.processedPosts
+                if (progress.migratedPosts !== undefined) postsMigrationStatus.value.migrated = progress.migratedPosts
+                if (progress.failedPosts !== undefined) postsMigrationStatus.value.failed = progress.failedPosts
+                if (progress.currentPost !== undefined) postsMigrationStatus.value.currentPost = progress.currentPost
+                if (progress.isRunning !== undefined) postsMigrationStatus.value.isRunning = progress.isRunning
+                
+
+                // Calculate percentage
+                if (postsMigrationStatus.value.total > 0) {
+                    const percentage = Math.round((postsMigrationStatus.value.processed / postsMigrationStatus.value.total) * 100)
+                    postsMigrationStatus.value.percentage = Math.min(percentage, 100) // Cap at 100%
+                }
+
+                // Update message based on current state
+                if (progress.isRunning === true) {
+                    postsMigrationStatus.value.message = `Processing post: ${progress.currentPost || 'Unknown'}`
+                } else if (progress.isRunning === false) {
+                    postsMigrationStatus.value.status = 'completed'
+                    postsMigrationStatus.value.message = progress.error || 'Posts migration completed successfully'
+                    
+                    if (!progress.error) {
+                        showNotification('success', `Successfully migrated ${postsMigrationStatus.value.migrated} posts`)
+                    } else {
+                        showNotification('error', progress.error || 'Posts migration failed')
+                    }
+
+                    // Clear interval to stop monitoring
+                    if (progressInterval) {
+                        clearInterval(progressInterval)
+                        progressInterval = null
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Error getting posts migration progress:', err)
+            
+            // Clear interval on error
+            if (progressInterval) {
+                clearInterval(progressInterval)
+                progressInterval = null
+            }
+        }
+    }
+
+    // Check progress every 2 seconds
+    progressInterval = setInterval(checkProgress, 2000)
+
+    // Initial check
+    checkProgress()
+
+    // Return cleanup function instead of using onUnmounted
+    return () => {
+        if (progressInterval) {
+            clearInterval(progressInterval)
+        }
+    }
+}
 
 const openReprocessDialog = () => {
     showMoreActionsDropdown.value = false
@@ -2127,6 +2909,12 @@ onUnmounted(() => {
     if (progressInterval) {
         clearInterval(progressInterval)
         progressInterval = null
+    }
+    
+    // Cleanup posts migration progress monitoring
+    if (postsMigrationCleanup.value) {
+        postsMigrationCleanup.value()
+        postsMigrationCleanup.value = null
     }
 })
 </script>

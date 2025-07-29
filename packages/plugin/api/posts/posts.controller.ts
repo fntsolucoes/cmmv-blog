@@ -209,4 +209,32 @@ export class PostsController {
         await this.postsPublicService.recalculateCategories();
         return { message: "Category post counts recalculation initiated." };
     }
+
+    // ===== ENDPOINTS DE MIGRAÇÃO DE POSTS =====
+
+    @Get("posts/migration/local", { exclude: true })
+    @Auth("posts:update")
+    async getPostsWithLocalImages() {
+        return await this.postsPublicService.getPostsWithLocalImages();
+    }
+
+    @Post("posts/migration/start", { exclude: true })
+    @Auth("posts:update")
+    async startPostsMigration(@Body() body: any) {
+        const batchSize = body.batchSize || 10;
+        return await this.postsPublicService.migratePostsWithLocalImages(batchSize);
+    }
+
+    @Get("posts/migration/progress", { exclude: true })
+    @Auth("posts:update")
+    async getPostsMigrationProgress() {
+        return PostsPublicService.getPostsMigrationProgress();
+    }
+
+    @Post("posts/migration/reset", { exclude: true })
+    @Auth("posts:update")
+    async resetPostsMigrationProgress() {
+        PostsPublicService.resetPostsMigrationProgress();
+        return { message: "Posts migration progress reset successfully." };
+    }
 }
