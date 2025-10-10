@@ -1,7 +1,7 @@
 module.exports = {
     apps: [
         {
-            name: "Blog",
+            name: "Oferta Guru",
             script: "pnpm start",
         }
     ]
