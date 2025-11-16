@@ -26,8 +26,8 @@
                     <tr v-for="item in items" :key="item.id" class="hover:bg-neutral-700">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.name }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.commercialPartnerId }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.startMonth }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.endMonth || 'Em andamento' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ formatDate(item.startDate) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.endDate ? formatDate(item.endDate) : 'Em andamento' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span :class="item.active ? 'bg-green-500' : 'bg-red-500'" class="px-2 py-1 text-xs rounded-full text-white">
                                 {{ item.active ? 'Ativa' : 'Inativa' }}
@@ -52,6 +52,13 @@ const client = useSasClient();
 const items = ref<any[]>([]);
 const showDialog = ref(false);
 const editingItem = ref<any>(null);
+
+// Função para formatar data
+const formatDate = (date: string | Date): string => {
+    if (!date) return '';
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return d.toLocaleDateString('pt-BR');
+};
 
 const loadData = async () => {
     try {

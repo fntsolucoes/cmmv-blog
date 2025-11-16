@@ -31,21 +31,47 @@ export class SasCampaignsContract extends AbstractContract {
         nullable: false,
         index: true,
     })
-    name!: string; // Nome da Campanha
+    name!: string; // Nome da Campanha (2-255 caracteres, sem caracteres orientais)
 
     @ContractField({
-        protoType: 'string',
+        protoType: 'date',
         nullable: false,
         index: true,
     })
-    startMonth!: string; // Mês/Ano de Início (formato: YYYY-MM)
+    startDate!: Date; // Data de Início (formato: YYYY-MM-DD)
+
+    @ContractField({
+        protoType: 'date',
+        nullable: true,
+        index: true,
+    })
+    endDate?: Date; // Data de Fim (formato: YYYY-MM-DD) - opcional
+
+    @ContractField({
+        protoType: 'text',
+        nullable: true,
+    })
+    script?: string; // Código do script da campanha
 
     @ContractField({
         protoType: 'string',
         nullable: true,
         index: true,
     })
-    endMonth?: string; // Mês/Ano de Fim (formato: YYYY-MM) - opcional
+    scriptStatus?: string; // Status do script: Implementado, Caiu, Pendente de instalar
+
+    @ContractField({
+        protoType: 'double',
+        nullable: true,
+        index: true,
+    })
+    weighting?: number; // Ponderação (porcentagem, até 2 casas decimais)
+
+    @ContractField({
+        protoType: 'string',
+        nullable: true,
+    })
+    link?: string; // Link (até 500 caracteres)
 
     @ContractField({
         protoType: 'boolean',
@@ -53,6 +79,6 @@ export class SasCampaignsContract extends AbstractContract {
         defaultValue: true,
         index: true
     })
-    active!: boolean; // Se está "Rodando"
+    active!: boolean; // Status ativo/inativo
 }
 

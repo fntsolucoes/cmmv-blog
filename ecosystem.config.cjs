@@ -1,7 +1,7 @@
 module.exports = {
     apps: [
         {
-            name: "Sas",
+            name: "SaS Afiliation",
             script: "pnpm start",
         }
     ]
