@@ -21,7 +21,9 @@
             "@cmmv/odds": ["packages/odds"],
             "@cmmv/odds/*": ["packages/odds/*"],
             "@cmmv/newsletter": ["packages/newsletter"],
-            "@cmmv/newsletter/*": ["packages/newsletter/*"]
+            "@cmmv/newsletter/*": ["packages/newsletter/*"],
+            "@cmmv/sas": ["packages/sas"],
+            "@cmmv/sas/*": ["packages/sas/*"]
         }
     },
     "include": ["**/*.ts"],

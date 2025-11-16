@@ -1,6 +1,6 @@
 {
     "name": "cmmv-blog-api",
-    "version": "0.0.95",
+    "version": "0.0.97",
     "private": true,
     "description": "Blog API sample",
     "dev": {
@@ -20,6 +20,8 @@
             "../../packages/odds/contracts",
             "../../packages/newsletter/api",
             "../../packages/newsletter/contracts",
+            "../../packages/sas/api",
+            "../../packages/sas/contracts",
             "../../packages/special-dates/api",
             "../../packages/special-dates/contracts"
         ],
@@ -54,6 +56,7 @@
         "@cmmv/rss-aggregation": "workspace:rss-aggregation",
         "@cmmv/yt-aggregation": "workspace:yt-aggregation",
         "@cmmv/newsletter": "workspace:newsletter",
+        "@cmmv/sas": "workspace:sas",
         "cache-manager-fs-binary": "^1.0.4",
         "firebase-admin": "^13.4.0",
         "sharp": "^0.34.1",

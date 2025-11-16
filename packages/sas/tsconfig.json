@@ -1,0 +1,16 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "strictPropertyInitialization": false,
+        "module": "NodeNext",
+        "paths": {
+            "@cmmv/blog": ["../plugin"],
+            "@cmmv/blog/*": ["../plugin/*"],
+            "@generated": ["../../apps/api/.generated"],
+            "@generated/*": ["../../apps/api/.generated/*"]
+        }
+    }
+}
+
