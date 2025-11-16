@@ -1,92 +1,883 @@
 <template>
     <div class="space-y-6">
+        <!-- Cabeçalho e Ações -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
             <h1 class="text-2xl font-bold text-white">Campanhas</h1>
             <button @click="openAddDialog" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                Adicionar Campanha
+                Nova Campanha
             </button>
         </div>
 
+        <!-- Filtros -->
+        <div class="bg-neutral-800 rounded-lg p-4 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Busca por nome -->
+                <div>
+                    <label class="block text-sm font-medium text-neutral-300 mb-2">Busca por nome</label>
+                    <input
+                        v-model="filters.search"
+                        type="text"
+                        placeholder="Digite o nome..."
+                        class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        @input="applyFilters"
+                    />
+                </div>
+
+                <!-- Filtro por parceiro -->
+                <div>
+                    <label class="block text-sm font-medium text-neutral-300 mb-2">Filtro por parceiro</label>
+                    <select
+                        v-model="filters.partner"
+                        class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        @change="applyFilters"
+                    >
+                        <option value="">Todos</option>
+                        <option value="Direto">Direto</option>
+                        <option
+                            v-for="partner in affiliatePartners"
+                            :key="partner.id"
+                            :value="partner.id"
+                        >
+                            {{ partner.name }}
+                        </option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela Unificada -->
         <div class="bg-neutral-800 rounded-lg overflow-hidden">
             <table class="min-w-full divide-y divide-neutral-700">
                 <thead class="bg-neutral-700">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Nome</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Parceiro</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Início</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Fim</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Status</th>
+                        <th 
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider cursor-pointer hover:bg-neutral-600"
+                            @click="sortBy('name')"
+                        >
+                            <div class="flex items-center">
+                                Nome
+                                <span v-if="sortColumn === 'name'" class="ml-1">
+                                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                                </span>
+                            </div>
+                        </th>
+                        <th 
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider cursor-pointer hover:bg-neutral-600"
+                            @click="sortBy('partner')"
+                        >
+                            <div class="flex items-center">
+                                Parceiro
+                                <span v-if="sortColumn === 'partner'" class="ml-1">
+                                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                                </span>
+                            </div>
+                        </th>
+                        <th 
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider cursor-pointer hover:bg-neutral-600"
+                            @click="sortBy('status')"
+                        >
+                            <div class="flex items-center">
+                                Status
+                                <span v-if="sortColumn === 'status'" class="ml-1">
+                                    {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                                </span>
+                            </div>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Tag</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Ponderação</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Ações</th>
                     </tr>
                 </thead>
                 <tbody class="bg-neutral-800 divide-y divide-neutral-700">
-                    <tr v-for="item in items" :key="item.id" class="hover:bg-neutral-700">
+                    <tr v-if="filteredItems.length === 0">
+                        <td colspan="6" class="px-6 py-4 text-center text-sm text-neutral-400">
+                            Nenhum item encontrado
+                        </td>
+                    </tr>
+                    <tr v-for="item in filteredItems" :key="item.id" class="hover:bg-neutral-700">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.name }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.commercialPartnerId }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ formatDate(item.startDate) }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.endDate ? formatDate(item.endDate) : 'Em andamento' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ getPartnerDisplay(item) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span :class="item.active ? 'bg-green-500' : 'bg-red-500'" class="px-2 py-1 text-xs rounded-full text-white">
-                                {{ item.active ? 'Ativa' : 'Inativa' }}
+                            <span :class="getStatusClass(item)" class="px-2 py-1 text-xs rounded-full text-white border">
+                                {{ getStatusText(item) }}
                             </span>
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span :class="getTagClass(item)" class="px-2 py-1 text-xs rounded text-white">
+                                {{ getTagText(item) }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-white">
+                            {{ getWeightingDisplay(item) }}
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button @click="editItem(item)" class="text-blue-400 hover:text-blue-300 mr-3">Editar</button>
-                            <button @click="deleteItem(item.id)" class="text-red-400 hover:text-red-300">Excluir</button>
+                            <button @click="editItem(item)" class="text-blue-400 hover:text-blue-300">Editar</button>
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
+
+        <!-- Modal de Campanha -->
+        <div v-if="showCampaignDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
+            <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-3xl mx-auto max-h-[90vh] overflow-y-auto">
+                <div class="p-6 border-b border-neutral-700 flex justify-between items-center sticky top-0 bg-neutral-800 z-10">
+                    <h3 class="text-lg font-medium text-white">{{ isEditing ? 'Editar Campanha' : 'Nova Campanha' }}</h3>
+                    <button @click="closeCampaignDialog" class="text-neutral-400 hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <form @submit.prevent="saveCampaign" class="p-6 space-y-4">
+                    <!-- Nome -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            Nome <span class="text-red-500">*</span>
+                        </label>
+                        <input
+                            v-model="campaignForm.name"
+                            type="text"
+                            placeholder="Nome da campanha"
+                            maxlength="255"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            :class="{ 'border-red-500': formErrors.name }"
+                            @input="validateCampaignName"
+                            required
+                        />
+                        <p v-if="formErrors.name" class="mt-1 text-sm text-red-400">{{ formErrors.name }}</p>
+                    </div>
+
+                    <!-- Parceiro -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            Parceiro <span class="text-red-500">*</span>
+                        </label>
+                        <select
+                            v-model="campaignForm.commercialPartnerId"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            :class="{ 'border-red-500': formErrors.commercialPartnerId }"
+                            required
+                        >
+                            <option value="">Selecione...</option>
+                            <option
+                                v-for="partner in affiliatePartners"
+                                :key="partner.id"
+                                :value="partner.id"
+                            >
+                                {{ partner.name }}
+                            </option>
+                        </select>
+                        <p v-if="formErrors.commercialPartnerId" class="mt-1 text-sm text-red-400">{{ formErrors.commercialPartnerId }}</p>
+                    </div>
+
+                    <!-- Data de Início -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            Data de Início <span class="text-red-500">*</span>
+                        </label>
+                        <input
+                            v-model="campaignForm.startDate"
+                            type="date"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            :class="{ 'border-red-500': formErrors.startDate }"
+                            required
+                            @change="validateCampaignDates"
+                        />
+                        <p v-if="formErrors.startDate" class="mt-1 text-sm text-red-400">{{ formErrors.startDate }}</p>
+                    </div>
+
+                    <!-- Data de Fim -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            Data de Fim
+                        </label>
+                        <input
+                            v-model="campaignForm.endDate"
+                            type="date"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            :class="{ 'border-red-500': formErrors.endDate }"
+                            @change="validateCampaignDates"
+                        />
+                        <p v-if="formErrors.endDate" class="mt-1 text-sm text-red-400">{{ formErrors.endDate }}</p>
+                    </div>
+
+                    <!-- Script -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">Script</label>
+                        <textarea
+                            v-model="campaignForm.script"
+                            rows="6"
+                            placeholder="Código do script"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono text-sm"
+                        ></textarea>
+                    </div>
+
+                    <!-- Status do Script -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">Status do Script</label>
+                        <select
+                            v-model="campaignForm.scriptStatus"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">Selecione...</option>
+                            <option value="Implementado">Implementado</option>
+                            <option value="Caiu">Caiu</option>
+                            <option value="Pendente de instalar">Pendente de instalar</option>
+                        </select>
+                    </div>
+
+                    <!-- Ponderação -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">Ponderação (%)</label>
+                        <input
+                            v-model="campaignForm.weighting"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            placeholder="0-100"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            :class="{ 'border-red-500': formErrors.weighting }"
+                            @input="validateWeighting"
+                        />
+                        <p v-if="formErrors.weighting" class="mt-1 text-sm text-red-400">{{ formErrors.weighting }}</p>
+                    </div>
+
+                    <!-- Link -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">Link</label>
+                        <input
+                            v-model="campaignForm.link"
+                            type="url"
+                            placeholder="https://exemplo.com/campanha"
+                            maxlength="500"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="flex justify-end gap-3 pt-4 border-t border-neutral-700">
+                        <button
+                            type="button"
+                            @click="closeCampaignDialog"
+                            class="px-4 py-2 text-sm font-medium text-neutral-300 bg-neutral-700 hover:bg-neutral-600 rounded-md transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="saving"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                        >
+                            <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            {{ saving ? 'Salvando...' : 'Salvar' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal de Parceiro Direto -->
+        <div v-if="showPartnerDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
+            <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-3xl mx-auto max-h-[90vh] overflow-y-auto">
+                <div class="p-6 border-b border-neutral-700 flex justify-between items-center sticky top-0 bg-neutral-800 z-10">
+                    <h3 class="text-lg font-medium text-white">Editar Parceiro Direto</h3>
+                    <button @click="closePartnerDialog" class="text-neutral-400 hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <form @submit.prevent="savePartner" class="p-6 space-y-4">
+                    <!-- Nome -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            Nome <span class="text-red-500">*</span>
+                        </label>
+                        <input
+                            v-model="partnerForm.name"
+                            type="text"
+                            placeholder="Nome do parceiro"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            :class="{ 'border-red-500': formErrors.name }"
+                            required
+                        />
+                        <p v-if="formErrors.name" class="mt-1 text-sm text-red-400">{{ formErrors.name }}</p>
+                    </div>
+
+                    <!-- Script -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">Script</label>
+                        <textarea
+                            v-model="partnerForm.script"
+                            rows="6"
+                            placeholder="Código do script"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-mono text-sm"
+                        ></textarea>
+                    </div>
+
+                    <!-- Status do Script -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">Status do Script</label>
+                        <select
+                            v-model="partnerForm.scriptStatus"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">Selecione...</option>
+                            <option value="Implementado">Implementado</option>
+                            <option value="Caiu">Caiu</option>
+                            <option value="Pendente de instalar">Pendente de instalar</option>
+                        </select>
+                    </div>
+
+                    <!-- Ponderação -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">Ponderação (%)</label>
+                        <input
+                            v-model="partnerForm.weighting"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            placeholder="0-100"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            :class="{ 'border-red-500': formErrors.weighting }"
+                            @input="validateWeighting"
+                        />
+                        <p v-if="formErrors.weighting" class="mt-1 text-sm text-red-400">{{ formErrors.weighting }}</p>
+                    </div>
+
+                    <!-- Link -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">Link</label>
+                        <input
+                            v-model="partnerForm.link"
+                            type="url"
+                            placeholder="https://exemplo.com"
+                            maxlength="500"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="flex justify-end gap-3 pt-4 border-t border-neutral-700">
+                        <button
+                            type="button"
+                            @click="closePartnerDialog"
+                            class="px-4 py-2 text-sm font-medium text-neutral-300 bg-neutral-700 hover:bg-neutral-600 rounded-md transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="saving"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                        >
+                            <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            {{ saving ? 'Salvando...' : 'Salvar' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useSasClient } from '../client';
 
 const client = useSasClient();
-const items = ref<any[]>([]);
-const showDialog = ref(false);
-const editingItem = ref<any>(null);
 
-// Função para formatar data
-const formatDate = (date: string | Date): string => {
-    if (!date) return '';
-    const d = typeof date === 'string' ? new Date(date) : date;
-    return d.toLocaleDateString('pt-BR');
+// Dados
+const campaigns = ref<any[]>([]);
+const commercialPartners = ref<any[]>([]);
+const directPartners = ref<any[]>([]);
+
+// Filtros e ordenação
+const filters = ref({
+    search: '',
+    partner: ''
+});
+
+const sortColumn = ref<string>('');
+const sortDirection = ref<'asc' | 'desc'>('asc');
+
+// Estados
+const showCampaignDialog = ref(false);
+const showPartnerDialog = ref(false);
+const isEditing = ref(false);
+const saving = ref(false);
+const editingItem = ref<any>(null);
+const formErrors = ref<Record<string, string>>({});
+
+// Formulários
+const campaignForm = ref({
+    commercialPartnerId: '',
+    name: '',
+    startDate: '',
+    endDate: '',
+    script: '',
+    scriptStatus: '',
+    weighting: '',
+    link: '',
+    active: true
+});
+
+const partnerForm = ref({
+    name: '',
+    script: '',
+    scriptStatus: '',
+    weighting: '',
+    link: ''
+});
+
+// Computed: Parceiros de Afiliação
+const affiliatePartners = computed(() => {
+    return commercialPartners.value.filter(p => p.partnerType === 'Rede de Afiliação' && p.active);
+});
+
+// Computed: Itens unificados (campanhas + parceiros diretos)
+const unifiedItems = computed(() => {
+    const items: any[] = [];
+    
+    // Adicionar campanhas
+    campaigns.value.forEach(campaign => {
+        items.push({
+            ...campaign,
+            type: 'campaign',
+            partnerName: getPartnerName(campaign.commercialPartnerId)
+        });
+    });
+    
+    // Adicionar parceiros diretos
+    directPartners.value.forEach(partner => {
+        items.push({
+            ...partner,
+            type: 'partner',
+            partnerName: 'Direto'
+        });
+    });
+    
+    return items;
+});
+
+// Computed: Itens filtrados e ordenados
+const filteredItems = computed(() => {
+    let items = [...unifiedItems.value];
+    
+    // Aplicar filtro de busca
+    if (filters.value.search) {
+        const search = filters.value.search.toLowerCase();
+        items = items.filter(item => 
+            item.name.toLowerCase().includes(search)
+        );
+    }
+    
+    // Aplicar filtro de parceiro
+    if (filters.value.partner) {
+        if (filters.value.partner === 'Direto') {
+            items = items.filter(item => item.type === 'partner');
+        } else {
+            items = items.filter(item => 
+                item.type === 'campaign' && item.commercialPartnerId === filters.value.partner
+            );
+        }
+    }
+    
+    // Aplicar ordenação
+    if (sortColumn.value) {
+        items.sort((a, b) => {
+            let aVal: any;
+            let bVal: any;
+            
+            if (sortColumn.value === 'name') {
+                aVal = a.name.toLowerCase();
+                bVal = b.name.toLowerCase();
+            } else if (sortColumn.value === 'partner') {
+                aVal = a.partnerName.toLowerCase();
+                bVal = b.partnerName.toLowerCase();
+            } else if (sortColumn.value === 'status') {
+                aVal = getStatusText(a);
+                bVal = getStatusText(b);
+            }
+            
+            if (aVal < bVal) return sortDirection.value === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortDirection.value === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+    
+    return items;
+});
+
+// Funções auxiliares
+const getPartnerName = (partnerId: string): string => {
+    const partner = commercialPartners.value.find(p => p.id === partnerId);
+    return partner ? partner.name : partnerId;
 };
 
-const loadData = async () => {
-    try {
-        const response = await client.campaigns.get({});
-        items.value = response.data || [];
-    } catch (error) {
-        console.error('Erro ao carregar dados:', error);
+const getPartnerDisplay = (item: any): string => {
+    if (item.type === 'partner') {
+        return 'Direto';
+    }
+    return item.partnerName || getPartnerName(item.commercialPartnerId);
+};
+
+const getStatusText = (item: any): string => {
+    if (item.type === 'partner') {
+        return item.active ? 'Ativo' : 'Inativo';
+    }
+    
+    // Para campanhas, calcular baseado em datas
+    if (!item.active) return 'Inativo';
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const startDate = new Date(item.startDate);
+    startDate.setHours(0, 0, 0, 0);
+    
+    if (item.endDate) {
+        const endDate = new Date(item.endDate);
+        endDate.setHours(0, 0, 0, 0);
+        
+        if (today < startDate) return 'Agendada';
+        if (today > endDate) return 'Encerrada';
+        return 'Ativa';
+    }
+    
+    if (today < startDate) return 'Agendada';
+    return 'Ativa';
+};
+
+const getStatusClass = (item: any): string => {
+    const status = getStatusText(item);
+    if (status === 'Ativo' || status === 'Ativa') {
+        return 'bg-green-500 border-green-600';
+    }
+    return 'bg-red-500 border-red-600';
+};
+
+const getTagText = (item: any): string => {
+    if (!item.script || !item.script.trim()) {
+        return 'Não possui';
+    }
+    
+    if (item.scriptStatus === 'Implementado') return 'Implementado';
+    if (item.scriptStatus === 'Caiu') return 'Caiu';
+    if (item.scriptStatus === 'Pendente de instalar') return 'Pendente de instalar';
+    
+    // Se tem script mas não tem status, é "Instalada"
+    return 'Instalada';
+};
+
+const getTagClass = (item: any): string => {
+    const tag = getTagText(item);
+    if (tag === 'Implementado' || tag === 'Instalada') return 'bg-green-600';
+    if (tag === 'Caiu') return 'bg-red-600';
+    if (tag === 'Pendente de instalar') return 'bg-yellow-600';
+    return 'bg-gray-600';
+};
+
+const getWeightingDisplay = (item: any): string => {
+    if (item.weighting !== null && item.weighting !== undefined && item.weighting !== '') {
+        const weighting = typeof item.weighting === 'string' ? parseFloat(item.weighting) : item.weighting;
+        if (!isNaN(weighting)) {
+            return `${weighting.toFixed(2)}%`;
+        }
+    }
+    return '-';
+};
+
+// Ordenação
+const sortBy = (column: string) => {
+    if (sortColumn.value === column) {
+        sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortColumn.value = column;
+        sortDirection.value = 'asc';
     }
 };
 
-const openAddDialog = () => {
+// Aplicar filtros
+const applyFilters = () => {
+    // Os filtros são aplicados automaticamente pelo computed
+};
+
+// Validações
+const hasOrientalCharacters = (text: string): boolean => {
+    const orientalRegex = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3400-\u4DBF\uAC00-\uD7AF]/;
+    return orientalRegex.test(text);
+};
+
+const validateCampaignName = () => {
+    formErrors.value.name = '';
+    const name = campaignForm.value.name.trim();
+    
+    if (name.length < 2) {
+        formErrors.value.name = 'Nome deve ter no mínimo 2 caracteres';
+        return false;
+    }
+    
+    if (name.length > 255) {
+        formErrors.value.name = 'Nome deve ter no máximo 255 caracteres';
+        return false;
+    }
+    
+    if (hasOrientalCharacters(name)) {
+        formErrors.value.name = 'Nome não pode conter caracteres orientais';
+        return false;
+    }
+    
+    return true;
+};
+
+const validateCampaignDates = () => {
+    formErrors.value.startDate = '';
+    formErrors.value.endDate = '';
+    
+    if (!campaignForm.value.startDate) {
+        return true;
+    }
+    
+    if (campaignForm.value.endDate) {
+        const startDate = new Date(campaignForm.value.startDate);
+        const endDate = new Date(campaignForm.value.endDate);
+        
+        if (endDate < startDate) {
+            formErrors.value.endDate = 'Data de fim não pode ser anterior à data de início';
+            return false;
+        }
+    }
+    
+    return true;
+};
+
+const validateWeighting = () => {
+    formErrors.value.weighting = '';
+    
+    const weightingValue = campaignForm.value.weighting || partnerForm.value.weighting;
+    if (!weightingValue || weightingValue === '') {
+        return true;
+    }
+    
+    const weighting = parseFloat(weightingValue);
+    
+    if (isNaN(weighting)) {
+        formErrors.value.weighting = 'Ponderação deve ser um número válido';
+        return false;
+    }
+    
+    if (weighting < 0 || weighting > 100) {
+        formErrors.value.weighting = 'Ponderação deve estar entre 0 e 100';
+        return false;
+    }
+    
+    const parts = weightingValue.toString().split('.');
+    if (parts[1] && parts[1].length > 2) {
+        formErrors.value.weighting = 'Ponderação deve ter no máximo 2 casas decimais';
+        return false;
+    }
+    
+    return true;
+};
+
+// Carregar dados
+const loadData = async () => {
+    try {
+        // Carregar campanhas
+        const campaignsResponse = await client.campaigns.get({});
+        campaigns.value = campaignsResponse.data || [];
+        
+        // Carregar parceiros comerciais
+        const partnersResponse = await client.commercialPartners.get({});
+        commercialPartners.value = partnersResponse.data || [];
+        
+        // Filtrar parceiros diretos
+        directPartners.value = commercialPartners.value.filter(p => p.partnerType === 'Direto');
+    } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        alert('Erro ao carregar dados. Verifique o console para mais detalhes.');
+    }
+};
+
+// Dialog de Campanha
+const openAddDialog = async () => {
+    isEditing.value = false;
     editingItem.value = null;
-    showDialog.value = true;
+    campaignForm.value = {
+        commercialPartnerId: '',
+        name: '',
+        startDate: '',
+        endDate: '',
+        script: '',
+        scriptStatus: '',
+        weighting: '',
+        link: '',
+        active: true
+    };
+    formErrors.value = {};
+    showCampaignDialog.value = true;
+};
+
+const closeCampaignDialog = () => {
+    showCampaignDialog.value = false;
+    formErrors.value = {};
 };
 
 const editItem = (item: any) => {
-    editingItem.value = item;
-    showDialog.value = true;
+    if (item.type === 'partner') {
+        // Editar parceiro direto
+        editingItem.value = item;
+        partnerForm.value = {
+            name: item.name || '',
+            script: item.script || '',
+            scriptStatus: item.scriptStatus || '',
+            weighting: item.weighting !== null && item.weighting !== undefined ? item.weighting.toString() : '',
+            link: item.link || ''
+        };
+        formErrors.value = {};
+        showPartnerDialog.value = true;
+    } else {
+        // Editar campanha
+        isEditing.value = true;
+        editingItem.value = item;
+        
+        const startDate = item.startDate ? (typeof item.startDate === 'string' ? item.startDate.split('T')[0] : new Date(item.startDate).toISOString().split('T')[0]) : '';
+        const endDate = item.endDate ? (typeof item.endDate === 'string' ? item.endDate.split('T')[0] : new Date(item.endDate).toISOString().split('T')[0]) : '';
+        
+        campaignForm.value = {
+            commercialPartnerId: item.commercialPartnerId || '',
+            name: item.name || '',
+            startDate: startDate,
+            endDate: endDate || '',
+            script: item.script || '',
+            scriptStatus: item.scriptStatus || '',
+            weighting: item.weighting !== null && item.weighting !== undefined ? item.weighting.toString() : '',
+            link: item.link || '',
+            active: item.active !== undefined ? item.active : true
+        };
+        formErrors.value = {};
+        showCampaignDialog.value = true;
+    }
 };
 
-const deleteItem = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este item?')) {
-        try {
-            await client.campaigns.delete(id);
-            await loadData();
-        } catch (error) {
-            console.error('Erro ao excluir:', error);
+const saveCampaign = async () => {
+    if (!validateCampaignName() || !validateCampaignDates() || !validateWeighting()) {
+        return;
+    }
+    
+    if (!campaignForm.value.commercialPartnerId) {
+        formErrors.value.commercialPartnerId = 'Selecione um parceiro';
+        return;
+    }
+    
+    saving.value = true;
+    formErrors.value = {};
+    
+    try {
+        const dataToSave: any = {
+            commercialPartnerId: campaignForm.value.commercialPartnerId,
+            name: campaignForm.value.name.trim(),
+            startDate: campaignForm.value.startDate,
+            active: campaignForm.value.active
+        };
+        
+        if (campaignForm.value.endDate) {
+            dataToSave.endDate = campaignForm.value.endDate;
         }
+        
+        if (campaignForm.value.script && campaignForm.value.script.trim()) {
+            dataToSave.script = campaignForm.value.script.trim();
+        }
+        
+        if (campaignForm.value.scriptStatus) {
+            dataToSave.scriptStatus = campaignForm.value.scriptStatus;
+        }
+        
+        if (campaignForm.value.weighting && campaignForm.value.weighting !== '') {
+            dataToSave.weighting = parseFloat(campaignForm.value.weighting);
+        }
+        
+        if (campaignForm.value.link && campaignForm.value.link.trim()) {
+            dataToSave.link = campaignForm.value.link.trim();
+        }
+        
+        if (isEditing.value && editingItem.value) {
+            await client.campaigns.update(editingItem.value.id, dataToSave);
+        } else {
+            await client.campaigns.insert(dataToSave);
+        }
+        
+        await loadData();
+        closeCampaignDialog();
+    } catch (error: any) {
+        console.error('Erro ao salvar campanha:', error);
+        alert('Erro ao salvar campanha. Verifique o console para mais detalhes.');
+    } finally {
+        saving.value = false;
+    }
+};
+
+// Dialog de Parceiro
+const closePartnerDialog = () => {
+    showPartnerDialog.value = false;
+    formErrors.value = {};
+};
+
+const savePartner = async () => {
+    if (!validateWeighting()) {
+        return;
+    }
+    
+    saving.value = true;
+    formErrors.value = {};
+    
+    try {
+        const dataToSave: any = {
+            name: partnerForm.value.name.trim()
+        };
+        
+        if (partnerForm.value.script && partnerForm.value.script.trim()) {
+            dataToSave.script = partnerForm.value.script.trim();
+        }
+        
+        if (partnerForm.value.scriptStatus) {
+            dataToSave.scriptStatus = partnerForm.value.scriptStatus;
+        }
+        
+        if (partnerForm.value.weighting && partnerForm.value.weighting !== '') {
+            dataToSave.weighting = parseFloat(partnerForm.value.weighting);
+        }
+        
+        if (partnerForm.value.link && partnerForm.value.link.trim()) {
+            dataToSave.link = partnerForm.value.link.trim();
+        }
+        
+        if (editingItem.value) {
+            await client.commercialPartners.update(editingItem.value.id, dataToSave);
+        }
+        
+        await loadData();
+        closePartnerDialog();
+    } catch (error: any) {
+        console.error('Erro ao salvar parceiro:', error);
+        alert('Erro ao salvar parceiro. Verifique o console para mais detalhes.');
+    } finally {
+        saving.value = false;
     }
 };
 
@@ -94,4 +885,3 @@ onMounted(() => {
     loadData();
 });
 </script>
-

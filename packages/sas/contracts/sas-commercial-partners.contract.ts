@@ -54,5 +54,31 @@ export class SasCommercialPartnersContract extends AbstractContract {
         index: true
     })
     active!: boolean;
+
+    @ContractField({
+        protoType: 'text',
+        nullable: true,
+    })
+    script?: string; // Código do script (para parceiros diretos)
+
+    @ContractField({
+        protoType: 'string',
+        nullable: true,
+        index: true,
+    })
+    scriptStatus?: string; // Status do script: Implementado, Caiu, Pendente de instalar
+
+    @ContractField({
+        protoType: 'double',
+        nullable: true,
+        index: true,
+    })
+    weighting?: number; // Ponderação (porcentagem, até 2 casas decimais)
+
+    @ContractField({
+        protoType: 'string',
+        nullable: true,
+    })
+    link?: string; // Link (até 500 caracteres)
 }
 
