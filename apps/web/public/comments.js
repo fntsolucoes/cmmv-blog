@@ -1,5 +1,5 @@
 /**
- * CMMV Blog Comments System
+ * Smart Analytics Comments System
  * A vanilla JavaScript implementation of the comment system that can be used with any frontend framework
  */
 

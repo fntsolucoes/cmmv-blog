@@ -21,8 +21,8 @@ export class FeedService {
     async getFeed(queries: any, req: any) {
         const limit = Config.get<number>("blog.rssFeedItems", 10);
         const url = Config.get<string>("blog.url", process.env.API_URL);
-        const title = Config.get<string>("blog.title", "CMMV Blog");
-        const description = Config.get<string>("blog.description", "CMMV Blog");
+        const title = Config.get<string>("blog.title", "Smart Analytics");
+        const description = Config.get<string>("blog.description", "Smart Analytics");
         const language = Config.get<string>("blog.language", "en");
         const copyright = Config.get<string>("blog.copyright", "CMMV");
 

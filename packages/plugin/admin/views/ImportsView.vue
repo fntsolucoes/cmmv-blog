@@ -133,7 +133,7 @@
         <div class="bg-neutral-800 rounded-lg shadow-md">
             <div class="p-6 border-b border-neutral-700">
                 <h2 class="text-lg font-medium text-white">Import Content</h2>
-                <p class="text-sm text-neutral-400 mt-1">Import your content from other platforms to CMMV Blog</p>
+                <p class="text-sm text-neutral-400 mt-1">Import your content from other platforms to Smart Analytics</p>
             </div>
 
             <div class="p-6 space-y-8">
