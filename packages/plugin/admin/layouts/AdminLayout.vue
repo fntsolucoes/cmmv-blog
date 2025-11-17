@@ -245,6 +245,8 @@ function loadCollapsedGroupsState() {
             collapsedGroups.value = {}
         }
     }
+    // Settings sempre começa fechado
+    collapsedGroups.value['Settings'] = true
 }
 
 const loadWhitelabels = async () => {
