@@ -11,28 +11,44 @@
             </div>
         </div>
 
-        <div v-if="result" class="space-y-4">
+        <div v-if="loading" class="bg-neutral-800 rounded-lg p-6 text-center">
+            <p class="text-neutral-400">Calculando divisão de lucros...</p>
+        </div>
+
+        <div v-else-if="result" class="space-y-4">
             <div class="bg-neutral-800 rounded-lg p-6">
-                <h2 class="text-xl font-bold text-white mb-4">Resumo - {{ selectedMonth }}/{{ selectedYear }}</h2>
+                <h2 class="text-xl font-bold text-white mb-4">Resumo - {{ String(selectedMonth).padStart(2, '0') }}/{{ selectedYear }}</h2>
                 
-                <div class="grid grid-cols-2 gap-4 mb-4">
+                <div v-if="result.ordersCount === 0" class="bg-yellow-900 border border-yellow-700 rounded-lg p-4 mb-4">
+                    <p class="text-yellow-200">
+                        <strong>Atenção:</strong> Nenhuma ordem de pagamento encontrada para o período selecionado.
+                    </p>
+                </div>
+
+                <div v-else class="grid grid-cols-2 gap-4 mb-4">
                     <div>
                         <p class="text-neutral-400 text-sm">Total por Moeda</p>
                         <div class="mt-2 space-y-2">
+                            <div v-if="Object.keys(result.totalByCurrency || {}).length === 0" class="text-neutral-400 italic">
+                                Nenhum valor encontrado
+                            </div>
                             <div v-for="(amount, currency) in result.totalByCurrency" :key="currency" class="text-white">
-                                <strong>{{ currency }}:</strong> {{ amount.toLocaleString('pt-BR', { style: 'currency', currency: currency === 'BRL' ? 'BRL' : 'USD' }) }}
+                                <strong>{{ currency }}:</strong> {{ formatCurrency(amount, currency) }}
                             </div>
                         </div>
                     </div>
                     <div>
                         <p class="text-neutral-400 text-sm">Total em BRL</p>
                         <p class="text-2xl font-bold text-white mt-2">
-                            {{ result.totalBRL.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }}
+                            {{ formatCurrency(result.totalBRL || 0, 'BRL') }}
+                        </p>
+                        <p class="text-xs text-neutral-400 mt-1">
+                            {{ result.ordersCount || 0 }} ordem(ns) processada(s)
                         </p>
                     </div>
                 </div>
 
-                <div>
+                <div v-if="result.distribution && result.distribution.length > 0">
                     <p class="text-neutral-400 text-sm mb-2">Distribuição por Sócio</p>
                     <table class="min-w-full divide-y divide-neutral-700">
                         <thead class="bg-neutral-700">
@@ -47,11 +63,16 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ dist.shareholderName }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ dist.percentage }}%</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-white">
-                                    {{ dist.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }}
+                                    {{ formatCurrency(dist.amount, 'BRL') }}
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div v-else-if="result.ordersCount > 0" class="bg-yellow-900 border border-yellow-700 rounded-lg p-4">
+                    <p class="text-yellow-200">
+                        <strong>Atenção:</strong> Nenhum sócio ativo encontrado. Cadastre sócios para calcular a distribuição.
+                    </p>
                 </div>
             </div>
         </div>
@@ -68,6 +89,13 @@ const selectedMonth = ref(new Date().getMonth() + 1);
 const result = ref<any>(null);
 const loading = ref(false);
 
+const formatCurrency = (value: number, currency: string) => {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: currency === 'BRL' ? 'BRL' : (currency === 'EUR' ? 'EUR' : 'USD')
+    }).format(value);
+};
+
 const calculateProfitSharing = async () => {
     if (!selectedYear.value || !selectedMonth.value) {
         alert('Por favor, selecione ano e mês');
@@ -75,18 +103,23 @@ const calculateProfitSharing = async () => {
     }
 
     loading.value = true;
+    result.value = null;
     try {
         const response = await client.profitSharing.getMonthly(
             selectedYear.value.toString(),
             selectedMonth.value.toString()
         );
-        result.value = response;
-    } catch (error) {
+        // Verificar se a resposta tem data
+        result.value = response?.data || response;
+    } catch (error: any) {
         console.error('Erro ao calcular divisão de lucros:', error);
-        alert('Erro ao calcular divisão de lucros. Verifique o console para mais detalhes.');
+        const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido';
+        alert(`Erro ao calcular divisão de lucros: ${errorMessage}`);
     } finally {
         loading.value = false;
     }
 };
 </script>
+
+
 

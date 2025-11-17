@@ -42,3 +42,5 @@ export class SasShareholdersContract extends AbstractContract {
     active!: boolean;
 }
 
+
+

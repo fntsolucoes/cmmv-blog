@@ -61,19 +61,22 @@ export const useSasClient = () => {
     const paymentOrders = {
         get: async (filters: Record<string, string>) => {
             const query = new URLSearchParams(filters).toString();
-            return api.authRequest(`sas/payment-orders?${query}`, "GET");
+            return api.authRequest(`sas/payment-orders/v2?${query}`, "GET");
         },
         insert: async (data: any) => {
-            return api.authRequest("sas/payment-orders", "POST", data);
+            return api.authRequest("sas/payment-orders/v2", "POST", data);
         },
         update: async (id: string, data: any) => {
-            return api.authRequest(`sas/payment-orders/${id}`, "PUT", data);
+            return api.authRequest(`sas/payment-orders/v2/${id}`, "PUT", data);
         },
         delete: async (id: string) => {
-            return api.authRequest(`sas/payment-orders/${id}`, "DELETE");
+            return api.authRequest(`sas/payment-orders/v2/${id}`, "DELETE");
+        },
+        updateStatus: async (id: string, data: { status: string; effectivePaymentDate?: string | Date | null; paidValue?: number | null }) => {
+            return api.authRequest(`sas/payment-orders/v2/${id}/status`, "PATCH", data);
         },
         getNetAmount: async (id: string) => {
-            return api.authRequest(`sas/payment-orders/${id}/net-amount`, "GET");
+            return api.authRequest(`sas/payment-orders/v2/${id}/net-amount`, "GET");
         }
     };
 
@@ -118,6 +121,12 @@ export const useSasClient = () => {
         },
         fetchToday: async () => {
             return api.authRequest("sas/exchange-rates/fetch-today", "POST");
+        },
+        fetchLast30Days: async () => {
+            return api.authRequest("sas/exchange-rates/fetch-last-30-days", "POST");
+        },
+        importCSV: async (csvContent: string, currencyPair?: string, fileName?: string) => {
+            return api.authRequest("sas/exchange-rates/import-csv", "POST", { csvContent, currencyPair, fileName });
         }
     };
 

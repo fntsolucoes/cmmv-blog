@@ -14,33 +14,47 @@ export class ProfitSharingService {
     async calculateMonthlyProfitSharing(year: number, month: number) {
         const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
         const ShareholdersEntity = Repository.getEntity("SasShareholdersEntity");
-        const ExchangeRatesEntity = Repository.getEntity("SasExchangeRatesEntity");
 
-        // Buscar todas as ordens pagas no mês
-        const startDate = new Date(year, month - 1, 1);
-        const endDate = new Date(year, month, 0, 23, 59, 59);
-
-        const orders = await Repository.findAll(PaymentOrdersEntity, {
-            where: {
-                status: 'Pago',
-                effectivePaymentDate: {
-                    $gte: startDate,
-                    $lte: endDate
-                }
-            },
+        // Buscar todas as ordens pagas (filtrar por data depois)
+        const allOrders = await Repository.findAll(PaymentOrdersEntity, {
+            status: 'Pago',
             limit: 10000
+        }, []);
+
+        // Normalizar datas de início e fim do mês
+        const startDate = new Date(year, month - 1, 1);
+        startDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+        // Filtrar ordens do mês especificado
+        const orders = (allOrders?.data || []).filter((order: any) => {
+            if (!order.effectivePaymentDate) return false;
+            const paymentDate = new Date(order.effectivePaymentDate);
+            paymentDate.setHours(0, 0, 0, 0);
+            return paymentDate >= startDate && paymentDate <= endDate;
         });
 
         // Buscar sócios ativos
         const shareholders = await Repository.findAll(ShareholdersEntity, {
-            where: { active: true },
+            active: true,
             limit: 100
-        });
+        }, []);
+
+        if (!shareholders?.data || shareholders.data.length === 0) {
+            return {
+                year,
+                month,
+                totalByCurrency: {},
+                totalBRL: 0,
+                distribution: [],
+                ordersCount: 0
+            };
+        }
 
         // Agrupar por moeda e calcular totais
         const totalsByCurrency: Record<string, number> = {};
         
-        for (const order of orders.data) {
+        for (const order of orders) {
             const netAmount = order.invoiceAmount - order.taxAmount;
             if (!totalsByCurrency[order.currency]) {
                 totalsByCurrency[order.currency] = 0;
@@ -52,19 +66,19 @@ export class ProfitSharingService {
         // Para cada ordem, buscar a taxa de câmbio na data do pagamento
         let totalBRL = totalsByCurrency['BRL'] || 0;
 
-        // Converter USD para BRL usando a taxa de cada ordem
-        for (const order of orders.data) {
+        // Converter USD e EUR para BRL usando a taxa de cada ordem
+        for (const order of orders) {
             if (order.currency === 'USD' && order.effectivePaymentDate) {
                 const usdRate = await this.getExchangeRate('USD-BRL', new Date(order.effectivePaymentDate));
                 if (usdRate) {
                     const netAmount = order.invoiceAmount - order.taxAmount;
-                    totalBRL += netAmount * usdRate.rate;
+                    totalBRL += netAmount * Number(usdRate.rate);
                 }
             } else if (order.currency === 'EUR' && order.effectivePaymentDate) {
                 const eurRate = await this.getExchangeRate('EUR-BRL', new Date(order.effectivePaymentDate));
                 if (eurRate) {
                     const netAmount = order.invoiceAmount - order.taxAmount;
-                    totalBRL += netAmount * eurRate.rate;
+                    totalBRL += netAmount * Number(eurRate.rate);
                 }
             }
         }
@@ -83,21 +97,41 @@ export class ProfitSharingService {
             totalByCurrency: totalsByCurrency,
             totalBRL,
             distribution,
-            ordersCount: orders.data.length
+            ordersCount: orders.length
         };
     }
 
     private async getExchangeRate(currencyPair: string, date: Date) {
         const ExchangeRatesEntity = Repository.getEntity("SasExchangeRatesEntity");
-        const rates = await Repository.findAll(ExchangeRatesEntity, {
-            where: {
-                currencyPair,
-                date: { $lte: date }
-            },
-            limit: 1,
-            orderBy: { date: 'DESC' }
+        
+        // Buscar todas as taxas da moeda e filtrar manualmente
+        const allRates = await Repository.findAll(ExchangeRatesEntity, {
+            currencyPair,
+            limit: 1000
+        }, [], {
+            order: {
+                date: 'DESC'
+            }
         });
-        return rates.data.length > 0 ? rates.data[0] : null;
+
+        if (!allRates?.data) {
+            return null;
+        }
+
+        // Normalizar data para comparação
+        const targetDate = new Date(date);
+        targetDate.setHours(0, 0, 0, 0);
+
+        // Encontrar a taxa mais recente que seja <= data especificada
+        for (const rate of allRates.data) {
+            const rateDate = new Date(rate.date);
+            rateDate.setHours(0, 0, 0, 0);
+            if (rateDate <= targetDate) {
+                return rate;
+            }
+        }
+
+        return null;
     }
 }
 

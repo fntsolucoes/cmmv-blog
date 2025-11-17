@@ -16,14 +16,22 @@ import {
         moduleContract: true,
         databaseSchemaName: "sas_exchange_rates",
         databaseTimestamps: true
-    }
+    },
+    index: [
+        {
+            name: 'currency_pair_date_unique',
+            fields: ['currencyPair', 'date'],
+            options: {
+                unique: true
+            }
+        }
+    ]
 })
 export class SasExchangeRatesContract extends AbstractContract {
     @ContractField({
         protoType: 'string',
         nullable: false,
         index: true,
-        unique: true
     })
     currencyPair!: string; // EUR-BRL, USD-BRL
 
@@ -31,7 +39,6 @@ export class SasExchangeRatesContract extends AbstractContract {
         protoType: 'date',
         nullable: false,
         index: true,
-        unique: true
     })
     date!: Date; // Data da taxa
 

@@ -77,11 +77,27 @@ export class SasPaymentOrdersContract extends AbstractContract {
     effectivePaymentDate?: Date; // Data Efetiva do Pagamento
 
     @ContractField({
+        protoType: 'double',
+        nullable: true,
+        index: true,
+    })
+    paidValue?: number; // Valor efetivamente pago (sempre em BRL)
+
+    @ContractField({
         protoType: 'string',
         nullable: false,
         defaultValue: 'Pendente',
         index: true,
     })
     status!: string; // Pendente, Pago
+
+    @ContractField({
+        protoType: 'string',
+        nullable: true,
+        index: true,
+    })
+    paymentMethod?: string; // Método de pagamento selecionado (ex: "Wise: email@exemplo.com")
 }
+
+
 

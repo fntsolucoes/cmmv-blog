@@ -1,6 +1,6 @@
 {
     "name": "cmmv-blog-api",
-    "version": "0.0.100",
+    "version": "0.0.101",
     "private": true,
     "description": "Blog API sample",
     "dev": {
@@ -58,6 +58,7 @@
         "@cmmv/newsletter": "workspace:newsletter",
         "@cmmv/sas": "workspace:sas",
         "cache-manager-fs-binary": "^1.0.4",
+        "csv-parse": "^6.1.0",
         "firebase-admin": "^13.4.0",
         "sharp": "^0.34.1",
         "tsx": "^4.19.4",

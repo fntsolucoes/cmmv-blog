@@ -14,11 +14,19 @@ export class ShareholdersService {
     async validatePercentages() {
         const ShareholdersEntity = Repository.getEntity("SasShareholdersEntity");
         const shareholders = await Repository.findAll(ShareholdersEntity, {
-            where: { active: true },
+            active: true,
             limit: 1000
-        });
+        }, []);
 
-        const totalPercentage = shareholders.data.reduce((sum: number, sh: any) => sum + sh.percentage, 0);
+        if (!shareholders || !shareholders.data) {
+            return {
+                totalPercentage: 0,
+                isValid: true,
+                shareholders: []
+            };
+        }
+
+        const totalPercentage = shareholders.data.reduce((sum: number, sh: any) => sum + (sh.percentage || 0), 0);
         
         return {
             totalPercentage,
@@ -27,4 +35,6 @@ export class ShareholdersService {
         };
     }
 }
+
+
 

@@ -5,11 +5,13 @@ import {
 } from "./payment-orders.service";
 
 import {
-    PaymentOrdersController
+    PaymentOrdersBusinessController
 } from "./payment-orders.controller";
 
 export const SasPaymentOrdersModule = new Module('sas-payment-orders', {
     providers: [PaymentOrdersService],
-    controllers: [PaymentOrdersController]
+    controllers: [PaymentOrdersBusinessController]
 });
+
+
 
