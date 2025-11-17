@@ -193,7 +193,8 @@ useNavbar().addItems([
         label: 'Settings',
         icon: 'fas fa-cog',
         to: '/settings',
-        group: 'Settings'
+        group: 'Settings',
+        rootOnly: true
     },
     {
         label: 'Short URLs',

@@ -5,6 +5,7 @@ interface NavbarItem {
     icon: string;
     group?: string;
     to: string;
+    rootOnly?: boolean;
 }
 
 const items = ref<NavbarItem[]>([]);

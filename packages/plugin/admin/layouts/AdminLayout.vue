@@ -70,7 +70,7 @@
 
             <div class="h-[calc(100%-144px)] py-4 overflow-y-auto">
                 <nav class="space-y-1 px-2">
-                    <template v-for="(items, groupName) in navbarItems" :key="groupName">
+                    <template v-for="(items, groupName) in filteredNavbarItems" :key="groupName">
                         <div
                             v-if="!isCollapsed && groupName !== 'ungrouped'"
                             @click="toggleGroup(groupName)"
@@ -177,6 +177,24 @@ const user = ref(null)
 const navbarStore = useNavbar()
 const navbarItems = ref(navbarStore.getItems())
 const collapsedGroups = ref({})
+
+// Filtrar itens do menu baseado em rootOnly
+const filteredNavbarItems = computed(() => {
+    const allItems = navbarStore.getItems()
+    const isRoot = user.value?.root === true
+    
+    const filtered = {}
+    
+    Object.keys(allItems).forEach(group => {
+        filtered[group] = allItems[group].filter(item => {
+            // Se o item requer root e o usuário não é root, ocultar
+            if (item.rootOnly && !isRoot) return false
+            return true
+        })
+    })
+    
+    return filtered
+})
 
 const whitelabels = ref([])
 const loadingWhitelabels = ref(true)
@@ -308,6 +326,9 @@ onMounted(async () => {
 
     try {
         user.value = await api.profile.get()
+        
+        // Atualizar navbarItems quando o usuário for carregado
+        navbarItems.value = navbarStore.getItems()
 
         watch(() => route.path, (newPath, oldPath) => {
             if (oldPath.includes('/profile'))
