@@ -7,36 +7,38 @@ import ChannelsView from './views/ChannelsView.vue';
 import RawView from './views/RawView.vue';
 import ParserView from './views/ParserView.vue';
 
+// Módulo FEEDS removido
 export const rssFeedRoutes: RouteRecordRaw[] = [
-    {
-        path: '/feed',
-        component: AdminLayout,
-        children: [
-            { path: 'channels', component: ChannelsView },
-            { path: 'raw', component: RawView },
-            { path: 'parser', component: ParserView },
-        ]
-    },
+    // {
+    //     path: '/feed',
+    //     component: AdminLayout,
+    //     children: [
+    //         { path: 'channels', component: ChannelsView },
+    //         { path: 'raw', component: RawView },
+    //         { path: 'parser', component: ParserView },
+    //     ]
+    // },
 ] as RouteRecordRaw[]
 
-useNavbar().addItems([
-    {
-        label: 'RSS',
-        icon: 'fas fa-rss',
-        to: '/feed/channels',
-        group: 'Feeds'
-    },
-    {
-        label: 'Parser',
-        icon: 'fas fa-code',
-        to: '/feed/parser',
-        group: 'Feeds'
-    },
-    {
-        label: 'Raw',
-        icon: 'fas fa-database',
-        to: '/feed/raw',
-        group: 'Feeds'
-    }
-])
+// Módulo FEEDS removido - itens do menu removidos
+// useNavbar().addItems([
+//     {
+//         label: 'RSS',
+//         icon: 'fas fa-rss',
+//         to: '/feed/channels',
+//         group: 'Feeds'
+//     },
+//     {
+//         label: 'Parser',
+//         icon: 'fas fa-code',
+//         to: '/feed/parser',
+//         group: 'Feeds'
+//     },
+//     {
+//         label: 'Raw',
+//         icon: 'fas fa-database',
+//         to: '/feed/raw',
+//         group: 'Feeds'
+//     }
+// ])
 

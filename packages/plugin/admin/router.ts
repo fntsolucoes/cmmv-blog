@@ -35,17 +35,18 @@ export const blogAdminRoutes: RouteRecordRaw[] = [
         component: AdminLayout,
         children: [
             { path: '', component: HomeView },
-            { path: '/posts', component: PostsView },
+            // Módulo CMS removido
+            // { path: '/posts', component: PostsView },
             //{ path: '/pages', component: PagesView },
             { path: '/settings', component: SettingsView },
-            { path: '/categories', component: CategoriesView },
-            { path: '/tags', component: TagsView },
+            // { path: '/categories', component: CategoriesView },
+            // { path: '/tags', component: TagsView },
             { path: '/profile', component: ProfileView },
-            { path: '/authors', component: AuthorsView },
-            { path: '/medias', component: MediasView },
+            // { path: '/authors', component: AuthorsView },
+            // { path: '/medias', component: MediasView },
             //{ path: '/media-backups', component: MediaBackupsView },
-            { path: '/members', component: MembersView },
-            { path: '/comments', component: CommentsView },
+            // { path: '/members', component: MembersView },
+            // { path: '/comments', component: CommentsView },
             { path: '/imports', component: ImportsView },
             { path: '/themes', component: ThemesView },
             { path: '/cover', component: CoverView },
@@ -61,26 +62,28 @@ export const blogAdminRoutes: RouteRecordRaw[] = [
         name: 'setup',
         component: SetupView
     },
-    {
-        path: '/post/:id',
-        name: 'editPost',
-        component: PostView
-    },
-    {
-        path: '/post',
-        name: 'newPost',
-        component: PostView,
-    },
-    {
-        path: '/page/:id',
-        name: 'editPage',
-        component: PageView
-    },
-    {
-        path: '/page',
-        name: 'newPage',
-        component: PageView
-    },
+    // Módulo CMS removido
+    // {
+    //     path: '/post/:id',
+    //     name: 'editPost',
+    //     component: PostView
+    // },
+    // {
+    //     path: '/post',
+    //     name: 'newPost',
+    //     component: PostView,
+    // },
+    // Módulo CMS removido - Páginas também removidas
+    // {
+    //     path: '/page/:id',
+    //     name: 'editPage',
+    //     component: PageView
+    // },
+    // {
+    //     path: '/page',
+    //     name: 'newPage',
+    //     component: PageView
+    // },
 ] as RouteRecordRaw[];
 
 useNavbar().addItems([
@@ -89,66 +92,67 @@ useNavbar().addItems([
         icon: 'fas fa-home',
         to: '/'
     },
-    {
-        label: 'Posts',
-        icon: 'fas fa-file-alt',
-        to: '/posts',
-        group: 'CMS'
-    },
+    // Módulo CMS removido
+    // {
+    //     label: 'Posts',
+    //     icon: 'fas fa-file-alt',
+    //     to: '/posts',
+    //     group: 'CMS'
+    // },
     /*{
         label: 'Pages',
         icon: 'fas fa-copy',
         to: '/pages',
         group: 'CMS'
     },*/
-    {
-        label: 'Comments',
-        icon: 'fas fa-comments',
-        to: '/comments',
-        group: 'CMS'
-    },
-    {
-        label: 'Medias',
-        icon: 'fas fa-images',
-        to: '/medias',
-        group: 'CMS'
-    },
+    // {
+    //     label: 'Comments',
+    //     icon: 'fas fa-comments',
+    //     to: '/comments',
+    //     group: 'CMS'
+    // },
+    // {
+    //     label: 'Medias',
+    //     icon: 'fas fa-images',
+    //     to: '/medias',
+    //     group: 'CMS'
+    // },
     /*{
         label: 'Media Backups',
         icon: 'fas fa-archive',
         to: '/media-backups',
         group: 'CMS'
     },*/
-    {
-        label: 'Categories',
-        icon: 'fas fa-folder',
-        to: '/categories',
-        group: 'CMS'
-    },
-    {
-        label: 'Tags',
-        icon: 'fas fa-tags',
-        to: '/tags',
-        group: 'CMS'
-    },
+    // {
+    //     label: 'Categories',
+    //     icon: 'fas fa-folder',
+    //     to: '/categories',
+    //     group: 'CMS'
+    // },
+    // {
+    //     label: 'Tags',
+    //     icon: 'fas fa-tags',
+    //     to: '/tags',
+    //     group: 'CMS'
+    // },
     {
         label: 'Prompts',
         icon: 'fas fa-robot',
         to: '/prompts',
         group: 'Settings'
     },
-    {
-        label: 'Authors',
-        icon: 'fas fa-user-edit',
-        to: '/authors',
-        group: 'CMS'
-    },
-    {
-        label: 'Members',
-        icon: 'fas fa-users',
-        to: '/members',
-        group: 'CMS'
-    },
+    // {
+    //     label: 'Authors',
+    //     icon: 'fas fa-user-edit',
+    //     to: '/authors',
+    //     group: 'CMS'
+    // },
+    // {
+    //     label: 'Members',
+    //     icon: 'fas fa-users',
+    //     to: '/members',
+    //     group: 'CMS'
+    // },
     {
         label: 'Imports',
         icon: 'fas fa-file-import',

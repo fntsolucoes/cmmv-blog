@@ -247,10 +247,6 @@ function loadCollapsedGroupsState() {
     }
 }
 
-const updateNavbarItems = () => {
-    navbarItems.value = useNavbar().getItems()
-}
-
 const loadWhitelabels = async () => {
     try {
         loadingWhitelabels.value = true
@@ -303,7 +299,6 @@ const logout = () => {
 
 onMounted(async () => {
     const savedPreference = localStorage.getItem('sidebarCollapsed')
-    updateNavbarItems()
     loadCollapsedGroupsState()
 
     if (savedPreference !== null)

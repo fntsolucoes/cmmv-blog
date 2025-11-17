@@ -19,11 +19,12 @@ export const newsletterRoutes: RouteRecordRaw[] = [
     },
 ] as RouteRecordRaw[]
 
-useNavbar().addItems([
-    {
-        label: 'Subscribers',
-        icon: 'fas fa-envelope',
-        to: '/newsletter/subscribers',
-        group: 'CMS'
-    }
-])
+// Módulo CMS removido - Newsletter subscribers removido do menu
+// useNavbar().addItems([
+//     {
+//         label: 'Subscribers',
+//         icon: 'fas fa-envelope',
+//         to: '/newsletter/subscribers',
+//         group: 'CMS'
+//     }
+// ])
