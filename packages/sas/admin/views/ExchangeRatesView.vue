@@ -103,17 +103,17 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="bg-neutral-800 rounded-lg p-4 border border-neutral-700">
                 <div class="text-sm text-neutral-400 mb-1">Abertura</div>
-                <div class="text-2xl font-bold text-white">{{ formatCurrency(latestRate?.rate) }}</div>
+                <div class="text-2xl font-bold text-white">{{ latestRate?.open ? formatCurrency(latestRate.open) : '-' }}</div>
                 <div class="text-xs text-neutral-500 mt-1">{{ formatDate(latestRate?.date) }}</div>
             </div>
             <div class="bg-neutral-800 rounded-lg p-4 border border-emerald-400">
                 <div class="text-sm text-neutral-400 mb-1">Máxima</div>
-                <div class="text-2xl font-bold text-emerald-400">{{ formatCurrency(latestRate?.rate) }}</div>
+                <div class="text-2xl font-bold text-emerald-400">{{ latestRate?.high ? formatCurrency(latestRate.high) : '-' }}</div>
                 <div class="text-xs text-neutral-500 mt-1">{{ formatDate(latestRate?.date) }}</div>
             </div>
             <div class="bg-neutral-800 rounded-lg p-4 border border-red-400">
                 <div class="text-sm text-neutral-400 mb-1">Mínima</div>
-                <div class="text-2xl font-bold text-red-400">{{ formatCurrency(latestRate?.rate) }}</div>
+                <div class="text-2xl font-bold text-red-400">{{ latestRate?.low ? formatCurrency(latestRate.low) : '-' }}</div>
                 <div class="text-xs text-neutral-500 mt-1">{{ formatDate(latestRate?.date) }}</div>
             </div>
             <div class="bg-neutral-800 rounded-lg p-4 border border-blue-400">
@@ -198,9 +198,9 @@
                         </tr>
                         <tr v-for="(rate, index) in filteredRates" :key="rate.id" class="hover:bg-neutral-700">
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ formatDate(rate.date) }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ formatCurrency(rate.rate) }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-emerald-400">{{ formatCurrency(rate.rate) }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-400">{{ formatCurrency(rate.rate) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ rate.open ? formatCurrency(rate.open) : '-' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-emerald-400">{{ rate.high ? formatCurrency(rate.high) : '-' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-400">{{ rate.low ? formatCurrency(rate.low) : '-' }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-400">{{ formatCurrency(rate.rate) }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm" :class="getVariationClass(rate, index)">
                                 {{ getVariation(rate, index) }}

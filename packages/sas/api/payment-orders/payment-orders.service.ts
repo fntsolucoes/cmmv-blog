@@ -82,11 +82,38 @@ export class PaymentOrdersService {
         }
 
         // Validar data de saque (não pode ser futura)
-        const withdrawalDate = new Date(data.withdrawalDate);
+        // Normalizar data para UTC com meio-dia para evitar problemas de timezone
+        let withdrawalDate: Date;
+        if (typeof data.withdrawalDate === 'string') {
+            // Se for string no formato YYYY-MM-DD, criar Date em UTC
+            if (data.withdrawalDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                const [year, month, day] = data.withdrawalDate.split('-').map(Number);
+                withdrawalDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+            } else {
+                withdrawalDate = new Date(data.withdrawalDate);
+            }
+        } else {
+            withdrawalDate = new Date(data.withdrawalDate);
+        }
+        
+        // Normalizar para UTC com meio-dia
+        withdrawalDate = new Date(Date.UTC(
+            withdrawalDate.getUTCFullYear(),
+            withdrawalDate.getUTCMonth(),
+            withdrawalDate.getUTCDate(),
+            12, 0, 0, 0
+        ));
+        
+        // Comparar com hoje em UTC
         const today = new Date();
-        today.setHours(23, 59, 59, 999);
+        const todayUTC = new Date(Date.UTC(
+            today.getUTCFullYear(),
+            today.getUTCMonth(),
+            today.getUTCDate(),
+            23, 59, 59, 999
+        ));
 
-        if (withdrawalDate.getTime() > today.getTime()) {
+        if (withdrawalDate.getTime() > todayUTC.getTime()) {
             throw new Error("Withdrawal date cannot be in the future");
         }
 
@@ -134,8 +161,29 @@ export class PaymentOrdersService {
                 throw new Error('Effective payment date is required when status is "Pago"');
             }
 
-            const paymentDate = new Date(data.effectivePaymentDate);
-            if (paymentDate.getTime() > today.getTime()) {
+            // Normalizar data para UTC com meio-dia para evitar problemas de timezone
+            let paymentDate: Date;
+            if (typeof data.effectivePaymentDate === 'string') {
+                // Se for string no formato YYYY-MM-DD, criar Date em UTC
+                if (data.effectivePaymentDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    const [year, month, day] = data.effectivePaymentDate.split('-').map(Number);
+                    paymentDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+                } else {
+                    paymentDate = new Date(data.effectivePaymentDate);
+                }
+            } else {
+                paymentDate = new Date(data.effectivePaymentDate);
+            }
+            
+            // Normalizar para UTC com meio-dia
+            paymentDate = new Date(Date.UTC(
+                paymentDate.getUTCFullYear(),
+                paymentDate.getUTCMonth(),
+                paymentDate.getUTCDate(),
+                12, 0, 0, 0
+            ));
+            
+            if (paymentDate.getTime() > todayUTC.getTime()) {
                 throw new Error("Effective payment date cannot be in the future");
             }
 
@@ -215,10 +263,38 @@ export class PaymentOrdersService {
             if (data.withdrawalDate === null) {
                 payload.withdrawalDate = null;
             } else {
-                const withdrawalDate = new Date(data.withdrawalDate);
+                // Normalizar data para UTC com meio-dia para evitar problemas de timezone
+                let withdrawalDate: Date;
+                if (typeof data.withdrawalDate === 'string') {
+                    // Se for string no formato YYYY-MM-DD, criar Date em UTC
+                    if (data.withdrawalDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        const [year, month, day] = data.withdrawalDate.split('-').map(Number);
+                        withdrawalDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+                    } else {
+                        withdrawalDate = new Date(data.withdrawalDate);
+                    }
+                } else {
+                    withdrawalDate = new Date(data.withdrawalDate);
+                }
+                
+                // Normalizar para UTC com meio-dia
+                withdrawalDate = new Date(Date.UTC(
+                    withdrawalDate.getUTCFullYear(),
+                    withdrawalDate.getUTCMonth(),
+                    withdrawalDate.getUTCDate(),
+                    12, 0, 0, 0
+                ));
+                
+                // Comparar com hoje em UTC
                 const today = new Date();
-                today.setHours(23, 59, 59, 999);
-                if (withdrawalDate.getTime() > today.getTime()) {
+                const todayUTC = new Date(Date.UTC(
+                    today.getUTCFullYear(),
+                    today.getUTCMonth(),
+                    today.getUTCDate(),
+                    23, 59, 59, 999
+                ));
+                
+                if (withdrawalDate.getTime() > todayUTC.getTime()) {
                     throw new Error("Withdrawal date cannot be in the future");
                 }
                 payload.withdrawalDate = withdrawalDate;
@@ -255,10 +331,38 @@ export class PaymentOrdersService {
             if (data.effectivePaymentDate === null) {
                 payload.effectivePaymentDate = null;
             } else {
-                const paymentDate = new Date(data.effectivePaymentDate);
+                // Normalizar data para UTC com meio-dia para evitar problemas de timezone
+                let paymentDate: Date;
+                if (typeof data.effectivePaymentDate === 'string') {
+                    // Se for string no formato YYYY-MM-DD, criar Date em UTC
+                    if (data.effectivePaymentDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        const [year, month, day] = data.effectivePaymentDate.split('-').map(Number);
+                        paymentDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+                    } else {
+                        paymentDate = new Date(data.effectivePaymentDate);
+                    }
+                } else {
+                    paymentDate = new Date(data.effectivePaymentDate);
+                }
+                
+                // Normalizar para UTC com meio-dia
+                paymentDate = new Date(Date.UTC(
+                    paymentDate.getUTCFullYear(),
+                    paymentDate.getUTCMonth(),
+                    paymentDate.getUTCDate(),
+                    12, 0, 0, 0
+                ));
+                
+                // Comparar com hoje em UTC
                 const today = new Date();
-                today.setHours(23, 59, 59, 999);
-                if (paymentDate.getTime() > today.getTime()) {
+                const todayUTC = new Date(Date.UTC(
+                    today.getUTCFullYear(),
+                    today.getUTCMonth(),
+                    today.getUTCDate(),
+                    23, 59, 59, 999
+                ));
+                
+                if (paymentDate.getTime() > todayUTC.getTime()) {
                     throw new Error("Effective payment date cannot be in the future");
                 }
                 payload.effectivePaymentDate = paymentDate;
@@ -302,10 +406,38 @@ export class PaymentOrdersService {
                 throw new Error('Effective payment date is required when status is "Pago"');
             }
 
-            const paymentDate = new Date(effectivePaymentDate);
+            // Normalizar data para UTC com meio-dia para evitar problemas de timezone
+            let paymentDate: Date;
+            if (typeof effectivePaymentDate === 'string') {
+                // Se for string no formato YYYY-MM-DD, criar Date em UTC
+                if (effectivePaymentDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    const [year, month, day] = effectivePaymentDate.split('-').map(Number);
+                    paymentDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+                } else {
+                    paymentDate = new Date(effectivePaymentDate);
+                }
+            } else {
+                paymentDate = new Date(effectivePaymentDate);
+            }
+            
+            // Normalizar para UTC com meio-dia
+            paymentDate = new Date(Date.UTC(
+                paymentDate.getUTCFullYear(),
+                paymentDate.getUTCMonth(),
+                paymentDate.getUTCDate(),
+                12, 0, 0, 0
+            ));
+            
+            // Comparar com hoje em UTC
             const today = new Date();
-            today.setHours(23, 59, 59, 999);
-            if (paymentDate.getTime() > today.getTime()) {
+            const todayUTC = new Date(Date.UTC(
+                today.getUTCFullYear(),
+                today.getUTCMonth(),
+                today.getUTCDate(),
+                23, 59, 59, 999
+            ));
+            
+            if (paymentDate.getTime() > todayUTC.getTime()) {
                 throw new Error("Effective payment date cannot be in the future");
             }
 

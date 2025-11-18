@@ -97,7 +97,15 @@ export class ExchangeRatesService {
     /**
      * Criar ou atualizar taxa de câmbio
      */
-    async upsertRate(currencyPair: string, date: Date, rate: number, source: string = 'csv-import') {
+    async upsertRate(
+        currencyPair: string, 
+        date: Date, 
+        rate: number, 
+        source: string = 'csv-import',
+        open?: number,
+        high?: number,
+        low?: number
+    ) {
         const ExchangeRatesEntity = Repository.getEntity("SasExchangeRatesEntity");
         
         // Validar inputs
@@ -129,10 +137,17 @@ export class ExchangeRatesService {
             // Atualizar registro existente
             console.log(`[UPSERT] Atualizando registro existente ID ${existing.id} para ${normalizedDate.toLocaleDateString('pt-BR')} com taxa ${rate}`);
             try {
-                const updateResult = await Repository.update(ExchangeRatesEntity, existing.id, {
+                const updateData: any = {
                     rate,
                     source
-                });
+                };
+                
+                // Adicionar campos opcionais se fornecidos
+                if (open !== undefined) updateData.open = open;
+                if (high !== undefined) updateData.high = high;
+                if (low !== undefined) updateData.low = low;
+                
+                const updateResult = await Repository.update(ExchangeRatesEntity, existing.id, updateData);
                 console.log(`[UPSERT] Resultado da atualização:`, updateResult);
                 return existing;
             } catch (error) {
@@ -144,12 +159,19 @@ export class ExchangeRatesService {
         // Criar novo registro
         console.log(`[UPSERT] Criando novo registro para ${normalizedDate.toLocaleDateString('pt-BR')} com taxa ${rate}`);
         try {
-            const result = await Repository.insert(ExchangeRatesEntity, {
+            const insertData: any = {
                 currencyPair,
                 date: normalizedDate,
                 rate,
                 source
-            });
+            };
+            
+            // Adicionar campos opcionais se fornecidos
+            if (open !== undefined) insertData.open = open;
+            if (high !== undefined) insertData.high = high;
+            if (low !== undefined) insertData.low = low;
+            
+            const result = await Repository.insert(ExchangeRatesEntity, insertData);
             
             // Verificar se a inserção foi bem-sucedida
             if (result && (result.success === false || result.message)) {
@@ -619,6 +641,11 @@ export class ExchangeRatesService {
                         continue;
                     }
 
+                    // Parse campos opcionais (Abertura, Máxima, Mínima)
+                    const open = row.Abertura ? this.parseDecimal(row.Abertura) : undefined;
+                    const high = row.Máxima ? this.parseDecimal(row.Máxima) : undefined;
+                    const low = row.Mínima ? this.parseDecimal(row.Mínima) : undefined;
+
                     // Verificar se já existe
                     const existingRate = await this.getRateByDate(detectedPair, date);
 
@@ -626,7 +653,7 @@ export class ExchangeRatesService {
                         // Atualizar registro existente
                         console.log(`[IMPORT] Linha ${rowNumber}: Atualizando registro existente para ${date.toLocaleDateString('pt-BR')} (ID: ${existingRate.id})`);
                         try {
-                            await this.upsertRate(detectedPair, date, rate, 'csv-import');
+                            await this.upsertRate(detectedPair, date, rate, 'csv-import', open, high, low);
                             updated++;
                         } catch (error: any) {
                             console.error(`[IMPORT] Linha ${rowNumber}: Erro ao atualizar:`, error);
@@ -642,7 +669,7 @@ export class ExchangeRatesService {
                         // Criar novo registro
                         console.log(`[IMPORT] Linha ${rowNumber}: Criando novo registro para ${date.toLocaleDateString('pt-BR')} com taxa ${rate}`);
                         try {
-                            await this.upsertRate(detectedPair, date, rate, 'csv-import');
+                            await this.upsertRate(detectedPair, date, rate, 'csv-import', open, high, low);
                             imported++;
                         } catch (error: any) {
                             console.error(`[IMPORT] Linha ${rowNumber}: Erro ao inserir:`, error);

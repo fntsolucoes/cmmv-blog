@@ -50,6 +50,24 @@ export class SasExchangeRatesContract extends AbstractContract {
     rate!: number; // Taxa de fechamento ("Último")
 
     @ContractField({
+        protoType: 'double',
+        nullable: true,
+    })
+    open?: number; // Taxa de abertura
+
+    @ContractField({
+        protoType: 'double',
+        nullable: true,
+    })
+    high?: number; // Taxa máxima
+
+    @ContractField({
+        protoType: 'double',
+        nullable: true,
+    })
+    low?: number; // Taxa mínima
+
+    @ContractField({
         protoType: 'string',
         nullable: true,
     })

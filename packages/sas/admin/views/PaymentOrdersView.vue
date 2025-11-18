@@ -588,13 +588,25 @@ const form = ref({
 });
 
 const markAsPaidForm = ref({
-    effectivePaymentDate: new Date().toISOString().split('T')[0],
+    effectivePaymentDate: (() => {
+        const today = new Date();
+        const year = today.getUTCFullYear();
+        const month = String(today.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(today.getUTCDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    })(),
     paidValue: 0
 });
 
 const taxPercentage = ref(0);
 
-const todayDate = computed(() => new Date().toISOString().split('T')[0]);
+const todayDate = computed(() => {
+    const today = new Date();
+    const year = today.getUTCFullYear();
+    const month = String(today.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(today.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+});
 
 // Filtrar itens
 const filteredItems = computed(() => {
@@ -611,7 +623,12 @@ const filteredItems = computed(() => {
     if (filters.value.withdrawalDate) {
         result = result.filter(item => {
             if (!item.withdrawalDate) return false;
-            const itemDate = new Date(item.withdrawalDate).toISOString().split('T')[0];
+            // Usar UTC para comparar datas
+            const d = new Date(item.withdrawalDate);
+            const year = d.getUTCFullYear();
+            const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(d.getUTCDate()).padStart(2, '0');
+            const itemDate = `${year}-${month}-${day}`;
             return itemDate === filters.value.withdrawalDate;
         });
     }
@@ -725,7 +742,13 @@ const formatCurrency = (value: number, currency: string) => {
 
 const formatDate = (date: string | Date | null) => {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('pt-BR');
+    const d = typeof date === 'string' ? new Date(date) : date;
+    // Usar UTC para evitar problemas de timezone
+    // A data está armazenada em UTC, então usamos getUTC* para formatar
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const year = d.getUTCFullYear();
+    return `${day}/${month}/${year}`;
 };
 
 const formatMonthReference = (monthStr: string) => {
@@ -745,7 +768,17 @@ const calculateTaxPercentage = (item: any) => {
 
 // Buscar taxa de câmbio
 const getExchangeRate = async (currencyPair: string, date?: Date) => {
-    const cacheKey = `${currencyPair}-${date ? date.toISOString().split('T')[0] : 'latest'}`;
+    // Usar UTC para formatar a data da chave de cache
+    const dateKey = date 
+        ? (() => {
+            const year = date.getUTCFullYear();
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        })()
+        : 'latest';
+    const cacheKey = `${currencyPair}-${dateKey}`;
+    
     if (exchangeRatesCache.value.has(cacheKey)) {
         return exchangeRatesCache.value.get(cacheKey);
     }
@@ -753,8 +786,8 @@ const getExchangeRate = async (currencyPair: string, date?: Date) => {
     try {
         let rate = null;
         if (date) {
-            // Primeiro tenta buscar pela data específica
-            const response = await client.exchangeRates.getByDate(currencyPair, date.toISOString().split('T')[0]);
+            // Primeiro tenta buscar pela data específica (usando UTC)
+            const response = await client.exchangeRates.getByDate(currencyPair, dateKey);
             rate = response?.data;
             
             // Se não encontrou para a data específica, busca a mais recente
@@ -784,7 +817,17 @@ const getExchangeRate = async (currencyPair: string, date?: Date) => {
 const getExchangeRateDisplay = (item: any) => {
     if (item.currency === 'BRL') return '-';
     const currencyPair = `${item.currency}-BRL`;
-    const rate = exchangeRatesCache.value.get(`${currencyPair}-${item.effectivePaymentDate ? new Date(item.effectivePaymentDate).toISOString().split('T')[0] : 'latest'}`);
+    // Usar UTC para formatar a data da chave de cache
+    const dateKey = item.effectivePaymentDate 
+        ? (() => {
+            const d = new Date(item.effectivePaymentDate);
+            const year = d.getUTCFullYear();
+            const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(d.getUTCDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        })()
+        : 'latest';
+    const rate = exchangeRatesCache.value.get(`${currencyPair}-${dateKey}`);
     if (!rate) return '-';
     return `R$ ${Number(rate.rate).toFixed(4)}`;
 };
@@ -795,7 +838,17 @@ const calculateNetValue = (item: any) => {
     if (item.currency === 'BRL') return netValue;
     
     const currencyPair = `${item.currency}-BRL`;
-    const cacheKey = `${currencyPair}-${item.effectivePaymentDate ? new Date(item.effectivePaymentDate).toISOString().split('T')[0] : 'latest'}`;
+    // Usar UTC para formatar a data da chave de cache
+    const dateKey = item.effectivePaymentDate 
+        ? (() => {
+            const d = new Date(item.effectivePaymentDate);
+            const year = d.getUTCFullYear();
+            const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(d.getUTCDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        })()
+        : 'latest';
+    const cacheKey = `${currencyPair}-${dateKey}`;
     const rate = exchangeRatesCache.value.get(cacheKey);
     
     if (!rate) return netValue;
@@ -809,7 +862,17 @@ const formatNetValue = (item: any) => {
     }
     
     const currencyPair = `${item.currency}-BRL`;
-    const cacheKey = `${currencyPair}-${item.effectivePaymentDate ? new Date(item.effectivePaymentDate).toISOString().split('T')[0] : 'latest'}`;
+    // Usar UTC para formatar a data da chave de cache
+    const dateKey = item.effectivePaymentDate 
+        ? (() => {
+            const d = new Date(item.effectivePaymentDate);
+            const year = d.getUTCFullYear();
+            const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(d.getUTCDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        })()
+        : 'latest';
+    const cacheKey = `${currencyPair}-${dateKey}`;
     const rate = exchangeRatesCache.value.get(cacheKey);
     
     if (!rate) {
@@ -848,7 +911,17 @@ const getPaidValueColor = (item: any) => {
     
     if (item.currency !== 'BRL') {
         const currencyPair = `${item.currency}-BRL`;
-        const cacheKey = `${currencyPair}-${item.effectivePaymentDate ? new Date(item.effectivePaymentDate).toISOString().split('T')[0] : 'latest'}`;
+        // Usar UTC para formatar a data da chave de cache
+        const dateKey = item.effectivePaymentDate 
+            ? (() => {
+                const d = new Date(item.effectivePaymentDate);
+                const year = d.getUTCFullYear();
+                const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(d.getUTCDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            })()
+            : 'latest';
+        const cacheKey = `${currencyPair}-${dateKey}`;
         const rate = exchangeRatesCache.value.get(cacheKey);
         if (rate) {
             expectedNetValue = netValue * Number(rate.rate);
@@ -968,10 +1041,22 @@ const editItem = (item: any) => {
         currency: item.currency || 'BRL',
         invoiceAmount,
         taxAmount,
-        withdrawalDate: item.withdrawalDate ? new Date(item.withdrawalDate).toISOString().split('T')[0] : '',
+        withdrawalDate: item.withdrawalDate ? (() => {
+            const d = new Date(item.withdrawalDate);
+            const year = d.getUTCFullYear();
+            const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(d.getUTCDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        })() : '',
         expectedPaymentMonth: month,
         expectedPaymentYear: year,
-        effectivePaymentDate: item.effectivePaymentDate ? new Date(item.effectivePaymentDate).toISOString().split('T')[0] : '',
+        effectivePaymentDate: item.effectivePaymentDate ? (() => {
+            const d = new Date(item.effectivePaymentDate);
+            const year = d.getUTCFullYear();
+            const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(d.getUTCDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        })() : '',
         status: item.status || 'Pendente',
         paidValue: item.paidValue || null,
         paymentMethod: item.paymentMethod || null
@@ -1022,8 +1107,15 @@ const markAsPaid = async (item: any) => {
         }
     }
     
+    // Usar UTC para criar a data de hoje
+    const today = new Date();
+    const todayYear = today.getUTCFullYear();
+    const todayMonth = String(today.getUTCMonth() + 1).padStart(2, '0');
+    const todayDay = String(today.getUTCDate()).padStart(2, '0');
+    const todayStr = `${todayYear}-${todayMonth}-${todayDay}`;
+    
     markAsPaidForm.value = {
-        effectivePaymentDate: new Date().toISOString().split('T')[0],
+        effectivePaymentDate: todayStr,
         paidValue: Number(defaultPaidValue.toFixed(2))
     };
     showMarkAsPaidModal.value = true;
