@@ -16,6 +16,7 @@ import { SasPaymentOrdersModule } from './payment-orders/payment-orders.module';
 import { SasShareholdersModule } from './shareholders/shareholders.module';
 import { SasExchangeRatesModule } from './exchange-rates/exchange-rates.module';
 import { SasProfitSharingModule } from './profit-sharing/profit-sharing.module';
+import { SasDashboardModule } from './dashboard/dashboard.module';
 
 export const SasModule = new Module('sas', {
     contracts: [
@@ -33,7 +34,8 @@ export const SasModule = new Module('sas', {
         SasPaymentOrdersModule,
         SasShareholdersModule,
         SasExchangeRatesModule,
-        SasProfitSharingModule
+        SasProfitSharingModule,
+        SasDashboardModule
     ]
 });
 

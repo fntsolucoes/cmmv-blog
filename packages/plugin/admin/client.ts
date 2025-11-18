@@ -130,6 +130,10 @@ export const useAdminClient = () => {
         getDashboard: () => api.authRequest('analytics/dashboard', 'GET'),
     };
 
+    const sasDashboard = {
+        getDashboard: () => api.authRequest('sas/dashboard', 'GET'),
+    };
+
     const comments = {
         get: (filters: Record<string, any>) => {
             const query = new URLSearchParams(filters).toString();
@@ -259,6 +263,7 @@ export const useAdminClient = () => {
         users,
         backup,
         prompts,
-        shorturl
+        shorturl,
+        sasDashboard
     };
 };

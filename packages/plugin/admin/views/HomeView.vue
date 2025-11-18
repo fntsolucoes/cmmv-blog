@@ -4,15 +4,15 @@
             <h1 class="text-2xl font-bold text-white">Dashboard</h1>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-neutral-800 rounded-lg shadow-md p-6">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div class="bg-neutral-800 rounded-lg shadow-md p-4">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-neutral-400 text-sm">Total Posts</p>
-                        <h2 class="text-2xl font-bold text-white mt-1">{{ summary.posts || 0 }}</h2>
+                        <p class="text-neutral-400 text-xs">Campanhas Ativas</p>
+                        <h2 class="text-xl font-bold text-white mt-1">{{ sasData.totalActiveCampaigns || 0 }}</h2>
                     </div>
-                    <div class="bg-blue-600/20 p-3 rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none"
+                    <div class="bg-blue-600/20 p-2 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none"
                             viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -21,51 +21,113 @@
                 </div>
             </div>
 
-            <div class="bg-neutral-800 rounded-lg shadow-md p-6">
+            <div class="bg-neutral-800 rounded-lg shadow-md p-4">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-neutral-400 text-sm">Comments</p>
-                        <h2 class="text-2xl font-bold text-white mt-1">{{ summary.comments || 0 }}</h2>
+                        <p class="text-neutral-400 text-xs">Tags Ativas</p>
+                        <h2 class="text-xl font-bold text-white mt-1">{{ sasData.activeTags || 0 }}</h2>
                     </div>
-                    <div class="bg-purple-600/20 p-3 rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-500" fill="none"
+                    <div class="bg-purple-600/20 p-2 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-500" fill="none"
                             viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                         </svg>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-neutral-800 rounded-lg shadow-md p-6">
+            <div class="bg-neutral-800 rounded-lg shadow-md p-4">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-neutral-400 text-sm">Total Views</p>
-                        <h2 class="text-2xl font-bold text-white mt-1">{{ formatNumber(summary.views || 0) }}</h2>
+                        <p class="text-neutral-400 text-xs">Tags que Cairam</p>
+                        <h2 class="text-xl font-bold text-white mt-1">{{ sasData.fallenTags || 0 }}</h2>
                     </div>
-                    <div class="bg-green-600/20 p-3 rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500" fill="none"
+                    <div class="bg-red-600/20 p-2 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none"
                             viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-neutral-800 rounded-lg shadow-md p-6">
+            <div class="bg-neutral-800 rounded-lg shadow-md p-4">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-neutral-400 text-sm">New Subscribers</p>
-                        <h2 class="text-2xl font-bold text-white mt-1">{{ summary.subscribers || 0 }}</h2>
+                        <p class="text-neutral-400 text-xs">Tags Pendentes</p>
+                        <h2 class="text-xl font-bold text-white mt-1">{{ sasData.pendingTags || 0 }}</h2>
                     </div>
-                    <div class="bg-amber-600/20 p-3 rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-amber-500" fill="none"
+                    <div class="bg-amber-600/20 p-2 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-500" fill="none"
                             viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-neutral-800 rounded-lg shadow-md p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-neutral-400 text-xs">Notas Pagas (Mês)</p>
+                        <h2 class="text-xl font-bold text-white mt-1">{{ sasData.paidThisMonth || 0 }}</h2>
+                    </div>
+                    <div class="bg-green-600/20 p-2 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-neutral-800 rounded-lg shadow-md p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-neutral-400 text-xs">Notas Pendentes</p>
+                        <h2 class="text-xl font-bold text-white mt-1">{{ sasData.pendingOrders || 0 }}</h2>
+                    </div>
+                    <div class="bg-orange-600/20 p-2 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-500" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-neutral-800 rounded-lg shadow-md p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-neutral-400 text-xs">Valor Recebido (Mês)</p>
+                        <h2 class="text-xl font-bold text-white mt-1">{{ formatCurrency(sasData.totalReceivedThisMonth || 0) }}</h2>
+                    </div>
+                    <div class="bg-emerald-600/20 p-2 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-500" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-neutral-800 rounded-lg shadow-md p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-neutral-400 text-xs">Valor Pendente</p>
+                        <h2 class="text-xl font-bold text-white mt-1">{{ formatCurrency(sasData.totalPendingValue || 0) }}</h2>
+                    </div>
+                    <div class="bg-yellow-600/20 p-2 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-500" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
                 </div>
@@ -75,31 +137,22 @@
         <div class="space-y-6">
             <div class="bg-neutral-800 rounded-lg shadow-md">
                 <div class="p-6 border-b border-neutral-700">
-                    <h3 class="text-lg font-medium text-white">Traffic Overview</h3>
+                    <h3 class="text-lg font-medium text-white">Notas de Pagamento</h3>
                 </div>
                 <div class="p-6">
                     <div class="h-72 bg-neutral-800 rounded-md">
                         <canvas ref="trafficChart" class="w-full h-full"></canvas>
                     </div>
-                    <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <div>
-                            <p class="text-sm text-neutral-400">Total Visitors</p>
-                            <p class="text-xl font-semibold text-white">{{ formatNumber(summary.totalVisitors || 0) }}
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-neutral-400">Unique Visitors</p>
-                            <p class="text-xl font-semibold text-white">{{ formatNumber(summary.uniqueVisitors || 0) }}
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-neutral-400">Bounce Rate</p>
-                            <p class="text-xl font-semibold text-white">{{ summary.bounceRate || 0 }}%</p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-neutral-400">Avg. Time</p>
-                            <p class="text-xl font-semibold text-white">{{ formatTime(summary.avgTime || 0) }}</p>
-                        </div>
+                </div>
+            </div>
+
+            <div class="bg-neutral-800 rounded-lg shadow-md">
+                <div class="p-6 border-b border-neutral-700">
+                    <h3 class="text-lg font-medium text-white">Tags por Mês</h3>
+                </div>
+                <div class="p-6">
+                    <div class="h-72 bg-neutral-800 rounded-md">
+                        <canvas ref="tagsChart" class="w-full h-full"></canvas>
                     </div>
                 </div>
             </div>
@@ -169,9 +222,12 @@ import { useAdminClient } from '../client';
 const adminAPI = useAdminClient();
 const analytics = adminAPI.analytics;
 const comments = adminAPI.comments;
+const sasDashboard = adminAPI.sasDashboard;
 
 const trafficChart = ref(null);
-let chart = null;
+const tagsChart = ref(null);
+let notesChart = null;
+let tagsChartInstance = null;
 
 const summary = ref({
     posts: 0,
@@ -190,8 +246,279 @@ const summary = ref({
     trafficData: []
 });
 
+const sasData = ref({
+    totalActiveCampaigns: 0,
+    activeTags: 0,
+    fallenTags: 0,
+    pendingTags: 0,
+    paidThisMonth: 0,
+    pendingOrders: 0,
+    totalReceivedThisMonth: 0,
+    totalPendingValue: 0,
+    notesByMonth: [],
+    tagsByMonth: []
+});
+
 const popularPosts = ref([]);
 const pendingComments = ref([]);
+
+const createNotesChart = () => {
+    if (!trafficChart.value) return;
+
+    const ctx = trafficChart.value.getContext('2d');
+
+    if (notesChart)
+        notesChart.destroy();
+
+    const notesData = sasData.value.notesByMonth || [];
+
+    if (notesData.length > 0) {
+        const labels = notesData.map(item => {
+            const [year, month] = item.month.split('-');
+            const date = new Date(parseInt(year), parseInt(month) - 1);
+            return date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+        });
+
+        const paidData = notesData.map(item => item.paid || 0);
+        const pendingData = notesData.map(item => item.pending || 0);
+
+        notesChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Notas Pagas',
+                        data: paidData,
+                        backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Notas Pendentes',
+                        data: pendingData,
+                        backgroundColor: 'rgba(245, 158, 11, 0.7)',
+                        borderColor: 'rgba(245, 158, 11, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: 'rgba(255, 255, 255, 0.7)',
+                            font: {
+                                family: 'system-ui'
+                            },
+                            boxWidth: 12,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                        titleColor: 'rgba(255, 255, 255, 0.9)',
+                        bodyColor: 'rgba(255, 255, 255, 0.7)',
+                        borderColor: 'rgba(71, 85, 105, 0.5)',
+                        borderWidth: 1,
+                        padding: 10
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: false,
+                        grid: {
+                            color: 'rgba(71, 85, 105, 0.2)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            font: {
+                                family: 'system-ui',
+                                size: 11
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        stacked: false,
+                        grid: {
+                            color: 'rgba(71, 85, 105, 0.2)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            font: {
+                                family: 'system-ui',
+                                size: 11
+                            },
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        notesChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Sem Dados'],
+                datasets: [{
+                    data: [0],
+                    backgroundColor: 'rgba(71, 85, 105, 0.3)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+};
+
+const createTagsChart = () => {
+    if (!tagsChart.value) return;
+
+    const ctx = tagsChart.value.getContext('2d');
+
+    if (tagsChartInstance)
+        tagsChartInstance.destroy();
+
+    const tagsData = sasData.value.tagsByMonth || [];
+
+    if (tagsData.length > 0) {
+        const labels = tagsData.map(item => {
+            const [year, month] = item.month.split('-');
+            const date = new Date(parseInt(year), parseInt(month) - 1);
+            return date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+        });
+
+        const implementedData = tagsData.map(item => item.implemented || 0);
+        const pendingData = tagsData.map(item => item.pending || 0);
+        const fallenData = tagsData.map(item => item.fallen || 0);
+
+        tagsChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Tags Implementadas',
+                        data: implementedData,
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Tags Pendentes',
+                        data: pendingData,
+                        backgroundColor: 'rgba(245, 158, 11, 0.7)',
+                        borderColor: 'rgba(245, 158, 11, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Tags que Cairam',
+                        data: fallenData,
+                        backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                        borderColor: 'rgba(239, 68, 68, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: 'rgba(255, 255, 255, 0.7)',
+                            font: {
+                                family: 'system-ui'
+                            },
+                            boxWidth: 12,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                        titleColor: 'rgba(255, 255, 255, 0.9)',
+                        bodyColor: 'rgba(255, 255, 255, 0.7)',
+                        borderColor: 'rgba(71, 85, 105, 0.5)',
+                        borderWidth: 1,
+                        padding: 10
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: false,
+                        grid: {
+                            color: 'rgba(71, 85, 105, 0.2)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            font: {
+                                family: 'system-ui',
+                                size: 11
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        stacked: false,
+                        grid: {
+                            color: 'rgba(71, 85, 105, 0.2)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            font: {
+                                family: 'system-ui',
+                                size: 11
+                            },
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        tagsChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Sem Dados'],
+                datasets: [{
+                    data: [0],
+                    backgroundColor: 'rgba(71, 85, 105, 0.3)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+};
 
 const createTrafficChart = () => {
     if (!trafficChart.value) return;
@@ -403,6 +730,51 @@ const rejectComment = async (commentId) => {
 
 onMounted(async () => {
     try {
+        // Carregar dados do dashboard SAS
+        try {
+            console.log('[HomeView] Carregando dados do dashboard SAS...');
+            const sasDashboardData = await sasDashboard.getDashboard();
+            console.log('[HomeView] Resposta do dashboard SAS:', sasDashboardData);
+            
+            // A resposta pode vir em diferentes formatos:
+            // - { result: { data: {...} } } (formato do framework)
+            // - { data: {...} } (formato do controller)
+            // - {...} (diretamente)
+            let dashboardData = {};
+            if (sasDashboardData?.result?.data) {
+                dashboardData = sasDashboardData.result.data;
+            } else if (sasDashboardData?.data) {
+                dashboardData = sasDashboardData.data;
+            } else if (sasDashboardData) {
+                dashboardData = sasDashboardData;
+            }
+            
+            console.log('[HomeView] Dados extraídos:', dashboardData);
+            
+            sasData.value = {
+                totalActiveCampaigns: dashboardData.totalActiveCampaigns || 0,
+                activeTags: dashboardData.activeTags || 0,
+                fallenTags: dashboardData.fallenTags || 0,
+                pendingTags: dashboardData.pendingTags || 0,
+                paidThisMonth: dashboardData.paidThisMonth || 0,
+                pendingOrders: dashboardData.pendingOrders || 0,
+                totalReceivedThisMonth: dashboardData.totalReceivedThisMonth || 0,
+                totalPendingValue: dashboardData.totalPendingValue || 0,
+                notesByMonth: dashboardData.notesByMonth || [],
+                tagsByMonth: dashboardData.tagsByMonth || []
+            };
+            
+            console.log('[HomeView] ✅ Dados do dashboard SAS carregados:', sasData.value);
+            
+            // Criar gráficos após carregar os dados
+            setTimeout(() => {
+                createNotesChart();
+                createTagsChart();
+            }, 100);
+        } catch (error) {
+            console.error('[HomeView] ❌ Erro ao carregar dados do dashboard SAS:', error);
+        }
+
         const dashboardData = await analytics.getDashboard();
         const summaryData = await analytics.getSummary();
 
@@ -501,6 +873,13 @@ onMounted(async () => {
         console.error('Error fetching analytics data:', error);
     }
 });
+
+const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(value || 0);
+};
 
 const formatNumber = (num) => {
     if (num >= 1000000)
