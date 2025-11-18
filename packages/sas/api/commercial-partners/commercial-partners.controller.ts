@@ -14,6 +14,11 @@ export class CommercialPartnersController {
     async getPaymentOrdersHistory(@Param("id") id: string) {
         return await this.commercialPartnersService.getPaymentOrdersHistory(id);
     }
+
+    @Get("all")
+    async getAllPartners() {
+        return await this.commercialPartnersService.getAllPartners();
+    }
 }
 
 

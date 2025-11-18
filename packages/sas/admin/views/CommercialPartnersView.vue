@@ -780,17 +780,23 @@ const loadCostCenters = async () => {
 // Carregar campanhas do parceiro
 const loadCampaigns = async (partnerId: string) => {
     try {
+        console.log(`[CommercialPartnersView] Carregando campanhas para parceiro ${partnerId}`);
         // Usar endpoint customizado que retorna todas as campanhas sem limite
         const response = await client.campaigns.getAllByPartner(partnerId);
-        return response.data || [];
+        const campaigns = response.data || [];
+        console.log(`[CommercialPartnersView] ✅ ${campaigns.length} campanhas carregadas para parceiro ${partnerId}`);
+        return campaigns;
     } catch (error) {
-        console.error('Erro ao carregar campanhas:', error);
+        console.error(`[CommercialPartnersView] ❌ Erro ao carregar campanhas do parceiro ${partnerId}:`, error);
         // Fallback para o endpoint padrão se o customizado falhar
         try {
+            console.log(`[CommercialPartnersView] Tentando fallback para parceiro ${partnerId}...`);
             const fallbackResponse = await client.campaigns.get({ commercialPartnerId: partnerId, limit: '10000' });
-            return fallbackResponse.data || [];
+            const fallbackCampaigns = fallbackResponse.data || [];
+            console.log(`[CommercialPartnersView] ✅ Fallback: ${fallbackCampaigns.length} campanhas carregadas`);
+            return fallbackCampaigns;
         } catch (fallbackError) {
-            console.error('Erro no fallback ao carregar campanhas:', fallbackError);
+            console.error(`[CommercialPartnersView] ❌ Erro no fallback ao carregar campanhas do parceiro ${partnerId}:`, fallbackError);
             return [];
         }
     }
@@ -799,8 +805,21 @@ const loadCampaigns = async (partnerId: string) => {
 // Carregar dados
 const loadData = async () => {
     try {
-        const response = await client.commercialPartners.get({});
-        items.value = response.data || [];
+        console.log(`[CommercialPartnersView] Carregando parceiros comerciais...`);
+        // Usar endpoint customizado que retorna todos os parceiros sem limite
+        let partners = [];
+        try {
+            const response = await client.commercialPartners.getAll();
+            partners = response.data || [];
+            console.log(`[CommercialPartnersView] ✅ ${partners.length} parceiros carregados via getAll`);
+        } catch (error) {
+            console.error(`[CommercialPartnersView] ❌ Erro ao usar getAll, tentando fallback:`, error);
+            // Fallback para o endpoint padrão se o customizado falhar
+            const fallbackResponse = await client.commercialPartners.get({ limit: '10000' });
+            partners = fallbackResponse.data || [];
+            console.log(`[CommercialPartnersView] ✅ Fallback: ${partners.length} parceiros carregados`);
+        }
+        items.value = partners;
         // Resetar para primeira página ao carregar dados
         currentPage.value = 1;
         // Limpar busca ao recarregar
@@ -868,7 +887,29 @@ const editItem = async (item: any) => {
     let campaigns = [];
     if (item.partnerType === 'Rede de Afiliação') {
         campaigns = await loadCampaigns(item.id);
+        console.log(`[CommercialPartnersView] editItem: ${campaigns.length} campanhas carregadas para edição`);
     }
+    
+    const mappedCampaigns = campaigns
+        .map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            startDate: c.startDate ? (typeof c.startDate === 'string' ? c.startDate : c.startDate.split('T')[0]) : '',
+            endDate: c.endDate ? (typeof c.endDate === 'string' ? c.endDate : c.endDate.split('T')[0]) : undefined,
+            script: c.script || '',
+            scriptStatus: c.scriptStatus || '',
+            weighting: c.weighting || undefined,
+            link: c.link || '',
+            active: c.active !== undefined ? c.active : true
+        }))
+        .sort((a, b) => {
+            // Ordenar por data de início (mais recentes primeiro)
+            const dateA = new Date(a.startDate).getTime();
+            const dateB = new Date(b.startDate).getTime();
+            return dateB - dateA;
+        });
+    
+    console.log(`[CommercialPartnersView] editItem: ${mappedCampaigns.length} campanhas mapeadas e ordenadas`);
     
     form.value = {
         name: item.name || '',
@@ -876,24 +917,7 @@ const editItem = async (item: any) => {
         costCenterId: item.costCenterId || '',
         defaultCurrency: item.defaultCurrency || '',
         active: item.active !== undefined ? item.active : true,
-        campaigns: campaigns
-            .map((c: any) => ({
-                id: c.id,
-                name: c.name,
-                startDate: c.startDate ? (typeof c.startDate === 'string' ? c.startDate : c.startDate.split('T')[0]) : '',
-                endDate: c.endDate ? (typeof c.endDate === 'string' ? c.endDate : c.endDate.split('T')[0]) : undefined,
-                script: c.script || '',
-                scriptStatus: c.scriptStatus || '',
-                weighting: c.weighting || undefined,
-                link: c.link || '',
-                active: c.active !== undefined ? c.active : true
-            }))
-            .sort((a, b) => {
-                // Ordenar por data de início (mais recentes primeiro)
-                const dateA = new Date(a.startDate).getTime();
-                const dateB = new Date(b.startDate).getTime();
-                return dateB - dateA;
-            })
+        campaigns: mappedCampaigns
     };
     formErrors.value = {};
     showDialog.value = true;

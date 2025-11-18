@@ -19,6 +19,11 @@ export class CampaignsController {
     async getAllCampaignsByPartner(@Param("partnerId") partnerId: string) {
         return await this.campaignsService.getAllCampaignsByPartner(partnerId);
     }
+
+    @Get("all")
+    async getAllCampaigns() {
+        return await this.campaignsService.getAllCampaigns();
+    }
 }
 
 

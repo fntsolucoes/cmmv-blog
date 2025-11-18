@@ -873,15 +873,38 @@ const validateWeighting = () => {
 // Carregar dados
 const loadData = async () => {
     try {
-        // Carregar campanhas - buscar todas com limite alto
-        const campaignsResponse = await client.campaigns.get({ limit: '10000' });
-        campaigns.value = campaignsResponse.data || [];
+        console.log(`[CampaignsView] Carregando campanhas...`);
+        // Usar endpoint customizado que retorna todas as campanhas sem limite
+        let campaignsData = [];
+        try {
+            const campaignsResponse = await client.campaigns.getAll();
+            campaignsData = campaignsResponse.data || [];
+            console.log(`[CampaignsView] ✅ ${campaignsData.length} campanhas carregadas via getAll`);
+        } catch (error) {
+            console.error(`[CampaignsView] ❌ Erro ao usar getAll, tentando fallback:`, error);
+            // Fallback para o endpoint padrão se o customizado falhar
+            const fallbackResponse = await client.campaigns.get({ limit: '10000' });
+            campaignsData = fallbackResponse.data || [];
+            console.log(`[CampaignsView] ✅ Fallback: ${campaignsData.length} campanhas carregadas`);
+        }
+        campaigns.value = campaignsData;
         // Resetar para primeira página ao carregar dados
         currentPage.value = 1;
         
         // Carregar parceiros comerciais
-        const partnersResponse = await client.commercialPartners.get({});
-        commercialPartners.value = partnersResponse.data || [];
+        console.log(`[CampaignsView] Carregando parceiros comerciais...`);
+        let partnersData = [];
+        try {
+            const partnersResponse = await client.commercialPartners.getAll();
+            partnersData = partnersResponse.data || [];
+            console.log(`[CampaignsView] ✅ ${partnersData.length} parceiros carregados via getAll`);
+        } catch (error) {
+            console.error(`[CampaignsView] ❌ Erro ao usar getAll de parceiros, tentando fallback:`, error);
+            const fallbackResponse = await client.commercialPartners.get({ limit: '10000' });
+            partnersData = fallbackResponse.data || [];
+            console.log(`[CampaignsView] ✅ Fallback: ${partnersData.length} parceiros carregados`);
+        }
+        commercialPartners.value = partnersData;
         
         // Filtrar parceiros diretos
         directPartners.value = commercialPartners.value.filter(p => p.partnerType === 'Direto');

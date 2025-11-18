@@ -25,6 +25,9 @@ export const useSasClient = () => {
             const query = new URLSearchParams(filters).toString();
             return api.authRequest(`sas/commercial-partners?${query}`, "GET");
         },
+        getAll: async () => {
+            return api.authRequest(`sas/commercial-partners/all`, "GET");
+        },
         insert: async (data: any) => {
             return api.authRequest("sas/commercial-partners", "POST", data);
         },
@@ -43,6 +46,9 @@ export const useSasClient = () => {
         get: async (filters: Record<string, string>) => {
             const query = new URLSearchParams(filters).toString();
             return api.authRequest(`sas/campaigns?${query}`, "GET");
+        },
+        getAll: async () => {
+            return api.authRequest(`sas/campaigns/all`, "GET");
         },
         insert: async (data: any) => {
             return api.authRequest("sas/campaigns", "POST", data);
