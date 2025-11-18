@@ -127,6 +127,9 @@ export const useSasClient = () => {
         },
         importCSV: async (csvContent: string, currencyPair?: string, fileName?: string) => {
             return api.authRequest("sas/exchange-rates/import-csv", "POST", { csvContent, currencyPair, fileName });
+        },
+        validateImport: async (csvContent: string, currencyPair: string) => {
+            return api.authRequest("sas/exchange-rates/validate-import", "POST", { csvContent, currencyPair });
         }
     };
 

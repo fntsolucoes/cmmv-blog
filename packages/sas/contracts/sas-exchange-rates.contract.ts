@@ -9,7 +9,7 @@ import {
     controllerCustomPath: 'sas/exchange-rates',
     protoPackage: 'sas',
     subPath: '/sas',
-    generateController: true,
+    generateController: false, // Desabilitado porque temos controller customizado
     generateBoilerplates: false,
     auth: true,
     options: {

@@ -6,13 +6,24 @@
             <div class="flex gap-2 mt-4 sm:mt-0">
                 <button 
                     @click="handleImportCSV" 
-                    :disabled="importing"
+                    :disabled="importing || validating"
                     class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                     {{ importing ? 'Importando...' : 'Importar CSV' }}
+                </button>
+                <button 
+                    @click="handleValidateImport" 
+                    :disabled="importing || validating || !lastImportedFile"
+                    class="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-md transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Validar se todos os registros do último arquivo importado foram salvos no banco"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {{ validating ? 'Validando...' : 'Validar Importação' }}
                 </button>
                 <input
                     ref="fileInput"
@@ -145,7 +156,17 @@
 
         <!-- Histórico -->
         <div>
-            <h2 class="text-lg font-semibold text-white mb-4">Histórico</h2>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-white">
+                    Histórico 
+                    <span v-if="totalRecords > 0" class="text-sm text-neutral-400 font-normal">
+                        ({{ totalRecords }} registro{{ totalRecords !== 1 ? 's' : '' }})
+                    </span>
+                </h2>
+                <div v-if="!loading && filteredRates.length > 0" class="text-xs text-neutral-400">
+                    Mostrando {{ filteredRates.length }} de {{ totalRecords }}
+                </div>
+            </div>
             <div class="bg-neutral-800 rounded-lg overflow-hidden">
                 <table class="min-w-full divide-y divide-neutral-700">
                     <thead class="bg-neutral-700">
@@ -159,9 +180,20 @@
                         </tr>
                     </thead>
                     <tbody class="bg-neutral-800 divide-y divide-neutral-700">
-                        <tr v-if="filteredRates.length === 0">
+                        <tr v-if="loading">
                             <td colspan="6" class="px-6 py-4 text-center text-sm text-neutral-400">
-                                Nenhuma taxa encontrada
+                                Carregando...
+                            </td>
+                        </tr>
+                        <tr v-else-if="filteredRates.length === 0">
+                            <td colspan="6" class="px-6 py-4 text-center text-sm text-neutral-400">
+                                <div>
+                                    <p>Nenhuma taxa encontrada</p>
+                                    <p class="text-xs mt-2 text-neutral-500">
+                                        Total de registros: {{ totalRecords }} | 
+                                        Página: {{ currentPage }}/{{ totalPages }}
+                                    </p>
+                                </div>
                             </td>
                         </tr>
                         <tr v-for="(rate, index) in filteredRates" :key="rate.id" class="hover:bg-neutral-700">
@@ -176,6 +208,35 @@
                         </tr>
                     </tbody>
                 </table>
+                
+                <!-- Paginação -->
+                <div v-if="!loading && totalRecords > 0" class="bg-neutral-700 px-6 py-4 flex items-center justify-between border-t border-neutral-600">
+                    <div class="text-sm text-neutral-300">
+                        Mostrando {{ ((currentPage - 1) * itemsPerPage) + 1 }} a {{ Math.min(currentPage * itemsPerPage, totalRecords) }} de {{ totalRecords }} registro{{ totalRecords !== 1 ? 's' : '' }}
+                    </div>
+                    <div v-if="totalPages > 1" class="flex gap-2">
+                        <button
+                            @click="prevPage"
+                            :disabled="currentPage === 1 || loading"
+                            class="px-3 py-1 bg-neutral-600 hover:bg-neutral-500 text-white text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Anterior
+                        </button>
+                        <span class="px-3 py-1 text-sm text-neutral-300">
+                            Página {{ currentPage }} de {{ totalPages }}
+                        </span>
+                        <button
+                            @click="nextPage"
+                            :disabled="currentPage === totalPages || loading"
+                            class="px-3 py-1 bg-neutral-600 hover:bg-neutral-500 text-white text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Próxima
+                        </button>
+                    </div>
+                    <div v-else class="text-xs text-neutral-400">
+                        Página única
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -199,9 +260,18 @@ const filters = ref({
     endDate: ''
 });
 
+// Paginação
+const currentPage = ref(1);
+const itemsPerPage = 30;
+const totalRecords = ref(0);
+const totalPages = ref(0);
+
 // Estados
 const importing = ref(false);
 const updating = ref(false);
+const validating = ref(false);
+const lastImportedFile = ref<string | null>(null);
+const loading = ref(false);
 
 // Função auxiliar para normalizar data (remover timezone e horas)
 const normalizeDate = (date: Date | string): Date => {
@@ -217,40 +287,15 @@ const compareDatesOnly = (date1: Date | string, date2: Date | string): number =>
     return d1.getTime() - d2.getTime();
 };
 
-// Computed: Taxas filtradas
+// Computed: Taxas filtradas (agora vem paginado do servidor)
 const filteredRates = computed(() => {
-    let filtered = rates.value.filter(rate => rate.currencyPair === filters.value.currencyPair);
-    
-    if (filters.value.startDate) {
-        // Quando o input type="date" retorna "YYYY-MM-DD", precisamos criar a data corretamente
-        const startDateStr = filters.value.startDate; // Formato: "YYYY-MM-DD"
-        const [year, month, day] = startDateStr.split('-').map(Number);
-        const startDate = new Date(year, month - 1, day); // month é 0-indexed
-        
-        filtered = filtered.filter(rate => {
-            const rateDate = normalizeDate(rate.date);
-            return compareDatesOnly(rateDate, startDate) >= 0;
-        });
-    }
-    
-    if (filters.value.endDate) {
-        // Quando o input type="date" retorna "YYYY-MM-DD", precisamos criar a data corretamente
-        const endDateStr = filters.value.endDate; // Formato: "YYYY-MM-DD"
-        const [year, month, day] = endDateStr.split('-').map(Number);
-        const endDate = new Date(year, month - 1, day); // month é 0-indexed
-        
-        filtered = filtered.filter(rate => {
-            const rateDate = normalizeDate(rate.date);
-            return compareDatesOnly(rateDate, endDate) <= 0;
-        });
-    }
-    
-    // Ordenar por data (mais recente primeiro)
-    return filtered.sort((a, b) => {
-        const dateA = normalizeDate(a.date).getTime();
-        const dateB = normalizeDate(b.date).getTime();
-        return dateB - dateA;
+    // Os dados já vêm filtrados e paginados do servidor
+    const result = rates.value || [];
+    console.log('[ExchangeRatesView] filteredRates computed:', {
+        count: result.length,
+        sample: result.slice(0, 2)
     });
+    return result;
 });
 
 // Computed: Estatísticas dos últimos 30 dias
@@ -290,7 +335,12 @@ const formatCurrency = (value: number | undefined | null): string => {
 const formatDate = (date: string | Date | undefined | null): string => {
     if (!date) return '-';
     const d = typeof date === 'string' ? new Date(date) : date;
-    return d.toLocaleDateString('pt-BR');
+    // Usar UTC para evitar problemas de timezone
+    // A data está armazenada em UTC, então usamos getUTC* para formatar
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const year = d.getUTCFullYear();
+    return `${day}/${month}/${year}`;
 };
 
 const getVariation = (rate: any, index: number): string => {
@@ -326,14 +376,78 @@ const getVariationClass = (rate: any, index: number): string => {
 
 // Carregar dados
 const loadData = async () => {
+    loading.value = true;
     try {
-        const response = await client.exchangeRates.get({});
-        rates.value = response.data || [];
+        // Converter todos os valores para string (URLSearchParams requer strings)
+        const params: Record<string, string> = {
+            currencyPair: filters.value.currencyPair,
+            limit: String(itemsPerPage),
+            page: String(currentPage.value),
+            orderBy: 'DESC'
+        };
+        
+        // Adicionar filtros de data se existirem
+        if (filters.value.startDate) {
+            params.startDate = filters.value.startDate;
+        }
+        if (filters.value.endDate) {
+            params.endDate = filters.value.endDate;
+        }
+        
+        console.log('[ExchangeRatesView] Carregando dados com parâmetros:', params);
+        const response = await client.exchangeRates.get(params);
+        console.log('[ExchangeRatesView] Resposta recebida (tipo):', typeof response, 'É array?', Array.isArray(response));
+        
+        // Processar resposta - o framework pode envolver em .data
+        let finalData: any = null;
+        
+        if (Array.isArray(response)) {
+            // Se a resposta é um array direto
+            finalData = {
+                data: response,
+                total: response.length,
+                totalPages: Math.ceil(response.length / itemsPerPage)
+            };
+        } else if (response && typeof response === 'object') {
+            // Se response.data é um array, usar diretamente
+            if (response.data && Array.isArray(response.data)) {
+                finalData = response;
+            }
+            // Se response.data existe mas não é array, verificar se tem .data.data
+            else if (response.data && typeof response.data === 'object' && response.data.data && Array.isArray(response.data.data)) {
+                finalData = response.data;
+            }
+            // Se response é um objeto mas não tem estrutura esperada
+            else {
+                console.warn('[ExchangeRatesView] Estrutura de resposta inesperada:', response);
+                finalData = { data: [], total: 0, totalPages: 0 };
+            }
+        } else {
+            console.warn('[ExchangeRatesView] Resposta inválida:', response);
+            finalData = { data: [], total: 0, totalPages: 0 };
+        }
+        
+        rates.value = finalData.data || [];
+        totalRecords.value = finalData.total || 0;
+        totalPages.value = finalData.totalPages || 0;
+        
+        console.log('[ExchangeRatesView] Dados processados:', {
+            ratesCount: rates.value.length,
+            ratesSample: rates.value.slice(0, 2),
+            totalRecords: totalRecords.value,
+            totalPages: totalPages.value,
+            currentPage: currentPage.value
+        });
         
         // Carregar última cotação
         await loadLatestRate();
     } catch (error) {
-        console.error('Erro ao carregar dados:', error);
+        console.error('[ExchangeRatesView] Erro ao carregar dados:', error);
+        rates.value = [];
+        totalRecords.value = 0;
+        totalPages.value = 0;
+    } finally {
+        loading.value = false;
     }
 };
 
@@ -349,23 +463,53 @@ const loadLatestRate = async () => {
 
 // Filtros
 const onCurrencyChange = () => {
-    loadLatestRate();
-    applyFilters();
+    currentPage.value = 1;
+    loadData();
 };
 
 const applyFilters = () => {
-    // Os filtros são aplicados automaticamente pelo computed
-    loadLatestRate();
+    // Resetar para primeira página ao aplicar filtros
+    currentPage.value = 1;
+    loadData();
 };
 
 const clearFilters = () => {
     filters.value.startDate = '';
     filters.value.endDate = '';
-    applyFilters();
+    currentPage.value = 1;
+    loadData();
+};
+
+// Navegação de páginas
+const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages.value) {
+        currentPage.value = page;
+        loadData();
+    }
+};
+
+const nextPage = () => {
+    if (currentPage.value < totalPages.value) {
+        currentPage.value++;
+        loadData();
+    }
+};
+
+const prevPage = () => {
+    if (currentPage.value > 1) {
+        currentPage.value--;
+        loadData();
+    }
 };
 
 // Importar CSV
 const handleImportCSV = () => {
+    // Garantir que uma moeda foi selecionada antes de importar
+    if (!filters.value.currencyPair) {
+        alert('Selecione a moeda (por exemplo, EUR-BRL ou USD-BRL) antes de importar o arquivo CSV.');
+        return;
+    }
+
     if (fileInput.value) {
         fileInput.value.click();
     }
@@ -394,8 +538,20 @@ const handleFileSelect = async (event: Event) => {
         const text = await file.text();
         console.log('Conteúdo lido (primeiros 500 caracteres):', text.substring(0, 500));
         
+        // Guardar conteúdo do arquivo para validação posterior
+        lastImportedFile.value = text;
+        
         const result = await client.exchangeRates.importCSV(text, filters.value.currencyPair, file.name);
-        console.log('Resultado da importação:', result);
+        console.log('=== RESULTADO DA IMPORTAÇÃO ===');
+        console.log('Resultado completo:', result);
+        console.log('Result.data:', result.data);
+        console.log('Registros importados:', result.data.imported);
+        console.log('Registros atualizados:', result.data.updated);
+        console.log('Total de erros:', result.data.errors?.length || 0);
+        if (result.data.errors && result.data.errors.length > 0) {
+            console.log('Erros detalhados:', result.data.errors);
+        }
+        console.log('=== FIM DO RESULTADO ===');
         
         let message = `Importação concluída!\n`;
         message += `Registros importados: ${result.data.imported}\n`;
@@ -431,6 +587,135 @@ const handleFileSelect = async (event: Event) => {
         if (fileInput.value) {
             fileInput.value.value = '';
         }
+    }
+};
+
+// Validar importação
+const handleValidateImport = async () => {
+    console.log('=== INÍCIO DA VALIDAÇÃO ===');
+    console.log('1. Verificando condições iniciais...');
+    console.log('   - lastImportedFile existe?', !!lastImportedFile.value);
+    console.log('   - lastImportedFile tamanho:', lastImportedFile.value?.length || 0);
+    console.log('   - currencyPair selecionada:', filters.value.currencyPair);
+    
+    if (!lastImportedFile.value || !filters.value.currencyPair) {
+        console.log('❌ ERRO: Condições não atendidas');
+        alert('Nenhum arquivo foi importado ainda ou moeda não selecionada.');
+        return;
+    }
+    
+    console.log('2. Iniciando validação...');
+    validating.value = true;
+    
+    try {
+        console.log('3. Chamando API de validação...');
+        console.log('   - Parâmetros:', {
+            currencyPair: filters.value.currencyPair,
+            csvContentLength: lastImportedFile.value.length,
+            csvContentPreview: lastImportedFile.value.substring(0, 200)
+        });
+        
+        const result = await client.exchangeRates.validateImport(lastImportedFile.value, filters.value.currencyPair);
+        
+        console.log('4. Resposta recebida da API:');
+        console.log('   - Result completo:', result);
+        console.log('   - Result.data:', result.data);
+        
+        const validation = result.data;
+        
+        console.log('5. Dados de validação:');
+        console.log('   - CSV Records:', validation.csvRecords);
+        console.log('   - DB Records:', validation.dbRecords);
+        console.log('   - Matches:', validation.matches);
+        console.log('   - Missing count:', validation.missing?.length || 0);
+        console.log('   - Extra count:', validation.extra?.length || 0);
+        console.log('   - Errors count:', validation.errors?.length || 0);
+        
+        if (validation.missing && validation.missing.length > 0) {
+            console.log('   - Missing (primeiros 5):', validation.missing.slice(0, 5));
+        }
+        
+        if (validation.extra && validation.extra.length > 0) {
+            console.log('   - Extra (primeiros 5):', validation.extra.slice(0, 5));
+        }
+        
+        if (validation.errors && validation.errors.length > 0) {
+            console.log('   - Errors:', validation.errors);
+        }
+        
+        let message = `=== VALIDAÇÃO DA IMPORTAÇÃO ===\n\n`;
+        message += `Registros no CSV: ${validation.csvRecords}\n`;
+        message += `Registros no banco: ${validation.dbRecords}\n`;
+        message += `Registros que coincidem: ${validation.matches}\n\n`;
+        
+        if (validation.missing.length > 0) {
+            message += `⚠️ REGISTROS FALTANDO NO BANCO (${validation.missing.length}):\n`;
+            validation.missing.slice(0, 10).forEach(item => {
+                message += `  - ${item.date}: R$ ${item.rate.toFixed(4)}\n`;
+            });
+            if (validation.missing.length > 10) {
+                message += `  ... e mais ${validation.missing.length - 10} registros\n`;
+            }
+            message += `\n`;
+        }
+        
+        if (validation.extra.length > 0) {
+            message += `ℹ️ REGISTROS EXTRAS NO BANCO (não no CSV) (${validation.extra.length}):\n`;
+            validation.extra.slice(0, 5).forEach(item => {
+                message += `  - ${item.date}: R$ ${item.rate.toFixed(4)}\n`;
+            });
+            if (validation.extra.length > 5) {
+                message += `  ... e mais ${validation.extra.length - 5} registros\n`;
+            }
+            message += `\n`;
+        }
+        
+        if (validation.errors.length > 0) {
+            message += `❌ ERROS ENCONTRADOS (${validation.errors.length}):\n`;
+            validation.errors.forEach(err => {
+                message += `  - ${err}\n`;
+            });
+            message += `\n`;
+        }
+        
+        if (validation.missing.length === 0 && validation.errors.length === 0) {
+            message += `✅ VALIDAÇÃO CONCLUÍDA COM SUCESSO!\n`;
+            message += `Todos os ${validation.csvRecords} registros do CSV foram importados corretamente.`;
+            console.log('✅ VALIDAÇÃO SUCESSO: Todos os registros foram importados corretamente');
+        } else {
+            message += `⚠️ ATENÇÃO: Alguns registros não foram importados ou há diferenças.`;
+            console.log('⚠️ VALIDAÇÃO COM PROBLEMAS: Há registros faltando ou erros');
+        }
+        
+        console.log('6. Mensagem final que será exibida:');
+        console.log(message);
+        console.log('=== FIM DA VALIDAÇÃO ===');
+        
+        alert(message);
+    } catch (error: any) {
+        console.error('=== ERRO NA VALIDAÇÃO ===');
+        console.error('Erro completo:', error);
+        console.error('Erro tipo:', typeof error);
+        console.error('Erro message:', error.message);
+        console.error('Erro stack:', error.stack);
+        console.error('Erro response:', error.response);
+        console.error('Erro response.data:', error.response?.data);
+        console.error('Erro response.status:', error.response?.status);
+        console.error('=== FIM DO ERRO ===');
+        
+        let errorMessage = 'Erro ao validar importação.\n\n';
+        if (error.response?.data?.message) {
+            errorMessage += `Mensagem: ${error.response.data.message}\n`;
+        }
+        if (error.message) {
+            errorMessage += `Erro: ${error.message}\n`;
+        }
+        errorMessage += '\nVerifique o console para mais detalhes.';
+        alert(errorMessage);
+    } finally {
+        console.log('7. Finalizando validação (finally)');
+        validating.value = false;
+        console.log('=== VALIDAÇÃO FINALIZADA ===');
     }
 };
 
