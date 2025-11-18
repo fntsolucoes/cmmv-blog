@@ -80,5 +80,19 @@ export class SasCommercialPartnersContract extends AbstractContract {
         nullable: true,
     })
     link?: string; // Link (até 500 caracteres)
+
+    @ContractField({
+        protoType: 'date',
+        nullable: true,
+        index: true,
+    })
+    startDate?: Date; // Data de Início (para parceiros diretos)
+
+    @ContractField({
+        protoType: 'date',
+        nullable: true,
+        index: true,
+    })
+    endDate?: Date; // Data de Fim (para parceiros diretos)
 }
 

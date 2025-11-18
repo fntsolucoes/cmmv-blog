@@ -201,9 +201,11 @@
                             type="date"
                             class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                             :class="{ 'border-red-500': formErrors.endDate }"
+                            @input="onCampaignEndDateChange"
                             @change="validateCampaignDates"
                         />
                         <p v-if="formErrors.endDate" class="mt-1 text-sm text-red-400">{{ formErrors.endDate }}</p>
+                        <p class="mt-1 text-xs text-neutral-400">Deixe em branco se a campanha estiver em andamento indefinidamente</p>
                     </div>
 
                     <!-- Script -->
@@ -312,6 +314,50 @@
                             required
                         />
                         <p v-if="formErrors.name" class="mt-1 text-sm text-red-400">{{ formErrors.name }}</p>
+                    </div>
+
+                    <!-- Data de Início -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            Data de Início
+                        </label>
+                        <input
+                            v-model="partnerForm.startDate"
+                            type="date"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            :class="{ 'border-red-500': formErrors.startDate }"
+                            @change="validatePartnerDates"
+                        />
+                        <p v-if="formErrors.startDate" class="mt-1 text-sm text-red-400">{{ formErrors.startDate }}</p>
+                    </div>
+
+                    <!-- Data de Fim -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            Data de Fim
+                        </label>
+                        <input
+                            v-model="partnerForm.endDate"
+                            type="date"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            :class="{ 'border-red-500': formErrors.endDate }"
+                            @input="onPartnerEndDateChange"
+                            @change="validatePartnerDates"
+                        />
+                        <p v-if="formErrors.endDate" class="mt-1 text-sm text-red-400">{{ formErrors.endDate }}</p>
+                    </div>
+
+                    <!-- Status Ativo/Inativo -->
+                    <div class="flex items-center">
+                        <input
+                            v-model="partnerForm.active"
+                            type="checkbox"
+                            id="partnerActive"
+                            class="w-4 h-4 text-blue-600 bg-neutral-700 border-neutral-600 rounded focus:ring-blue-500"
+                        />
+                        <label for="partnerActive" class="ml-2 text-sm font-medium text-neutral-300">
+                            Parceiro ativo
+                        </label>
                     </div>
 
                     <!-- Script -->
@@ -433,15 +479,19 @@ const campaignForm = ref({
     scriptStatus: '',
     weighting: '',
     link: '',
-    active: true
+    active: true,
+    originalActive: true // Guardar status original para restaurar
 });
 
 const partnerForm = ref({
     name: '',
+    startDate: '',
+    endDate: '',
     script: '',
     scriptStatus: '',
     weighting: '',
-    link: ''
+    link: '',
+    active: true
 });
 
 // Computed: Parceiros de Afiliação
@@ -538,6 +588,17 @@ const getPartnerDisplay = (item: any): string => {
 
 const getStatusText = (item: any): string => {
     if (item.type === 'partner') {
+        // Para parceiros diretos, verificar se a data de fim já passou
+        if (item.endDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const endDate = new Date(item.endDate);
+            endDate.setHours(0, 0, 0, 0);
+            
+            if (today > endDate) {
+                return 'Inativo';
+            }
+        }
         return item.active ? 'Ativo' : 'Inativo';
     }
     
@@ -645,6 +706,16 @@ const validateCampaignName = () => {
     return true;
 };
 
+// Atualizar status quando a data de fim mudar
+const onCampaignEndDateChange = () => {
+    // Se a data de fim foi limpa, voltar para ativa
+    if (!campaignForm.value.endDate || campaignForm.value.endDate === '' || campaignForm.value.endDate.trim() === '') {
+        campaignForm.value.active = true;
+        // Garantir que o campo está realmente vazio
+        campaignForm.value.endDate = '';
+    }
+};
+
 const validateCampaignDates = () => {
     formErrors.value.startDate = '';
     formErrors.value.endDate = '';
@@ -653,9 +724,35 @@ const validateCampaignDates = () => {
         return true;
     }
     
-    if (campaignForm.value.endDate) {
-        const startDate = new Date(campaignForm.value.startDate);
-        const endDate = new Date(campaignForm.value.endDate);
+    // Se a data de fim foi limpa, garantir que está vazia e status ativo
+    if (!campaignForm.value.endDate || campaignForm.value.endDate === '' || campaignForm.value.endDate.trim() === '') {
+        campaignForm.value.endDate = '';
+        campaignForm.value.active = true;
+        return true;
+    }
+    
+    const startDate = new Date(campaignForm.value.startDate);
+    const endDate = new Date(campaignForm.value.endDate);
+    
+    if (endDate < startDate) {
+        formErrors.value.endDate = 'Data de fim não pode ser anterior à data de início';
+        return false;
+    }
+    
+    return true;
+};
+
+const validatePartnerDates = () => {
+    formErrors.value.startDate = '';
+    formErrors.value.endDate = '';
+    
+    if (!partnerForm.value.startDate) {
+        return true;
+    }
+    
+    if (partnerForm.value.endDate) {
+        const startDate = new Date(partnerForm.value.startDate);
+        const endDate = new Date(partnerForm.value.endDate);
         
         if (endDate < startDate) {
             formErrors.value.endDate = 'Data de fim não pode ser anterior à data de início';
@@ -664,6 +761,29 @@ const validateCampaignDates = () => {
     }
     
     return true;
+};
+
+// Atualizar status ativo quando a data de fim mudar
+const onPartnerEndDateChange = () => {
+    // Se a data de fim foi limpa, voltar para ativo
+    if (!partnerForm.value.endDate || partnerForm.value.endDate === '' || partnerForm.value.endDate.trim() === '') {
+        partnerForm.value.active = true;
+        partnerForm.value.endDate = '';
+        validatePartnerDates();
+        return;
+    }
+    
+    validatePartnerDates();
+    
+    // Se a data de fim já passou, desativar automaticamente
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(partnerForm.value.endDate);
+    endDate.setHours(0, 0, 0, 0);
+    
+    if (today > endDate) {
+        partnerForm.value.active = false;
+    }
 };
 
 const validateWeighting = () => {
@@ -727,7 +847,8 @@ const openAddDialog = async () => {
         scriptStatus: '',
         weighting: '',
         link: '',
-        active: true
+        active: true,
+        originalActive: true
     };
     formErrors.value = {};
     showCampaignDialog.value = true;
@@ -736,18 +857,38 @@ const openAddDialog = async () => {
 const closeCampaignDialog = () => {
     showCampaignDialog.value = false;
     formErrors.value = {};
+    // Resetar formulário
+    campaignForm.value = {
+        commercialPartnerId: '',
+        name: '',
+        startDate: '',
+        endDate: '',
+        script: '',
+        scriptStatus: '',
+        weighting: '',
+        link: '',
+        active: true,
+        originalActive: true
+    };
 };
 
 const editItem = (item: any) => {
     if (item.type === 'partner') {
         // Editar parceiro direto
         editingItem.value = item;
+        
+        const startDate = item.startDate ? (typeof item.startDate === 'string' ? item.startDate.split('T')[0] : new Date(item.startDate).toISOString().split('T')[0]) : '';
+        const endDate = item.endDate ? (typeof item.endDate === 'string' ? item.endDate.split('T')[0] : new Date(item.endDate).toISOString().split('T')[0]) : '';
+        
         partnerForm.value = {
             name: item.name || '',
+            startDate: startDate,
+            endDate: endDate,
             script: item.script || '',
             scriptStatus: item.scriptStatus || '',
             weighting: item.weighting !== null && item.weighting !== undefined ? item.weighting.toString() : '',
-            link: item.link || ''
+            link: item.link || '',
+            active: item.active !== undefined ? item.active : true
         };
         formErrors.value = {};
         showPartnerDialog.value = true;
@@ -759,6 +900,9 @@ const editItem = (item: any) => {
         const startDate = item.startDate ? (typeof item.startDate === 'string' ? item.startDate.split('T')[0] : new Date(item.startDate).toISOString().split('T')[0]) : '';
         const endDate = item.endDate ? (typeof item.endDate === 'string' ? item.endDate.split('T')[0] : new Date(item.endDate).toISOString().split('T')[0]) : '';
         
+        // Guardar o status original para restaurar se necessário
+        const originalActive = item.active !== undefined ? item.active : true;
+        
         campaignForm.value = {
             commercialPartnerId: item.commercialPartnerId || '',
             name: item.name || '',
@@ -768,7 +912,8 @@ const editItem = (item: any) => {
             scriptStatus: item.scriptStatus || '',
             weighting: item.weighting !== null && item.weighting !== undefined ? item.weighting.toString() : '',
             link: item.link || '',
-            active: item.active !== undefined ? item.active : true
+            active: originalActive,
+            originalActive: originalActive // Guardar para restaurar depois
         };
         formErrors.value = {};
         showCampaignDialog.value = true;
@@ -793,11 +938,17 @@ const saveCampaign = async () => {
             commercialPartnerId: campaignForm.value.commercialPartnerId,
             name: campaignForm.value.name.trim(),
             startDate: campaignForm.value.startDate,
-            active: campaignForm.value.active
+            active: campaignForm.value.active !== undefined ? campaignForm.value.active : true
         };
         
-        if (campaignForm.value.endDate) {
+        // Tratar data de fim - se estiver vazia, enviar null para limpar
+        if (campaignForm.value.endDate && campaignForm.value.endDate.trim() !== '') {
             dataToSave.endDate = campaignForm.value.endDate;
+        } else {
+            // Se a data de fim foi limpa, enviar null explicitamente
+            dataToSave.endDate = null;
+            // E garantir que a campanha volte para ativa
+            dataToSave.active = true;
         }
         
         if (campaignForm.value.script && campaignForm.value.script.trim()) {
@@ -839,7 +990,7 @@ const closePartnerDialog = () => {
 };
 
 const savePartner = async () => {
-    if (!validateWeighting()) {
+    if (!validateWeighting() || !validatePartnerDates()) {
         return;
     }
     
@@ -847,9 +998,37 @@ const savePartner = async () => {
     formErrors.value = {};
     
     try {
+        // Verificar se a data de fim já passou para desativar automaticamente
+        let shouldBeActive = partnerForm.value.active;
+        if (partnerForm.value.endDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const endDate = new Date(partnerForm.value.endDate);
+            endDate.setHours(0, 0, 0, 0);
+            
+            // Se a data de fim já passou, desativar automaticamente
+            if (today > endDate) {
+                shouldBeActive = false;
+            }
+        }
+        
         const dataToSave: any = {
-            name: partnerForm.value.name.trim()
+            name: partnerForm.value.name.trim(),
+            active: shouldBeActive
         };
+        
+        if (partnerForm.value.startDate && partnerForm.value.startDate.trim() !== '') {
+            dataToSave.startDate = new Date(partnerForm.value.startDate);
+        }
+        
+        // Tratar data de fim - se estiver vazia, enviar null para limpar
+        if (partnerForm.value.endDate && partnerForm.value.endDate.trim() !== '') {
+            dataToSave.endDate = new Date(partnerForm.value.endDate);
+        } else {
+            dataToSave.endDate = null;
+            // Se a data de fim foi limpa, garantir que volte para ativo
+            dataToSave.active = true;
+        }
         
         if (partnerForm.value.script && partnerForm.value.script.trim()) {
             dataToSave.script = partnerForm.value.script.trim();
