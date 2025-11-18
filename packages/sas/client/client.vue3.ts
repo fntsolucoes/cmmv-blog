@@ -55,6 +55,9 @@ export const useSasClient = () => {
         },
         getActiveByPartner: async (partnerId: string) => {
             return api.authRequest(`sas/campaigns/partner/${partnerId}/active`, "GET");
+        },
+        getAllByPartner: async (partnerId: string) => {
+            return api.authRequest(`sas/campaigns/partner/${partnerId}/all`, "GET");
         }
     };
 

@@ -1,6 +1,6 @@
 <template>
     <div class="space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
             <h1 class="text-2xl font-bold text-white">Parceiros Comerciais</h1>
             <button @click="openAddDialog" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -8,6 +8,29 @@
                 </svg>
                 Adicionar Parceiro
             </button>
+        </div>
+
+        <!-- Busca por Nome -->
+        <div class="bg-neutral-800 rounded-lg p-4">
+            <div class="flex items-center gap-4">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-neutral-300 mb-2">Buscar por Nome</label>
+                    <input
+                        v-model="searchName"
+                        type="text"
+                        placeholder="Digite o nome do parceiro..."
+                        class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+                <div class="flex items-end">
+                    <button
+                        @click="clearSearch"
+                        class="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white text-sm font-medium rounded-md transition-colors"
+                    >
+                        Limpar
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Tabela de Parceiros Comerciais -->
@@ -26,12 +49,12 @@
                     </tr>
                 </thead>
                 <tbody class="bg-neutral-800 divide-y divide-neutral-700">
-                    <tr v-if="items.length === 0">
+                    <tr v-if="paginatedItems.length === 0">
                         <td colspan="8" class="px-6 py-4 text-center text-sm text-neutral-400">
                             Nenhum parceiro comercial cadastrado
                         </td>
                     </tr>
-                    <tr v-for="item in items" :key="item.id" class="hover:bg-neutral-700">
+                    <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-neutral-700">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.name }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.partnerType }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ getCostCenterName(item.costCenterId) }}</td>
@@ -85,6 +108,35 @@
                     </tr>
                 </tbody>
             </table>
+            
+            <!-- Paginação -->
+            <div v-if="totalRecords > 0" class="bg-neutral-700 px-6 py-4 flex items-center justify-between border-t border-neutral-600">
+                <div class="text-sm text-neutral-300">
+                    Mostrando {{ ((currentPage - 1) * itemsPerPage) + 1 }} a {{ Math.min(currentPage * itemsPerPage, totalRecords) }} de {{ totalRecords }} registro{{ totalRecords !== 1 ? 's' : '' }}
+                </div>
+                <div v-if="totalPages > 1" class="flex gap-2">
+                    <button
+                        @click="prevPage"
+                        :disabled="currentPage === 1"
+                        class="px-3 py-1 bg-neutral-600 hover:bg-neutral-500 text-white text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Anterior
+                    </button>
+                    <span class="px-3 py-1 text-sm text-neutral-300">
+                        Página {{ currentPage }} de {{ totalPages }}
+                    </span>
+                    <button
+                        @click="nextPage"
+                        :disabled="currentPage === totalPages"
+                        class="px-3 py-1 bg-neutral-600 hover:bg-neutral-500 text-white text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Próxima
+                    </button>
+                </div>
+                <div v-else class="text-xs text-neutral-400">
+                    Página única
+                </div>
+            </div>
         </div>
 
         <!-- Modal de Cadastro/Edição -->
@@ -446,7 +498,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useSasClient } from '../client';
 
@@ -461,6 +513,52 @@ const saving = ref(false);
 const loadingCostCenters = ref(false);
 const editingItem = ref<any>(null);
 const formErrors = ref<Record<string, string>>({});
+
+// Busca
+const searchName = ref('');
+
+// Filtrar items por nome
+const filteredItems = computed(() => {
+    if (!searchName.value.trim()) {
+        return items.value;
+    }
+    const searchLower = searchName.value.toLowerCase().trim();
+    return items.value.filter((item: any) => 
+        item.name?.toLowerCase().includes(searchLower)
+    );
+});
+
+// Paginação
+const currentPage = ref(1);
+const itemsPerPage = 30;
+const totalRecords = computed(() => filteredItems.value.length);
+const totalPages = computed(() => Math.ceil(totalRecords.value / itemsPerPage));
+
+// Items paginados
+const paginatedItems = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return filteredItems.value.slice(start, end);
+});
+
+// Limpar busca
+const clearSearch = () => {
+    searchName.value = '';
+    currentPage.value = 1;
+};
+
+// Funções de paginação
+const nextPage = () => {
+    if (currentPage.value < totalPages.value) {
+        currentPage.value++;
+    }
+};
+
+const prevPage = () => {
+    if (currentPage.value > 1) {
+        currentPage.value--;
+    }
+};
 
 const showCampaignDialog = ref(false);
 const editingCampaignIndex = ref<number | null>(null);
@@ -682,11 +780,19 @@ const loadCostCenters = async () => {
 // Carregar campanhas do parceiro
 const loadCampaigns = async (partnerId: string) => {
     try {
-        const response = await client.campaigns.get({ commercialPartnerId: partnerId });
+        // Usar endpoint customizado que retorna todas as campanhas sem limite
+        const response = await client.campaigns.getAllByPartner(partnerId);
         return response.data || [];
     } catch (error) {
         console.error('Erro ao carregar campanhas:', error);
-        return [];
+        // Fallback para o endpoint padrão se o customizado falhar
+        try {
+            const fallbackResponse = await client.campaigns.get({ commercialPartnerId: partnerId, limit: '10000' });
+            return fallbackResponse.data || [];
+        } catch (fallbackError) {
+            console.error('Erro no fallback ao carregar campanhas:', fallbackError);
+            return [];
+        }
     }
 };
 
@@ -695,17 +801,29 @@ const loadData = async () => {
     try {
         const response = await client.commercialPartners.get({});
         items.value = response.data || [];
+        // Resetar para primeira página ao carregar dados
+        currentPage.value = 1;
+        // Limpar busca ao recarregar
+        searchName.value = '';
         
         // Carregar campanhas para cada parceiro do tipo "Rede de Afiliação"
         campaignsByPartner.value = {};
         for (const partner of items.value) {
             if (partner.partnerType === 'Rede de Afiliação') {
                 try {
-                    const campaignsResponse = await client.campaigns.get({ commercialPartnerId: partner.id });
+                    // Usar endpoint customizado que retorna todas as campanhas sem limite
+                    const campaignsResponse = await client.campaigns.getAllByPartner(partner.id);
                     campaignsByPartner.value[partner.id] = campaignsResponse.data || [];
                 } catch (error) {
                     console.error(`Erro ao carregar campanhas do parceiro ${partner.id}:`, error);
-                    campaignsByPartner.value[partner.id] = [];
+                    // Fallback para o endpoint padrão se o customizado falhar
+                    try {
+                        const fallbackResponse = await client.campaigns.get({ commercialPartnerId: partner.id, limit: '10000' });
+                        campaignsByPartner.value[partner.id] = fallbackResponse.data || [];
+                    } catch (fallbackError) {
+                        console.error(`Erro no fallback ao carregar campanhas do parceiro ${partner.id}:`, fallbackError);
+                        campaignsByPartner.value[partner.id] = [];
+                    }
                 }
             }
         }
@@ -1014,6 +1132,11 @@ const deleteItem = async (id: string) => {
 const viewPaymentOrders = (partnerId: string) => {
     router.push({ name: 'sas.payment-orders', query: { partnerId } });
 };
+
+// Resetar página quando busca mudar
+watch(searchName, () => {
+    currentPage.value = 1;
+});
 
 onMounted(() => {
     loadData();

@@ -92,12 +92,12 @@
                     </tr>
                 </thead>
                 <tbody class="bg-neutral-800 divide-y divide-neutral-700">
-                    <tr v-if="filteredItems.length === 0">
+                    <tr v-if="paginatedItems.length === 0">
                         <td colspan="6" class="px-6 py-4 text-center text-sm text-neutral-400">
                             Nenhum item encontrado
                         </td>
                     </tr>
-                    <tr v-for="item in filteredItems" :key="item.id" class="hover:bg-neutral-700">
+                    <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-neutral-700">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.name }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ getPartnerDisplay(item) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -119,6 +119,35 @@
                     </tr>
                 </tbody>
             </table>
+            
+            <!-- Paginação -->
+            <div v-if="totalRecords > 0" class="bg-neutral-700 px-6 py-4 flex items-center justify-between border-t border-neutral-600">
+                <div class="text-sm text-neutral-300">
+                    Mostrando {{ ((currentPage - 1) * itemsPerPage) + 1 }} a {{ Math.min(currentPage * itemsPerPage, totalRecords) }} de {{ totalRecords }} registro{{ totalRecords !== 1 ? 's' : '' }}
+                </div>
+                <div v-if="totalPages > 1" class="flex gap-2">
+                    <button
+                        @click="prevPage"
+                        :disabled="currentPage === 1"
+                        class="px-3 py-1 bg-neutral-600 hover:bg-neutral-500 text-white text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Anterior
+                    </button>
+                    <span class="px-3 py-1 text-sm text-neutral-300">
+                        Página {{ currentPage }} de {{ totalPages }}
+                    </span>
+                    <button
+                        @click="nextPage"
+                        :disabled="currentPage === totalPages"
+                        class="px-3 py-1 bg-neutral-600 hover:bg-neutral-500 text-white text-sm rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Próxima
+                    </button>
+                </div>
+                <div v-else class="text-xs text-neutral-400">
+                    Página única
+                </div>
+            </div>
         </div>
 
         <!-- Modal de Campanha -->
@@ -442,7 +471,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useSasClient } from '../client';
 
 const client = useSasClient();
@@ -523,6 +552,32 @@ const unifiedItems = computed(() => {
     
     return items;
 });
+
+// Paginação
+const currentPage = ref(1);
+const itemsPerPage = 30;
+const totalRecords = computed(() => filteredItems.value.length);
+const totalPages = computed(() => Math.ceil(totalRecords.value / itemsPerPage));
+
+// Items paginados
+const paginatedItems = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return filteredItems.value.slice(start, end);
+});
+
+// Funções de paginação
+const nextPage = () => {
+    if (currentPage.value < totalPages.value) {
+        currentPage.value++;
+    }
+};
+
+const prevPage = () => {
+    if (currentPage.value > 1) {
+        currentPage.value--;
+    }
+};
 
 // Computed: Itens filtrados e ordenados
 const filteredItems = computed(() => {
@@ -818,9 +873,11 @@ const validateWeighting = () => {
 // Carregar dados
 const loadData = async () => {
     try {
-        // Carregar campanhas
-        const campaignsResponse = await client.campaigns.get({});
+        // Carregar campanhas - buscar todas com limite alto
+        const campaignsResponse = await client.campaigns.get({ limit: '10000' });
         campaigns.value = campaignsResponse.data || [];
+        // Resetar para primeira página ao carregar dados
+        currentPage.value = 1;
         
         // Carregar parceiros comerciais
         const partnersResponse = await client.commercialPartners.get({});
@@ -1059,6 +1116,11 @@ const savePartner = async () => {
         saving.value = false;
     }
 };
+
+// Resetar página quando filtros mudarem
+watch([() => filters.value.search, () => filters.value.partner], () => {
+    currentPage.value = 1;
+});
 
 onMounted(() => {
     loadData();

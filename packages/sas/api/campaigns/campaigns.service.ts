@@ -21,6 +21,22 @@ export class CampaignsService {
             limit: 1000
         });
     }
+
+    /**
+     * Buscar todas as campanhas de um parceiro (ativas e inativas)
+     * Sem limite para garantir que todas sejam retornadas
+     */
+    async getAllCampaignsByPartner(partnerId: string) {
+        const CampaignsEntity = Repository.getEntity("SasCampaignsEntity");
+        return await Repository.findAll(CampaignsEntity, {
+            commercialPartnerId: partnerId,
+            limit: 10000  // Limite alto para pegar todas as campanhas
+        }, [], {
+            order: {
+                startDate: 'DESC'
+            }
+        });
+    }
 }
 
 
