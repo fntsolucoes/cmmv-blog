@@ -6,7 +6,8 @@ import {
     SasCampaignsContract,
     SasPaymentOrdersContract,
     SasShareholdersContract,
-    SasExchangeRatesContract
+    SasExchangeRatesContract,
+    SasPaymentChecklistContract
 } from '../contracts';
 
 import { SasCostCentersModule } from './cost-centers/cost-centers.module';
@@ -17,6 +18,7 @@ import { SasShareholdersModule } from './shareholders/shareholders.module';
 import { SasExchangeRatesModule } from './exchange-rates/exchange-rates.module';
 import { SasProfitSharingModule } from './profit-sharing/profit-sharing.module';
 import { SasDashboardModule } from './dashboard/dashboard.module';
+import { SasPaymentChecklistModule } from './payment-checklist/payment-checklist.module';
 
 export const SasModule = new Module('sas', {
     contracts: [
@@ -25,7 +27,8 @@ export const SasModule = new Module('sas', {
         SasCampaignsContract,
         SasPaymentOrdersContract,
         SasShareholdersContract,
-        SasExchangeRatesContract
+        SasExchangeRatesContract,
+        SasPaymentChecklistContract
     ],
     submodules: [
         SasCostCentersModule,
@@ -35,7 +38,8 @@ export const SasModule = new Module('sas', {
         SasShareholdersModule,
         SasExchangeRatesModule,
         SasProfitSharingModule,
-        SasDashboardModule
+        SasDashboardModule,
+        SasPaymentChecklistModule
     ]
 });
 

@@ -148,6 +148,20 @@ export const useSasClient = () => {
         }
     };
 
+    const paymentChecklist = {
+        get: async (filters: Record<string, string>) => {
+            const query = new URLSearchParams(filters).toString();
+            return api.authRequest(`sas/payment-checklist?${query}`, "GET");
+        },
+        save: async (data: any) => {
+            return api.authRequest("sas/payment-checklist", "POST", data);
+        },
+        getAvailableOrders: async (filters: Record<string, string>) => {
+            const query = new URLSearchParams(filters).toString();
+            return api.authRequest(`sas/payment-checklist/available-orders?${query}`, "GET");
+        }
+    };
+
     return {
         costCenters,
         commercialPartners,
@@ -155,7 +169,8 @@ export const useSasClient = () => {
         paymentOrders,
         shareholders,
         exchangeRates,
-        profitSharing
+        profitSharing,
+        paymentChecklist
     };
 };
 

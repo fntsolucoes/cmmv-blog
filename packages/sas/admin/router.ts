@@ -10,6 +10,7 @@ import PaymentOrdersView from './views/PaymentOrdersView.vue';
 import ShareholdersView from './views/ShareholdersView.vue';
 import ExchangeRatesView from './views/ExchangeRatesView.vue';
 import ProfitSharingView from './views/ProfitSharingView.vue';
+import PaymentChecklistView from './views/PaymentChecklistView.vue';
 
 export const sasRoutes: RouteRecordRaw[] = [
     {
@@ -50,6 +51,11 @@ export const sasRoutes: RouteRecordRaw[] = [
                 path: 'profit-sharing',
                 component: ProfitSharingView,
                 name: 'sas.profit-sharing'
+            },
+            {
+                path: 'payment-checklist',
+                component: PaymentChecklistView,
+                name: 'sas.payment-checklist'
             }
         ]
     },
@@ -96,6 +102,12 @@ useNavbar().addItems([
         label: 'Divisão de Lucros',
         icon: 'fas fa-chart-pie',
         to: '/sas/profit-sharing',
+        group: 'SaS'
+    },
+    {
+        label: 'Checklist de Pagamentos',
+        icon: 'fas fa-clipboard-check',
+        to: '/sas/payment-checklist',
         group: 'SaS'
     }
 ])

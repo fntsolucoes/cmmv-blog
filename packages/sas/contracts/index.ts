@@ -4,6 +4,7 @@ export * from "./sas-campaigns.contract";
 export * from "./sas-payment-orders.contract";
 export * from "./sas-shareholders.contract";
 export * from "./sas-exchange-rates.contract";
+export * from "./sas-payment-checklist.contract";
 
 
 

@@ -58,10 +58,11 @@
                             @click="sortBy('name')"
                         >
                             <div class="flex items-center">
-                                Nome
+                                Título
                                 <span v-if="sortColumn === 'name'" class="ml-1">
                                     {{ sortDirection === 'asc' ? '▲' : '▼' }}
                                 </span>
+                                <span v-else class="ml-1 text-neutral-500 text-xs">↕</span>
                             </div>
                         </th>
                         <th 
@@ -487,7 +488,7 @@ const filters = ref({
     partner: ''
 });
 
-const sortColumn = ref<string>('');
+const sortColumn = ref<string>('name'); // Ordenação padrão por título
 const sortDirection = ref<'asc' | 'desc'>('asc');
 
 // Estados
@@ -604,23 +605,37 @@ const filteredItems = computed(() => {
     
     // Aplicar ordenação
     if (sortColumn.value) {
+        console.log(`[CampaignsView] Aplicando ordenação: coluna=${sortColumn.value}, direção=${sortDirection.value}, total de itens=${items.length}`);
         items.sort((a, b) => {
             let aVal: any;
             let bVal: any;
             
             if (sortColumn.value === 'name') {
-                aVal = a.name.toLowerCase();
-                bVal = b.name.toLowerCase();
+                aVal = (a.name || '').toLowerCase();
+                bVal = (b.name || '').toLowerCase();
             } else if (sortColumn.value === 'partner') {
-                aVal = a.partnerName.toLowerCase();
-                bVal = b.partnerName.toLowerCase();
+                aVal = (a.partnerName || '').toLowerCase();
+                bVal = (b.partnerName || '').toLowerCase();
             } else if (sortColumn.value === 'status') {
                 aVal = getStatusText(a);
                 bVal = getStatusText(b);
             }
             
-            if (aVal < bVal) return sortDirection.value === 'asc' ? -1 : 1;
-            if (aVal > bVal) return sortDirection.value === 'asc' ? 1 : -1;
+            // Tratar valores nulos/undefined
+            if (aVal == null) aVal = '';
+            if (bVal == null) bVal = '';
+            
+            const result = aVal < bVal ? (sortDirection.value === 'asc' ? -1 : 1) : (aVal > bVal ? (sortDirection.value === 'asc' ? 1 : -1) : 0);
+            return result;
+        });
+        console.log(`[CampaignsView] Ordenação aplicada. Primeiros 3 itens:`, items.slice(0, 3).map(i => i.name));
+    } else {
+        // Se não houver ordenação definida, ordenar por título por padrão
+        items.sort((a, b) => {
+            const aVal = (a.name || '').toLowerCase();
+            const bVal = (b.name || '').toLowerCase();
+            if (aVal < bVal) return -1;
+            if (aVal > bVal) return 1;
             return 0;
         });
     }
@@ -720,12 +735,16 @@ const getWeightingDisplay = (item: any): string => {
 
 // Ordenação
 const sortBy = (column: string) => {
+    console.log(`[CampaignsView] Ordenando por: ${column}, coluna atual: ${sortColumn.value}, direção: ${sortDirection.value}`);
     if (sortColumn.value === column) {
         sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
     } else {
         sortColumn.value = column;
         sortDirection.value = 'asc';
     }
+    console.log(`[CampaignsView] Nova ordenação: coluna=${sortColumn.value}, direção=${sortDirection.value}`);
+    // Resetar para primeira página ao ordenar
+    currentPage.value = 1;
 };
 
 // Aplicar filtros
