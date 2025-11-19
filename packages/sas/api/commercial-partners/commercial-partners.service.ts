@@ -21,6 +21,14 @@ export class CommercialPartnersService {
     }
 
     /**
+     * Buscar parceiro comercial por ID
+     */
+    async getPartnerById(id: string) {
+        const CommercialPartnersEntity = Repository.getEntity("SasCommercialPartnersEntity");
+        return await Repository.findOne(CommercialPartnersEntity, { id }, []);
+    }
+
+    /**
      * Buscar todos os parceiros comerciais sem limite
      * Garante que todos os registros sejam retornados
      */

@@ -19,6 +19,11 @@ export class CommercialPartnersController {
     async getAllPartners() {
         return await this.commercialPartnersService.getAllPartners();
     }
+
+    @Get(":id")
+    async getPartnerById(@Param("id") id: string) {
+        return await this.commercialPartnersService.getPartnerById(id);
+    }
 }
 
 

@@ -94,5 +94,11 @@ export class SasCommercialPartnersContract extends AbstractContract {
         index: true,
     })
     endDate?: Date; // Data de Fim (para parceiros diretos)
+
+    @ContractField({
+        protoType: 'text',
+        nullable: true,
+    })
+    notes?: string; // Anotações (login, senha, link do dashboard, etc.)
 }
 

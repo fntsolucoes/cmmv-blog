@@ -93,7 +93,20 @@
                             </td>
                         </tr>
                         <tr v-for="item in checklistData" :key="item.partner.id" class="hover:bg-neutral-700">
-                            <td class="px-4 py-3 text-sm text-white">{{ item.partner.name }}</td>
+                            <td class="px-4 py-3 text-sm text-white">
+                                <div class="flex items-center gap-2">
+                                    <span>{{ item.partner.name }}</span>
+                                    <button
+                                        @click="openNotesModal(item.partner.id)"
+                                        class="text-blue-400 hover:text-blue-300 transition-colors"
+                                        title="Ver anotações"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
                             <td class="px-4 py-3 text-sm text-white">
                                 <span :class="item.partner.partnerType === 'Direto' ? 'bg-blue-500' : 'bg-purple-500'" 
                                       class="px-2 py-1 text-xs rounded-full text-white">
@@ -147,6 +160,34 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal de Anotações -->
+    <div v-if="showNotesModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-neutral-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-white">Anotações - {{ currentPartnerName }}</h3>
+                <button @click="closeNotesModal" class="text-neutral-400 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div v-if="loadingNotes" class="text-neutral-400 text-sm text-center py-8">
+                Carregando anotações...
+            </div>
+            
+            <div v-else-if="partnerNotes" class="space-y-4">
+                <div class="bg-neutral-700 rounded-lg p-4">
+                    <pre class="text-white text-sm whitespace-pre-wrap font-sans">{{ partnerNotes }}</pre>
+                </div>
+            </div>
+            
+            <div v-else class="text-neutral-400 text-sm text-center py-8">
+                Nenhuma anotação cadastrada para este parceiro.
+            </div>
+        </div>
+    </div>
 </template>
 
 <script setup>
@@ -161,6 +202,11 @@ const checklistData = ref([]);
 const loading = ref(false);
 const sortColumn = ref('');
 const sortDirection = ref('asc');
+const showNotesModal = ref(false);
+const currentPartnerId = ref(null);
+const currentPartnerName = ref('');
+const partnerNotes = ref('');
+const loadingNotes = ref(false);
 
 const years = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i);
 const months = [
@@ -321,6 +367,51 @@ const formatDate = (dateString) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR');
+};
+
+const openNotesModal = async (partnerId) => {
+    currentPartnerId.value = partnerId;
+    
+    // Buscar nome do parceiro
+    const partner = checklistData.value.find(item => item.partner.id === partnerId);
+    currentPartnerName.value = partner ? partner.partner.name : 'Parceiro';
+    
+    showNotesModal.value = true;
+    loadingNotes.value = true;
+    partnerNotes.value = '';
+    
+    try {
+        // Buscar dados do parceiro para obter as anotações
+        const response = await client.commercialPartners.getById(partnerId);
+        
+        // A resposta pode vir em diferentes formatos
+        let notes = '';
+        if (response?.data?.notes) {
+            notes = response.data.notes;
+        } else if (response?.data && typeof response.data === 'object' && 'notes' in response.data) {
+            notes = response.data.notes || '';
+        } else if (response?.notes) {
+            notes = response.notes;
+        } else if (response?.result?.data?.notes) {
+            notes = response.result.data.notes;
+        } else if (response?.result?.notes) {
+            notes = response.result.notes;
+        }
+        
+        partnerNotes.value = notes;
+    } catch (error) {
+        console.error('Erro ao carregar anotações:', error);
+        partnerNotes.value = '';
+    } finally {
+        loadingNotes.value = false;
+    }
+};
+
+const closeNotesModal = () => {
+    showNotesModal.value = false;
+    currentPartnerId.value = null;
+    currentPartnerName.value = '';
+    partnerNotes.value = '';
 };
 
 onMounted(() => {

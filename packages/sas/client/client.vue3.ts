@@ -37,6 +37,9 @@ export const useSasClient = () => {
         delete: async (id: string) => {
             return api.authRequest(`sas/commercial-partners/${id}`, "DELETE");
         },
+        getById: async (id: string) => {
+            return api.authRequest(`sas/commercial-partners/${id}`, "GET");
+        },
         getPaymentOrdersHistory: async (id: string) => {
             return api.authRequest(`sas/commercial-partners/${id}/payment-orders`, "GET");
         }

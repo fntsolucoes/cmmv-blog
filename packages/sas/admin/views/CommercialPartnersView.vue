@@ -251,6 +251,22 @@
                         </label>
                     </div>
 
+                    <!-- Anotações (Login, Senha, Link do Dashboard) -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            Anotações
+                        </label>
+                        <textarea
+                            v-model="form.notes"
+                            rows="4"
+                            placeholder="Login, senha, link do dashboard, etc..."
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                        ></textarea>
+                        <p class="mt-1 text-xs text-neutral-400">
+                            Use este campo para armazenar informações como login, senha e link do dashboard do parceiro.
+                        </p>
+                    </div>
+
                     <!-- Seção de Campanhas (apenas para Rede de Afiliação) -->
                     <div v-if="form.partnerType === 'Rede de Afiliação'" class="pt-4 border-t border-neutral-700">
                         <div class="flex justify-between items-center mb-4">
@@ -579,6 +595,7 @@ const form = ref({
     costCenterId: '',
     defaultCurrency: '',
     active: true,
+    notes: '',
     campaigns: [] as Array<{
         id?: string;
         name: string;
@@ -869,6 +886,7 @@ const openAddDialog = async () => {
         costCenterId: '',
         defaultCurrency: '',
         active: true,
+        notes: '',
         campaigns: []
     };
     formErrors.value = {};
@@ -917,6 +935,7 @@ const editItem = async (item: any) => {
         costCenterId: item.costCenterId || '',
         defaultCurrency: item.defaultCurrency || '',
         active: item.active !== undefined ? item.active : true,
+        notes: item.notes || '',
         campaigns: mappedCampaigns
     };
     formErrors.value = {};
@@ -934,6 +953,7 @@ const closeDialog = () => {
         costCenterId: '',
         defaultCurrency: '',
         active: true,
+        notes: '',
         campaigns: []
     };
     formErrors.value = {};
@@ -1069,6 +1089,7 @@ const savePartner = async () => {
             name: form.value.name.trim(),
             partnerType: form.value.partnerType,
             costCenterId: form.value.costCenterId,
+            notes: form.value.notes || null,
             defaultCurrency: form.value.defaultCurrency,
             active: form.value.active
         };
