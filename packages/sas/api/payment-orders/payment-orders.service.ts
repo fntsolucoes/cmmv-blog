@@ -54,6 +54,7 @@ export class PaymentOrdersService {
         status?: string;
         paidValue?: number | null;
         paymentMethod?: string | null;
+        observations?: string | null;
     }) {
         const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
         const CommercialPartnersEntity = Repository.getEntity("SasCommercialPartnersEntity");
@@ -152,7 +153,8 @@ export class PaymentOrdersService {
             status: data.status || "Pendente",
             effectivePaymentDate: null,
             paidValue: data.paidValue ?? null,
-            paymentMethod: data.paymentMethod ?? null
+            paymentMethod: data.paymentMethod ?? null,
+            observations: data.observations ?? null
         };
 
         // Se status for Pago, exigir data de pagamento
@@ -210,6 +212,7 @@ export class PaymentOrdersService {
         status: string;
         paidValue: number | null;
         paymentMethod: string | null;
+        observations: string | null;
     }>) {
         const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
         const CommercialPartnersEntity = Repository.getEntity("SasCommercialPartnersEntity");
@@ -382,6 +385,10 @@ export class PaymentOrdersService {
 
         if (data.paymentMethod !== undefined) {
             payload.paymentMethod = data.paymentMethod;
+        }
+
+        if (data.observations !== undefined) {
+            payload.observations = data.observations;
         }
 
         const result = await Repository.update(PaymentOrdersEntity, id, payload);

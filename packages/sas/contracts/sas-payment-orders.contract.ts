@@ -97,6 +97,13 @@ export class SasPaymentOrdersContract extends AbstractContract {
         index: true,
     })
     paymentMethod?: string; // Método de pagamento selecionado (ex: "Wise: email@exemplo.com")
+
+    @ContractField({
+        protoType: 'string',
+        nullable: true,
+        index: false,
+    })
+    observations?: string; // Observações sobre a ordem de pagamento
 }
 
 

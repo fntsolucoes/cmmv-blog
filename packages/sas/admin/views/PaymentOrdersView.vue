@@ -471,6 +471,17 @@
                                         </svg>
                                     </button>
                                     <button
+                                        v-if="item.observations"
+                                        @click="viewObservations(item.observations)"
+                                        class="text-purple-400 hover:text-purple-300 transition-colors p-1 rounded hover:bg-purple-400/10"
+                                        title="Ver observações"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </button>
+                                    <button
                                         @click="deleteItem(item.id)"
                                         class="text-red-400 hover:text-red-300 transition-colors p-1 rounded hover:bg-red-400/10"
                                         title="Excluir ordem de pagamento"
@@ -703,12 +714,11 @@
                                 Valor da Fatura <span class="text-red-500">*</span>
                             </label>
                             <input
-                                v-model.number="form.invoiceAmount"
-                                type="number"
-                                step="0.01"
-                                min="0.01"
+                                v-model="invoiceAmountInput"
+                                type="text"
                                 required
-                                @input="calculateTaxFromInvoice"
+                                @input="handleInvoiceAmountInput"
+                                :placeholder="getInvoiceAmountPlaceholder()"
                                 class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
@@ -782,6 +792,17 @@
                             <p v-if="!form.costCenterId" class="mt-1 text-xs text-neutral-400">Selecione uma empresa primeiro</p>
                             <p v-else-if="availablePaymentMethods.length === 0" class="mt-1 text-xs text-yellow-400">Nenhum método de pagamento cadastrado para esta empresa</p>
                         </div>
+                        <div class="col-span-2">
+                            <label class="block text-sm font-medium text-neutral-300 mb-2">
+                                Observações
+                            </label>
+                            <textarea
+                                v-model="form.observations"
+                                rows="3"
+                                placeholder="Digite observações sobre esta ordem de pagamento..."
+                                class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            ></textarea>
+                        </div>
                     </div>
                     <div class="flex justify-end gap-3 pt-4 border-t border-neutral-700">
                         <button
@@ -804,6 +825,31 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Modal: Visualizar Observações -->
+        <div v-if="showObservationsModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);" @click.self="closeObservationsModal">
+            <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-md mx-auto">
+                <div class="p-6 border-b border-neutral-700 flex justify-between items-center">
+                    <h3 class="text-lg font-medium text-white">Observações</h3>
+                    <button @click="closeObservationsModal" class="text-neutral-400 hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <p class="text-white whitespace-pre-wrap">{{ observationsText || 'Nenhuma observação cadastrada.' }}</p>
+                </div>
+                <div class="px-6 pb-6">
+                    <button
+                        @click="closeObservationsModal"
+                        class="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                    >
+                        Fechar
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -847,6 +893,8 @@ const itemsPerPage = 30;
 // Modais
 const showDialog = ref(false);
 const showMarkAsPaidModal = ref(false);
+const showObservationsModal = ref(false);
+const observationsText = ref('');
 const isEditing = ref(false);
 const saving = ref(false);
 const editingItem = ref<any>(null);
@@ -864,7 +912,8 @@ const form = ref({
     effectivePaymentDate: '',
     status: 'Pendente',
     paidValue: null as number | null,
-    paymentMethod: '' as string | null
+    paymentMethod: '' as string | null,
+    observations: '' as string | null
 });
 
 const markAsPaidForm = ref({
@@ -880,6 +929,7 @@ const markAsPaidForm = ref({
 
 const taxPercentage = ref(0);
 const taxPercentageInput = ref('0');
+const invoiceAmountInput = ref('0');
 
 const todayDate = computed(() => {
     const today = new Date();
@@ -1448,6 +1498,7 @@ const openAddDialog = () => {
     editingItem.value = null;
     taxPercentage.value = 0;
     taxPercentageInput.value = '0';
+    invoiceAmountInput.value = '0';
     partnerSearchText.value = '';
     showPartnerDropdown.value = false;
     form.value = {
@@ -1462,7 +1513,8 @@ const openAddDialog = () => {
         effectivePaymentDate: '',
         status: 'Pendente',
         paidValue: null,
-        paymentMethod: null
+        paymentMethod: null,
+        observations: null
     };
     showDialog.value = true;
 };
@@ -1485,6 +1537,7 @@ const editItem = (item: any) => {
     const taxAmount = item.taxAmount || 0;
     taxPercentage.value = invoiceAmount > 0 ? (taxAmount / invoiceAmount) * 100 : 0;
     taxPercentageInput.value = taxPercentage.value.toFixed(2).replace('.', ',');
+    invoiceAmountInput.value = formatInvoiceAmount(invoiceAmount, item.currency || 'BRL');
     
     const partnerId = item.commercialPartnerId || '';
     const selectedPartner = partners.value.find(p => p.id === partnerId);
@@ -1515,7 +1568,8 @@ const editItem = (item: any) => {
         })() : '',
         status: item.status || 'Pendente',
         paidValue: item.paidValue || null,
-        paymentMethod: item.paymentMethod || null
+        paymentMethod: item.paymentMethod || null,
+        observations: item.observations || null
     };
     showDialog.value = true;
 };
@@ -1526,6 +1580,7 @@ const closeDialog = () => {
     editingItem.value = null;
     taxPercentage.value = 0;
     taxPercentageInput.value = '0';
+    invoiceAmountInput.value = '0';
     partnerSearchText.value = '';
     showPartnerDropdown.value = false;
     form.value = {
@@ -1540,7 +1595,8 @@ const closeDialog = () => {
         effectivePaymentDate: '',
         status: 'Pendente',
         paidValue: null,
-        paymentMethod: null
+        paymentMethod: null,
+        observations: null
     };
 };
 
@@ -1585,6 +1641,16 @@ const closeMarkAsPaidModal = () => {
     markAsPaidItem.value = null;
 };
 
+const viewObservations = (observations: string) => {
+    observationsText.value = observations || '';
+    showObservationsModal.value = true;
+};
+
+const closeObservationsModal = () => {
+    showObservationsModal.value = false;
+    observationsText.value = '';
+};
+
 const confirmMarkAsPaid = async () => {
     if (!markAsPaidItem.value) return;
     
@@ -1603,6 +1669,110 @@ const confirmMarkAsPaid = async () => {
     } finally {
         saving.value = false;
     }
+};
+
+// Função para obter placeholder do valor da fatura baseado na moeda
+const getInvoiceAmountPlaceholder = () => {
+    switch (form.value.currency) {
+        case 'BRL':
+            return 'Ex: 1.234,56';
+        case 'USD':
+        case 'EUR':
+            return 'Ex: 1,234.56';
+        default:
+            return 'Ex: 1234.56';
+    }
+};
+
+// Função para formatar valor de acordo com a moeda
+const formatInvoiceAmount = (value: number, currency: string): string => {
+    if (!value || value === 0) return '0';
+    
+    // Para BRL, usar vírgula como separador decimal e ponto como separador de milhar
+    if (currency === 'BRL') {
+        return value.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+    
+    // Para USD e EUR, usar ponto como separador decimal e vírgula como separador de milhar
+    return value.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+};
+
+// Função para processar input do valor da fatura
+const handleInvoiceAmountInput = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    let value = input.value;
+    
+    // Se o campo estiver vazio, resetar
+    if (!value || value.trim() === '') {
+        form.value.invoiceAmount = 0;
+        invoiceAmountInput.value = '0';
+        calculateTaxFromInvoice();
+        return;
+    }
+    
+    // Remover todos os caracteres não numéricos exceto ponto e vírgula
+    value = value.replace(/[^\d.,]/g, '');
+    
+    const currency = form.value.currency;
+    
+    if (currency === 'BRL') {
+        // Para BRL: vírgula como decimal, ponto como milhar
+        // Remover todos os pontos primeiro (serão re-adicionados como separadores de milhar)
+        value = value.replace(/\./g, '');
+        // Garantir apenas uma vírgula
+        const parts = value.split(',');
+        if (parts.length > 2) {
+            value = parts[0] + ',' + parts.slice(1).join('');
+        }
+        // Limitar a 2 casas decimais
+        if (parts.length === 2 && parts[1].length > 2) {
+            value = parts[0] + ',' + parts[1].substring(0, 2);
+        }
+        
+        // Converter para número (substituir vírgula por ponto para parseFloat)
+        const numValue = parseFloat(value.replace(',', '.')) || 0;
+        form.value.invoiceAmount = numValue;
+        
+        // Formatar para exibição
+        if (numValue > 0) {
+            invoiceAmountInput.value = formatInvoiceAmount(numValue, currency);
+        } else {
+            invoiceAmountInput.value = '0';
+        }
+    } else {
+        // Para USD e EUR: ponto como decimal, vírgula como milhar
+        // Remover todas as vírgulas primeiro (serão re-adicionadas como separadores de milhar)
+        value = value.replace(/,/g, '');
+        // Garantir apenas um ponto
+        const parts = value.split('.');
+        if (parts.length > 2) {
+            value = parts[0] + '.' + parts.slice(1).join('');
+        }
+        // Limitar a 2 casas decimais
+        if (parts.length === 2 && parts[1].length > 2) {
+            value = parts[0] + '.' + parts[1].substring(0, 2);
+        }
+        
+        // Converter para número
+        const numValue = parseFloat(value) || 0;
+        form.value.invoiceAmount = numValue;
+        
+        // Formatar para exibição
+        if (numValue > 0) {
+            invoiceAmountInput.value = formatInvoiceAmount(numValue, currency);
+        } else {
+            invoiceAmountInput.value = '0';
+        }
+    }
+    
+    // Calcular imposto se houver porcentagem
+    calculateTaxFromInvoice();
 };
 
 // Cálculos no formulário
@@ -1691,6 +1861,10 @@ const saveOrder = async () => {
             payload.paymentMethod = form.value.paymentMethod;
         }
 
+        if (form.value.observations !== null && form.value.observations !== undefined) {
+            payload.observations = form.value.observations || null;
+        }
+
         if (isEditing.value && editingItem.value) {
             await client.paymentOrders.update(editingItem.value.id, payload);
         } else {
@@ -1733,6 +1907,13 @@ watch(() => filters.value.withdrawalDate, () => {
 // Resetar método de pagamento quando centro de custos mudar
 watch(() => form.value.costCenterId, () => {
     form.value.paymentMethod = null;
+});
+
+// Atualizar formato do valor da fatura quando a moeda mudar
+watch(() => form.value.currency, (newCurrency) => {
+    if (form.value.invoiceAmount > 0) {
+        invoiceAmountInput.value = formatInvoiceAmount(form.value.invoiceAmount, newCurrency);
+    }
 });
 
 // Sincronizar campo de busca quando o parceiro for limpo
