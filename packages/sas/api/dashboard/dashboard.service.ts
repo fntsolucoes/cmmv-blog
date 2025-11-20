@@ -128,6 +128,76 @@ export class DashboardService {
         }, []);
         console.log(`[DashboardService] Total de notas encontradas: ${allPaymentOrders?.data?.length || 0}`);
 
+        // Função auxiliar para buscar taxa de câmbio (similar ao ExchangeRatesService.getRateByDate)
+        const getExchangeRate = async (currencyPair: string, date?: Date) => {
+            const ExchangeRatesEntity = Repository.getEntity("SasExchangeRatesEntity");
+            
+            if (date) {
+                // Normalizar data para UTC
+                const targetYear = date.getUTCFullYear();
+                const targetMonth = date.getUTCMonth(); // 0-11
+                const targetDay = date.getUTCDate();
+                
+                const allRates = await Repository.findAll(ExchangeRatesEntity, {
+                    currencyPair
+                }, [], {
+                    order: {
+                        date: 'DESC'
+                    }
+                });
+                
+                if (allRates?.data && allRates.data.length > 0) {
+                    // Encontrar taxa para a data específica ou a mais próxima anterior
+                    for (const rateItem of allRates.data) {
+                        // Normalizar data do banco
+                        let rateDate: Date;
+                        if (typeof rateItem.date === 'string') {
+                            if (rateItem.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                                const [year, month, day] = rateItem.date.split('-').map(Number);
+                                rateDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+                            } else {
+                                rateDate = new Date(rateItem.date);
+                            }
+                        } else {
+                            rateDate = new Date(rateItem.date);
+                        }
+                        
+                        const rateYear = rateDate.getUTCFullYear();
+                        const rateMonth = rateDate.getUTCMonth();
+                        const rateDay = rateDate.getUTCDate();
+                        
+                        // Comparar apenas dia/mês/ano usando UTC
+                        if (rateYear === targetYear && rateMonth === targetMonth && rateDay === targetDay) {
+                            return rateItem;
+                        }
+                        
+                        // Se a taxa é anterior à data, usar ela
+                        if (rateYear < targetYear || 
+                            (rateYear === targetYear && rateMonth < targetMonth) ||
+                            (rateYear === targetYear && rateMonth === targetMonth && rateDay < targetDay)) {
+                            return rateItem;
+                        }
+                    }
+                }
+            }
+            
+            // Se não encontrou para data específica, buscar a mais recente
+            const latestRates = await Repository.findAll(ExchangeRatesEntity, {
+                currencyPair,
+                limit: 1
+            }, [], {
+                order: {
+                    date: 'DESC'
+                }
+            });
+            
+            if (latestRates?.data && latestRates.data.length > 0) {
+                return latestRates.data[0];
+            }
+            
+            return null;
+        };
+
         // Contar e somar valores de notas pagas no mês vigente
         const paidOrdersThisMonth = (allPaymentOrders?.data || []).filter((order: any) => {
             if (order.status !== 'Pago' || !order.effectivePaymentDate) return false;
@@ -137,11 +207,14 @@ export class DashboardService {
         });
         
         const paidThisMonth = paidOrdersThisMonth.length;
-        const totalReceivedThisMonth = paidOrdersThisMonth.reduce((sum: number, order: any) => {
-            // Usar paidValue se disponível, senão calcular invoiceAmount - taxAmount
-            const value = order.paidValue || (order.invoiceAmount - (order.taxAmount || 0));
-            return sum + (value || 0);
-        }, 0);
+        
+        // Calcular total recebido no mês (somar todos os valores pagos)
+        let totalReceivedThisMonth = 0;
+        for (const order of paidOrdersThisMonth) {
+            // paidValue já está em BRL, então apenas somar
+            const value = order.paidValue || 0;
+            totalReceivedThisMonth += value;
+        }
 
         // Contar e somar valores de notas pendentes (todos os meses)
         const pendingOrdersList = (allPaymentOrders?.data || []).filter((order: any) => 
@@ -149,11 +222,39 @@ export class DashboardService {
         );
         
         const pendingOrders = pendingOrdersList.length;
-        const totalPendingValue = pendingOrdersList.reduce((sum: number, order: any) => {
+        
+        // Calcular total pendente convertendo todas as moedas para BRL
+        let totalPendingValue = 0;
+        for (const order of pendingOrdersList) {
             // Calcular valor líquido: invoiceAmount - taxAmount
             const netValue = (order.invoiceAmount || 0) - (order.taxAmount || 0);
-            return sum + netValue;
-        }, 0);
+            
+            if (order.currency === 'BRL') {
+                // Se já está em BRL, apenas somar
+                totalPendingValue += netValue;
+            } else {
+                // Converter para BRL usando taxa de câmbio
+                // Usar withdrawalDate se disponível, senão usar data atual
+                const exchangeDate = order.withdrawalDate ? new Date(order.withdrawalDate) : new Date();
+                const currencyPair = `${order.currency}-BRL`;
+                
+                try {
+                    const rate = await getExchangeRate(currencyPair, exchangeDate);
+                    if (rate && rate.rate) {
+                        const convertedValue = netValue * Number(rate.rate);
+                        totalPendingValue += convertedValue;
+                    } else {
+                        // Se não encontrou taxa, usar valor original (assumindo que já está em BRL ou logar erro)
+                        console.warn(`[DashboardService] Taxa de câmbio não encontrada para ${currencyPair} na data ${exchangeDate.toISOString()}`);
+                        totalPendingValue += netValue;
+                    }
+                } catch (error) {
+                    console.error(`[DashboardService] Erro ao buscar taxa de câmbio para ${currencyPair}:`, error);
+                    // Em caso de erro, usar valor original
+                    totalPendingValue += netValue;
+                }
+            }
+        }
         
         console.log(`[DashboardService] Notas pagas no mês vigente: ${paidThisMonth}`);
         console.log(`[DashboardService] Valor total recebido no mês: ${totalReceivedThisMonth}`);

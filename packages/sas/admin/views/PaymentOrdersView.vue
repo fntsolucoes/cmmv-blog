@@ -524,7 +524,7 @@
         </div>
 
         <!-- Modal: Marcar como Pago -->
-        <div v-if="showMarkAsPaidModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);" @click.self="closeMarkAsPaidModal">
+        <div v-if="showMarkAsPaidModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
             <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-md mx-auto">
                 <div class="p-6 border-b border-neutral-700 flex justify-between items-center">
                     <h3 class="text-lg font-medium text-white">Marcar como Pago</h3>
@@ -586,7 +586,7 @@
         </div>
 
         <!-- Modal: Criar/Editar Ordem -->
-        <div v-if="showDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);" @click.self="closeDialog">
+        <div v-if="showDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
             <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-4xl mx-auto max-h-[90vh] overflow-y-auto">
                 <div class="p-6 border-b border-neutral-700 flex justify-between items-center">
                     <h3 class="text-lg font-medium text-white">{{ isEditing ? 'Editar Ordem de Pagamento' : 'Nova Ordem de Pagamento' }}</h3>
@@ -829,7 +829,7 @@
         </div>
 
         <!-- Modal: Visualizar Observações -->
-        <div v-if="showObservationsModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);" @click.self="closeObservationsModal">
+        <div v-if="showObservationsModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
             <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-md mx-auto">
                 <div class="p-6 border-b border-neutral-700 flex justify-between items-center">
                     <h3 class="text-lg font-medium text-white">Observações</h3>
