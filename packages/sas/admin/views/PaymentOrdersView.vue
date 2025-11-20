@@ -60,17 +60,134 @@
                 <table class="min-w-full divide-y divide-neutral-700">
                     <thead class="bg-neutral-700">
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Parceiro</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Mês Referência</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Valor da Fatura</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">% do Imposto</th>
+                            <th 
+                                @click="toggleSort1('partner')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Parceiro
+                                    <svg v-if="sortKey1 === 'partner'" :class="{ 'rotate-180': sortOrder1 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
+                            <th 
+                                @click="toggleSort1('month')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Mês Referência
+                                    <svg v-if="sortKey1 === 'month'" :class="{ 'rotate-180': sortOrder1 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
+                            <th 
+                                @click="toggleSort1('invoiceAmount')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Valor da Fatura
+                                    <svg v-if="sortKey1 === 'invoiceAmount'" :class="{ 'rotate-180': sortOrder1 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
+                            <th 
+                                @click="toggleSort1('taxPercentage')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    % do Imposto
+                                    <svg v-if="sortKey1 === 'taxPercentage'" :class="{ 'rotate-180': sortOrder1 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Câmbio</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Valor Líquido</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Valor Pago</th>
+                            <th 
+                                @click="toggleSort1('netValue')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Valor Líquido
+                                    <svg v-if="sortKey1 === 'netValue'" :class="{ 'rotate-180': sortOrder1 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
+                            <th 
+                                @click="toggleSort1('paidValue')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Valor Pago
+                                    <svg v-if="sortKey1 === 'paidValue'" :class="{ 'rotate-180': sortOrder1 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Método de Pagamento</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Status</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Data do Saque</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Data do Pagamento</th>
+                            <th 
+                                @click="toggleSort1('status')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Status
+                                    <svg v-if="sortKey1 === 'status'" :class="{ 'rotate-180': sortOrder1 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
+                            <th 
+                                @click="toggleSort1('withdrawalDate')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Data do Saque
+                                    <svg v-if="sortKey1 === 'withdrawalDate'" :class="{ 'rotate-180': sortOrder1 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
+                            <th 
+                                @click="toggleSort1('effectivePaymentDate')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Data do Pagamento
+                                    <svg v-if="sortKey1 === 'effectivePaymentDate'" :class="{ 'rotate-180': sortOrder1 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Ações</th>
                         </tr>
                     </thead>
@@ -140,7 +257,7 @@
                 <!-- Paginação Tabela 1 -->
                 <div class="px-4 py-3 border-t border-neutral-700 flex items-center justify-between">
                     <div class="text-sm text-neutral-400">
-                        Mostrando {{ (currentPage1 - 1) * 20 + 1 }} a {{ Math.min(currentPage1 * 20, filteredTable1.length) }} de {{ filteredTable1.length }} notas
+                        Mostrando {{ (currentPage1 - 1) * 30 + 1 }} a {{ Math.min(currentPage1 * 30, filteredTable1.length) }} de {{ filteredTable1.length }} notas
                     </div>
                     <div class="flex items-center gap-2">
                         <button
@@ -183,17 +300,134 @@
                 <table class="min-w-full divide-y divide-neutral-700">
                     <thead class="bg-neutral-700">
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Parceiro</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Mês Referência</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Valor da Fatura</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">% do Imposto</th>
+                            <th 
+                                @click="toggleSort2('partner')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Parceiro
+                                    <svg v-if="sortKey2 === 'partner'" :class="{ 'rotate-180': sortOrder2 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
+                            <th 
+                                @click="toggleSort2('month')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Mês Referência
+                                    <svg v-if="sortKey2 === 'month'" :class="{ 'rotate-180': sortOrder2 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
+                            <th 
+                                @click="toggleSort2('invoiceAmount')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Valor da Fatura
+                                    <svg v-if="sortKey2 === 'invoiceAmount'" :class="{ 'rotate-180': sortOrder2 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
+                            <th 
+                                @click="toggleSort2('taxPercentage')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    % do Imposto
+                                    <svg v-if="sortKey2 === 'taxPercentage'" :class="{ 'rotate-180': sortOrder2 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Câmbio</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Valor Líquido</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Valor Pago</th>
+                            <th 
+                                @click="toggleSort2('netValue')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Valor Líquido
+                                    <svg v-if="sortKey2 === 'netValue'" :class="{ 'rotate-180': sortOrder2 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
+                            <th 
+                                @click="toggleSort2('paidValue')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Valor Pago
+                                    <svg v-if="sortKey2 === 'paidValue'" :class="{ 'rotate-180': sortOrder2 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Método de Pagamento</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Status</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Data do Saque</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Data do Pagamento</th>
+                            <th 
+                                @click="toggleSort2('status')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Status
+                                    <svg v-if="sortKey2 === 'status'" :class="{ 'rotate-180': sortOrder2 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
+                            <th 
+                                @click="toggleSort2('withdrawalDate')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Data do Saque
+                                    <svg v-if="sortKey2 === 'withdrawalDate'" :class="{ 'rotate-180': sortOrder2 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
+                            <th 
+                                @click="toggleSort2('effectivePaymentDate')"
+                                class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase cursor-pointer hover:bg-neutral-600 transition-colors select-none"
+                            >
+                                <div class="flex items-center gap-1">
+                                    Data do Pagamento
+                                    <svg v-if="sortKey2 === 'effectivePaymentDate'" :class="{ 'rotate-180': sortOrder2 === 'desc' }" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                </div>
+                            </th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Ações</th>
                         </tr>
                     </thead>
@@ -253,7 +487,7 @@
                 <!-- Paginação Tabela 2 -->
                 <div class="px-4 py-3 border-t border-neutral-700 flex items-center justify-between">
                     <div class="text-sm text-neutral-400">
-                        Mostrando {{ (currentPage2 - 1) * 20 + 1 }} a {{ Math.min(currentPage2 * 20, filteredTable2.length) }} de {{ filteredTable2.length }} notas
+                        Mostrando {{ (currentPage2 - 1) * 30 + 1 }} a {{ Math.min(currentPage2 * 30, filteredTable2.length) }} de {{ filteredTable2.length }} notas
                     </div>
                     <div class="flex items-center gap-2">
                         <button
@@ -483,13 +717,14 @@
                                 Percentual do Imposto (%) <span class="text-red-500">*</span>
                             </label>
                             <input
-                                v-model.number="taxPercentage"
-                                type="number"
+                                v-model="taxPercentageInput"
+                                type="text"
                                 step="0.01"
                                 min="0"
                                 max="100"
                                 required
-                                @input="calculateTaxFromPercentage"
+                                @input="handleTaxPercentageInput"
+                                placeholder="Ex: 23,50"
                                 class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
@@ -592,6 +827,12 @@ const showPartnerDropdown = ref(false);
 const isTable1Expanded = ref(true);
 const isTable2Expanded = ref(false);
 
+// Estados para ordenação
+const sortKey1 = ref<string>('');
+const sortOrder1 = ref<'asc' | 'desc'>('asc');
+const sortKey2 = ref<string>('');
+const sortOrder2 = ref<'asc' | 'desc'>('asc');
+
 // Filtros
 const filters = ref({
     partnerName: '',
@@ -601,7 +842,7 @@ const filters = ref({
 // Paginação
 const currentPage1 = ref(1);
 const currentPage2 = ref(1);
-const itemsPerPage = 20;
+const itemsPerPage = 30;
 
 // Modais
 const showDialog = ref(false);
@@ -638,6 +879,7 @@ const markAsPaidForm = ref({
 });
 
 const taxPercentage = ref(0);
+const taxPercentageInput = ref('0');
 
 const todayDate = computed(() => {
     const today = new Date();
@@ -681,8 +923,72 @@ const currentMonth = computed(() => {
     return { month: now.getMonth() + 1, year: now.getFullYear() };
 });
 
+// Função auxiliar para ordenação
+const sortItems = (items: any[], sortKey: string, sortOrder: 'asc' | 'desc') => {
+    if (!sortKey) return items;
+    
+    return [...items].sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+        
+        switch (sortKey) {
+            case 'partner':
+                aValue = getPartnerName(a.commercialPartnerId) || '';
+                bValue = getPartnerName(b.commercialPartnerId) || '';
+                break;
+            case 'month':
+                aValue = a.expectedPaymentMonth || '';
+                bValue = b.expectedPaymentMonth || '';
+                break;
+            case 'invoiceAmount':
+                aValue = a.invoiceAmount || 0;
+                bValue = b.invoiceAmount || 0;
+                break;
+            case 'taxPercentage':
+                aValue = calculateTaxPercentageNumber(a);
+                bValue = calculateTaxPercentageNumber(b);
+                break;
+            case 'netValue':
+                aValue = a.invoiceAmount - a.taxAmount || 0;
+                bValue = b.invoiceAmount - b.taxAmount || 0;
+                break;
+            case 'paidValue':
+                aValue = a.paidValue || 0;
+                bValue = b.paidValue || 0;
+                break;
+            case 'status':
+                aValue = a.status || '';
+                bValue = b.status || '';
+                break;
+            case 'withdrawalDate':
+                aValue = a.withdrawalDate ? new Date(a.withdrawalDate).getTime() : 0;
+                bValue = b.withdrawalDate ? new Date(b.withdrawalDate).getTime() : 0;
+                break;
+            case 'effectivePaymentDate':
+                aValue = a.effectivePaymentDate ? new Date(a.effectivePaymentDate).getTime() : 0;
+                bValue = b.effectivePaymentDate ? new Date(b.effectivePaymentDate).getTime() : 0;
+                break;
+            default:
+                return 0;
+        }
+        
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+            const comparison = aValue.localeCompare(bValue, 'pt-BR');
+            return sortOrder === 'asc' ? comparison : -comparison;
+        }
+        
+        const comparison = aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+        return sortOrder === 'asc' ? comparison : -comparison;
+    });
+};
+
+const calculateTaxPercentageNumber = (item: any): number => {
+    if (!item.invoiceAmount || item.invoiceAmount === 0) return 0;
+    return (item.taxAmount / item.invoiceAmount) * 100;
+};
+
 const filteredTable1 = computed(() => {
-    return filteredItems.value.filter(item => {
+    let result = filteredItems.value.filter(item => {
         if (item.status === 'Pendente') return true;
         if (item.status === 'Pago' && item.effectivePaymentDate) {
             const paymentDate = new Date(item.effectivePaymentDate);
@@ -691,10 +997,12 @@ const filteredTable1 = computed(() => {
         }
         return false;
     });
+    
+    return sortItems(result, sortKey1.value, sortOrder1.value);
 });
 
 const filteredTable2 = computed(() => {
-    return filteredItems.value.filter(item => {
+    let result = filteredItems.value.filter(item => {
         if (item.status === 'Pago' && item.effectivePaymentDate) {
             const paymentDate = new Date(item.effectivePaymentDate);
             return !(paymentDate.getMonth() + 1 === currentMonth.value.month &&
@@ -702,6 +1010,8 @@ const filteredTable2 = computed(() => {
         }
         return false;
     });
+    
+    return sortItems(result, sortKey2.value, sortOrder2.value);
 });
 
 // Paginação
@@ -846,6 +1156,19 @@ const calculateTaxPercentage = (item: any) => {
     return percentage.toFixed(2);
 };
 
+// Função auxiliar para determinar qual data usar para buscar a taxa de câmbio
+// Regra: Se status é "Pago" e tem effectivePaymentDate, usar effectivePaymentDate
+//        Caso contrário, usar withdrawalDate (se disponível)
+const getExchangeRateDate = (item: any): Date | undefined => {
+    if (item.status === 'Pago' && item.effectivePaymentDate) {
+        return new Date(item.effectivePaymentDate);
+    }
+    if (item.withdrawalDate) {
+        return new Date(item.withdrawalDate);
+    }
+    return undefined;
+};
+
 // Buscar taxa de câmbio
 const getExchangeRate = async (currencyPair: string, date?: Date) => {
     // Usar UTC para formatar a data da chave de cache
@@ -897,13 +1220,13 @@ const getExchangeRate = async (currencyPair: string, date?: Date) => {
 const getExchangeRateDisplay = (item: any) => {
     if (item.currency === 'BRL') return '-';
     const currencyPair = `${item.currency}-BRL`;
-    // Usar UTC para formatar a data da chave de cache
-    const dateKey = item.effectivePaymentDate 
+    // Usar a função auxiliar para determinar qual data usar
+    const exchangeDate = getExchangeRateDate(item);
+    const dateKey = exchangeDate
         ? (() => {
-            const d = new Date(item.effectivePaymentDate);
-            const year = d.getUTCFullYear();
-            const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(d.getUTCDate()).padStart(2, '0');
+            const year = exchangeDate.getUTCFullYear();
+            const month = String(exchangeDate.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(exchangeDate.getUTCDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         })()
         : 'latest';
@@ -918,13 +1241,13 @@ const calculateNetValue = (item: any) => {
     if (item.currency === 'BRL') return netValue;
     
     const currencyPair = `${item.currency}-BRL`;
-    // Usar UTC para formatar a data da chave de cache
-    const dateKey = item.effectivePaymentDate 
+    // Usar a função auxiliar para determinar qual data usar
+    const exchangeDate = getExchangeRateDate(item);
+    const dateKey = exchangeDate
         ? (() => {
-            const d = new Date(item.effectivePaymentDate);
-            const year = d.getUTCFullYear();
-            const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(d.getUTCDate()).padStart(2, '0');
+            const year = exchangeDate.getUTCFullYear();
+            const month = String(exchangeDate.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(exchangeDate.getUTCDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         })()
         : 'latest';
@@ -942,13 +1265,13 @@ const formatNetValue = (item: any) => {
     }
     
     const currencyPair = `${item.currency}-BRL`;
-    // Usar UTC para formatar a data da chave de cache
-    const dateKey = item.effectivePaymentDate 
+    // Usar a função auxiliar para determinar qual data usar
+    const exchangeDate = getExchangeRateDate(item);
+    const dateKey = exchangeDate
         ? (() => {
-            const d = new Date(item.effectivePaymentDate);
-            const year = d.getUTCFullYear();
-            const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(d.getUTCDate()).padStart(2, '0');
+            const year = exchangeDate.getUTCFullYear();
+            const month = String(exchangeDate.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(exchangeDate.getUTCDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         })()
         : 'latest';
@@ -991,13 +1314,13 @@ const getPaidValueColor = (item: any) => {
     
     if (item.currency !== 'BRL') {
         const currencyPair = `${item.currency}-BRL`;
-        // Usar UTC para formatar a data da chave de cache
-        const dateKey = item.effectivePaymentDate 
+        // Usar a função auxiliar para determinar qual data usar
+        const exchangeDate = getExchangeRateDate(item);
+        const dateKey = exchangeDate
             ? (() => {
-                const d = new Date(item.effectivePaymentDate);
-                const year = d.getUTCFullYear();
-                const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-                const day = String(d.getUTCDate()).padStart(2, '0');
+                const year = exchangeDate.getUTCFullYear();
+                const month = String(exchangeDate.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(exchangeDate.getUTCDate()).padStart(2, '0');
                 return `${year}-${month}-${day}`;
             })()
             : 'latest';
@@ -1019,7 +1342,8 @@ const getPaidValueColor = (item: any) => {
 // Carregar dados
 const loadData = async () => {
     try {
-        const response = await client.paymentOrders.get({});
+        // Buscar todas as ordens sem limite
+        const response = await client.paymentOrders.get({ limit: '10000' });
         items.value = response.data || [];
         
         // Carregar taxas de câmbio para todos os itens
@@ -1027,8 +1351,9 @@ const loadData = async () => {
         for (const item of items.value) {
             if (item.currency !== 'BRL') {
                 const currencyPair = `${item.currency}-BRL`;
-                const paymentDate = item.effectivePaymentDate ? new Date(item.effectivePaymentDate) : undefined;
-                ratePromises.push(getExchangeRate(currencyPair, paymentDate));
+                // Usar a função auxiliar para determinar qual data usar
+                const exchangeDate = getExchangeRateDate(item);
+                ratePromises.push(getExchangeRate(currencyPair, exchangeDate));
             }
         }
         await Promise.all(ratePromises);
@@ -1041,13 +1366,27 @@ const loadData = async () => {
 const loadPartners = async () => {
     try {
         const response = await client.commercialPartners.getAll();
-        partners.value = response.data || [];
+        let partnersList = response.data || [];
+        // Ordenar parceiros alfabeticamente por padrão
+        partnersList = partnersList.sort((a: any, b: any) => {
+            const nameA = (a.name || '').toLowerCase();
+            const nameB = (b.name || '').toLowerCase();
+            return nameA.localeCompare(nameB, 'pt-BR');
+        });
+        partners.value = partnersList;
     } catch (error) {
         console.error('Erro ao carregar parceiros:', error);
         // Fallback para o método antigo se getAll falhar
         try {
             const fallbackResponse = await client.commercialPartners.get({ limit: '10000' });
-            partners.value = fallbackResponse.data || [];
+            let partnersList = fallbackResponse.data || [];
+            // Ordenar parceiros alfabeticamente por padrão
+            partnersList = partnersList.sort((a: any, b: any) => {
+                const nameA = (a.name || '').toLowerCase();
+                const nameB = (b.name || '').toLowerCase();
+                return nameA.localeCompare(nameB, 'pt-BR');
+            });
+            partners.value = partnersList;
         } catch (fallbackError) {
             console.error('Erro no fallback ao carregar parceiros:', fallbackError);
         }
@@ -1082,11 +1421,33 @@ const toggleTable2 = () => {
     isTable2Expanded.value = !isTable2Expanded.value;
 };
 
+// Funções de ordenação
+const toggleSort1 = (key: string) => {
+    if (sortKey1.value === key) {
+        sortOrder1.value = sortOrder1.value === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortKey1.value = key;
+        sortOrder1.value = 'asc';
+    }
+    currentPage1.value = 1; // Resetar para primeira página ao ordenar
+};
+
+const toggleSort2 = (key: string) => {
+    if (sortKey2.value === key) {
+        sortOrder2.value = sortOrder2.value === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortKey2.value = key;
+        sortOrder2.value = 'asc';
+    }
+    currentPage2.value = 1; // Resetar para primeira página ao ordenar
+};
+
 // Modais
 const openAddDialog = () => {
     isEditing.value = false;
     editingItem.value = null;
     taxPercentage.value = 0;
+    taxPercentageInput.value = '0';
     partnerSearchText.value = '';
     showPartnerDropdown.value = false;
     form.value = {
@@ -1123,6 +1484,7 @@ const editItem = (item: any) => {
     const invoiceAmount = item.invoiceAmount || 0;
     const taxAmount = item.taxAmount || 0;
     taxPercentage.value = invoiceAmount > 0 ? (taxAmount / invoiceAmount) * 100 : 0;
+    taxPercentageInput.value = taxPercentage.value.toFixed(2).replace('.', ',');
     
     const partnerId = item.commercialPartnerId || '';
     const selectedPartner = partners.value.find(p => p.id === partnerId);
@@ -1163,6 +1525,7 @@ const closeDialog = () => {
     isEditing.value = false;
     editingItem.value = null;
     taxPercentage.value = 0;
+    taxPercentageInput.value = '0';
     partnerSearchText.value = '';
     showPartnerDropdown.value = false;
     form.value = {
@@ -1246,6 +1609,43 @@ const confirmMarkAsPaid = async () => {
 const calculateTaxFromInvoice = () => {
     if (form.value.invoiceAmount && taxPercentage.value) {
         form.value.taxAmount = (form.value.invoiceAmount * taxPercentage.value) / 100;
+        // Atualizar o input formatado
+        taxPercentageInput.value = taxPercentage.value.toFixed(2).replace('.', ',');
+    }
+};
+
+const handleTaxPercentageInput = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    let value = input.value;
+    
+    // Substituir vírgula por ponto para processamento
+    value = value.replace(',', '.');
+    
+    // Remover caracteres não numéricos exceto ponto
+    value = value.replace(/[^\d.]/g, '');
+    
+    // Garantir apenas um ponto decimal
+    const parts = value.split('.');
+    if (parts.length > 2) {
+        value = parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    // Limitar a 100
+    const numValue = parseFloat(value) || 0;
+    if (numValue > 100) {
+        value = '100';
+    }
+    
+    // Atualizar o valor numérico
+    taxPercentage.value = parseFloat(value) || 0;
+    
+    // Atualizar o input com formatação (vírgula)
+    const displayValue = value.replace('.', ',');
+    taxPercentageInput.value = displayValue;
+    
+    // Calcular imposto
+    if (form.value.invoiceAmount && taxPercentage.value) {
+        form.value.taxAmount = (form.value.invoiceAmount * taxPercentage.value) / 100;
     }
 };
 
@@ -1254,6 +1654,7 @@ const calculateTaxFromPercentage = () => {
         form.value.taxAmount = (form.value.invoiceAmount * taxPercentage.value) / 100;
     } else if (form.value.invoiceAmount && form.value.taxAmount) {
         taxPercentage.value = (form.value.taxAmount / form.value.invoiceAmount) * 100;
+        taxPercentageInput.value = taxPercentage.value.toFixed(2).replace('.', ',');
     }
 };
 
