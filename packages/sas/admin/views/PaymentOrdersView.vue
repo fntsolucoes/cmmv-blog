@@ -357,14 +357,49 @@
                             <label class="block text-sm font-medium text-neutral-300 mb-2">
                                 Parceiro <span class="text-red-500">*</span>
                             </label>
-                            <select
+                            <div class="relative">
+                                <input
+                                    v-model="partnerSearchText"
+                                    @input="filterPartners"
+                                    @focus="showPartnerDropdown = true"
+                                    @blur="handlePartnerBlur"
+                                    type="text"
+                                    placeholder="Digite para buscar o parceiro..."
+                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    :required="!form.commercialPartnerId"
+                                />
+                                <div
+                                    v-if="showPartnerDropdown && filteredPartners.length > 0"
+                                    class="absolute z-50 w-full mt-1 bg-neutral-700 border border-neutral-600 rounded-md shadow-lg max-h-60 overflow-y-auto"
+                                >
+                                    <div
+                                        v-for="partner in filteredPartners"
+                                        :key="partner.id"
+                                        @mousedown.prevent="selectPartner(partner)"
+                                        class="px-3 py-2 hover:bg-neutral-600 cursor-pointer text-white text-sm"
+                                    >
+                                        {{ partner.name }}
+                                    </div>
+                                </div>
+                                <div
+                                    v-if="showPartnerDropdown && filteredPartners.length === 0 && partnerSearchText"
+                                    class="absolute z-50 w-full mt-1 bg-neutral-700 border border-neutral-600 rounded-md shadow-lg"
+                                >
+                                    <div class="px-3 py-2 text-neutral-400 text-sm">
+                                        Nenhum parceiro encontrado
+                                    </div>
+                                </div>
+                            </div>
+                            <input
                                 v-model="form.commercialPartnerId"
-                                required
-                                class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="">Selecione um parceiro</option>
-                                <option v-for="partner in partners" :key="partner.id" :value="partner.id">{{ partner.name }}</option>
-                            </select>
+                                type="hidden"
+                            />
+                            <p v-if="selectedPartnerName" class="mt-1 text-xs text-neutral-400">
+                                Selecionado: {{ selectedPartnerName }}
+                            </p>
+                            <p v-if="!form.commercialPartnerId && partnerSearchText" class="mt-1 text-xs text-yellow-400">
+                                Selecione um parceiro da lista
+                            </p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-neutral-300 mb-2">
@@ -549,6 +584,10 @@ const partners = ref<any[]>([]);
 const costCenters = ref<any[]>([]);
 const exchangeRatesCache = ref<Map<string, any>>(new Map());
 
+// Estados para busca de parceiros
+const partnerSearchText = ref('');
+const showPartnerDropdown = ref(false);
+
 // Estados das tabelas
 const isTable1Expanded = ref(true);
 const isTable2Expanded = ref(false);
@@ -685,6 +724,47 @@ const totalPages2 = computed(() => Math.ceil(filteredTable2.value.length / items
 const getPartnerName = (id: string) => {
     const partner = partners.value.find(p => p.id === id);
     return partner?.name;
+};
+
+// Filtro de parceiros para busca
+const filteredPartners = computed(() => {
+    if (!partnerSearchText.value.trim()) {
+        return partners.value;
+    }
+    const searchLower = partnerSearchText.value.toLowerCase().trim();
+    return partners.value.filter((partner: any) =>
+        partner.name?.toLowerCase().includes(searchLower)
+    );
+});
+
+// Nome do parceiro selecionado
+const selectedPartnerName = computed(() => {
+    if (!form.value.commercialPartnerId) return '';
+    const partner = partners.value.find(p => p.id === form.value.commercialPartnerId);
+    return partner?.name || '';
+});
+
+// Selecionar parceiro
+const selectPartner = (partner: any) => {
+    form.value.commercialPartnerId = partner.id;
+    partnerSearchText.value = partner.name;
+    showPartnerDropdown.value = false;
+};
+
+// Filtrar parceiros
+const filterPartners = () => {
+    showPartnerDropdown.value = true;
+    // Se o campo de busca estiver vazio, limpar o parceiro selecionado
+    if (!partnerSearchText.value.trim()) {
+        form.value.commercialPartnerId = '';
+    }
+};
+
+// Fechar dropdown quando perder foco (com delay para permitir clique)
+const handlePartnerBlur = () => {
+    setTimeout(() => {
+        showPartnerDropdown.value = false;
+    }, 200);
 };
 
 const getCostCenterName = (id: string) => {
@@ -960,10 +1040,17 @@ const loadData = async () => {
 
 const loadPartners = async () => {
     try {
-        const response = await client.commercialPartners.get({});
+        const response = await client.commercialPartners.getAll();
         partners.value = response.data || [];
     } catch (error) {
         console.error('Erro ao carregar parceiros:', error);
+        // Fallback para o método antigo se getAll falhar
+        try {
+            const fallbackResponse = await client.commercialPartners.get({ limit: '10000' });
+            partners.value = fallbackResponse.data || [];
+        } catch (fallbackError) {
+            console.error('Erro no fallback ao carregar parceiros:', fallbackError);
+        }
     }
 };
 
@@ -1000,6 +1087,8 @@ const openAddDialog = () => {
     isEditing.value = false;
     editingItem.value = null;
     taxPercentage.value = 0;
+    partnerSearchText.value = '';
+    showPartnerDropdown.value = false;
     form.value = {
         commercialPartnerId: '',
         costCenterId: '',
@@ -1035,8 +1124,13 @@ const editItem = (item: any) => {
     const taxAmount = item.taxAmount || 0;
     taxPercentage.value = invoiceAmount > 0 ? (taxAmount / invoiceAmount) * 100 : 0;
     
+    const partnerId = item.commercialPartnerId || '';
+    const selectedPartner = partners.value.find(p => p.id === partnerId);
+    partnerSearchText.value = selectedPartner?.name || '';
+    showPartnerDropdown.value = false;
+    
     form.value = {
-        commercialPartnerId: item.commercialPartnerId || '',
+        commercialPartnerId: partnerId,
         costCenterId: item.costCenterId || '',
         currency: item.currency || 'BRL',
         invoiceAmount,
@@ -1069,6 +1163,8 @@ const closeDialog = () => {
     isEditing.value = false;
     editingItem.value = null;
     taxPercentage.value = 0;
+    partnerSearchText.value = '';
+    showPartnerDropdown.value = false;
     form.value = {
         commercialPartnerId: '',
         costCenterId: '',
@@ -1162,6 +1258,12 @@ const calculateTaxFromPercentage = () => {
 };
 
 const saveOrder = async () => {
+    // Validar parceiro selecionado
+    if (!form.value.commercialPartnerId) {
+        alert('Por favor, selecione um parceiro.');
+        return;
+    }
+    
     saving.value = true;
     try {
         const payload: any = {
@@ -1230,6 +1332,18 @@ watch(() => filters.value.withdrawalDate, () => {
 // Resetar método de pagamento quando centro de custos mudar
 watch(() => form.value.costCenterId, () => {
     form.value.paymentMethod = null;
+});
+
+// Sincronizar campo de busca quando o parceiro for limpo
+watch(() => form.value.commercialPartnerId, (newId) => {
+    if (!newId && partnerSearchText.value) {
+        partnerSearchText.value = '';
+    } else if (newId && !partnerSearchText.value) {
+        const partner = partners.value.find(p => p.id === newId);
+        if (partner) {
+            partnerSearchText.value = partner.name;
+        }
+    }
 });
 
 onMounted(() => {
