@@ -1,6 +1,6 @@
 {
     "name": "cmmv-blog-admin",
-    "version": "0.0.118",
+    "version": "0.0.119",
     "private": true,
     "description": "Blog admin package for CMMV",
     "type": "module",
@@ -51,6 +51,7 @@
         "tailwindcss": "^4.0.17",
         "tiptap-extension-resize-image": "^1.2.1",
         "vue": "^3.5.13",
+        "vue-currency-input": "^2.2.0",
         "vue-router": "^4.5.0"
     }
 }

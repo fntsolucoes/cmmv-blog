@@ -714,12 +714,12 @@
                                 Valor da Fatura <span class="text-red-500">*</span>
                             </label>
                             <input
-                                v-model="invoiceAmountInput"
+                                v-model="form.invoiceAmount"
+                                v-currency="getCurrencyOptions()"
                                 type="text"
                                 required
-                                @input="handleInvoiceAmountInput"
-                                :placeholder="getInvoiceAmountPlaceholder()"
                                 class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                @input="calculateTaxFromInvoice"
                             />
                         </div>
                         <div>
@@ -929,7 +929,6 @@ const markAsPaidForm = ref({
 
 const taxPercentage = ref(0);
 const taxPercentageInput = ref('0');
-const invoiceAmountInput = ref('0');
 
 const todayDate = computed(() => {
     const today = new Date();
@@ -1498,7 +1497,6 @@ const openAddDialog = () => {
     editingItem.value = null;
     taxPercentage.value = 0;
     taxPercentageInput.value = '0';
-    invoiceAmountInput.value = '0';
     partnerSearchText.value = '';
     showPartnerDropdown.value = false;
     form.value = {
@@ -1537,7 +1535,6 @@ const editItem = (item: any) => {
     const taxAmount = item.taxAmount || 0;
     taxPercentage.value = invoiceAmount > 0 ? (taxAmount / invoiceAmount) * 100 : 0;
     taxPercentageInput.value = taxPercentage.value.toFixed(2).replace('.', ',');
-    invoiceAmountInput.value = formatInvoiceAmount(invoiceAmount, item.currency || 'BRL');
     
     const partnerId = item.commercialPartnerId || '';
     const selectedPartner = partners.value.find(p => p.id === partnerId);
@@ -1580,7 +1577,6 @@ const closeDialog = () => {
     editingItem.value = null;
     taxPercentage.value = 0;
     taxPercentageInput.value = '0';
-    invoiceAmountInput.value = '0';
     partnerSearchText.value = '';
     showPartnerDropdown.value = false;
     form.value = {
@@ -1671,109 +1667,53 @@ const confirmMarkAsPaid = async () => {
     }
 };
 
-// Função para obter placeholder do valor da fatura baseado na moeda
-const getInvoiceAmountPlaceholder = () => {
-    switch (form.value.currency) {
-        case 'BRL':
-            return 'Ex: 1.234,56';
-        case 'USD':
-        case 'EUR':
-            return 'Ex: 1,234.56';
-        default:
-            return 'Ex: 1234.56';
-    }
-};
-
-// Função para formatar valor de acordo com a moeda
-const formatInvoiceAmount = (value: number, currency: string): string => {
-    if (!value || value === 0) return '0';
-    
-    // Para BRL, usar vírgula como separador decimal e ponto como separador de milhar
-    if (currency === 'BRL') {
-        return value.toLocaleString('pt-BR', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-    }
-    
-    // Para USD e EUR, usar ponto como separador decimal e vírgula como separador de milhar
-    return value.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-};
-
-// Função para processar input do valor da fatura
-const handleInvoiceAmountInput = (event: Event) => {
-    const input = event.target as HTMLInputElement;
-    let value = input.value;
-    
-    // Se o campo estiver vazio, resetar
-    if (!value || value.trim() === '') {
-        form.value.invoiceAmount = 0;
-        invoiceAmountInput.value = '0';
-        calculateTaxFromInvoice();
-        return;
-    }
-    
-    // Remover todos os caracteres não numéricos exceto ponto e vírgula
-    value = value.replace(/[^\d.,]/g, '');
-    
+// Função para obter opções de moeda baseado na moeda selecionada
+const getCurrencyOptions = () => {
     const currency = form.value.currency;
     
     if (currency === 'BRL') {
-        // Para BRL: vírgula como decimal, ponto como milhar
-        // Remover todos os pontos primeiro (serão re-adicionados como separadores de milhar)
-        value = value.replace(/\./g, '');
-        // Garantir apenas uma vírgula
-        const parts = value.split(',');
-        if (parts.length > 2) {
-            value = parts[0] + ',' + parts.slice(1).join('');
-        }
-        // Limitar a 2 casas decimais
-        if (parts.length === 2 && parts[1].length > 2) {
-            value = parts[0] + ',' + parts[1].substring(0, 2);
-        }
-        
-        // Converter para número (substituir vírgula por ponto para parseFloat)
-        const numValue = parseFloat(value.replace(',', '.')) || 0;
-        form.value.invoiceAmount = numValue;
-        
-        // Formatar para exibição
-        if (numValue > 0) {
-            invoiceAmountInput.value = formatInvoiceAmount(numValue, currency);
-        } else {
-            invoiceAmountInput.value = '0';
-        }
-    } else {
-        // Para USD e EUR: ponto como decimal, vírgula como milhar
-        // Remover todas as vírgulas primeiro (serão re-adicionadas como separadores de milhar)
-        value = value.replace(/,/g, '');
-        // Garantir apenas um ponto
-        const parts = value.split('.');
-        if (parts.length > 2) {
-            value = parts[0] + '.' + parts.slice(1).join('');
-        }
-        // Limitar a 2 casas decimais
-        if (parts.length === 2 && parts[1].length > 2) {
-            value = parts[0] + '.' + parts[1].substring(0, 2);
-        }
-        
-        // Converter para número
-        const numValue = parseFloat(value) || 0;
-        form.value.invoiceAmount = numValue;
-        
-        // Formatar para exibição
-        if (numValue > 0) {
-            invoiceAmountInput.value = formatInvoiceAmount(numValue, currency);
-        } else {
-            invoiceAmountInput.value = '0';
-        }
+        return {
+            currency: 'BRL',
+            locale: 'pt-BR',
+            precision: 2,
+            autoDecimalDigits: true,
+            useGrouping: true,
+            accountingSign: false,
+            valueAsInteger: false
+        };
+    } else if (currency === 'USD') {
+        return {
+            currency: 'USD',
+            locale: 'en-US',
+            precision: 2,
+            autoDecimalDigits: true,
+            useGrouping: true,
+            accountingSign: false,
+            valueAsInteger: false
+        };
+    } else if (currency === 'EUR') {
+        return {
+            currency: 'EUR',
+            locale: 'de-DE',
+            precision: 2,
+            autoDecimalDigits: true,
+            useGrouping: true,
+            accountingSign: false,
+            valueAsInteger: false
+        };
     }
     
-    // Calcular imposto se houver porcentagem
-    calculateTaxFromInvoice();
+    return {
+        currency: 'BRL',
+        locale: 'pt-BR',
+        precision: 2,
+        autoDecimalDigits: true,
+        useGrouping: true,
+        accountingSign: false,
+        valueAsInteger: false
+    };
 };
+
 
 // Cálculos no formulário
 const calculateTaxFromInvoice = () => {
@@ -1909,12 +1849,7 @@ watch(() => form.value.costCenterId, () => {
     form.value.paymentMethod = null;
 });
 
-// Atualizar formato do valor da fatura quando a moeda mudar
-watch(() => form.value.currency, (newCurrency) => {
-    if (form.value.invoiceAmount > 0) {
-        invoiceAmountInput.value = formatInvoiceAmount(form.value.invoiceAmount, newCurrency);
-    }
-});
+// O CurrencyInput atualiza automaticamente quando a moeda muda através das opções
 
 // Sincronizar campo de busca quando o parceiro for limpo
 watch(() => form.value.commercialPartnerId, (newId) => {
