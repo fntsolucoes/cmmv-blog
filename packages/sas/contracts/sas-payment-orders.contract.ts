@@ -56,6 +56,14 @@ export class SasPaymentOrdersContract extends AbstractContract {
     taxAmount!: number; // Valor do Imposto
 
     @ContractField({
+        protoType: 'double',
+        nullable: false,
+        defaultValue: 0,
+        index: true,
+    })
+    discountAmount!: number; // Valor de Desconto
+
+    @ContractField({
         protoType: 'date',
         nullable: false,
         index: true,

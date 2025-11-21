@@ -47,6 +47,7 @@ export class PaymentOrdersService {
         currency: string;
         invoiceAmount: number;
         taxAmount: number;
+        discountAmount?: number;
         withdrawalDate: string | Date;
         expectedPaymentMonth: number;
         expectedPaymentYear: number;
@@ -71,6 +72,17 @@ export class PaymentOrdersService {
 
         if (data.taxAmount > data.invoiceAmount) {
             throw new Error("Tax value cannot exceed invoice value");
+        }
+
+        // Validar desconto
+        const discountAmount = data.discountAmount ?? 0;
+        if (discountAmount < 0) {
+            throw new Error("Discount value cannot be negative");
+        }
+
+        // Validar que imposto + desconto não exceda o valor da fatura
+        if (data.taxAmount + discountAmount > data.invoiceAmount) {
+            throw new Error("Tax and discount combined cannot exceed invoice value");
         }
 
         // Validar mês/ano
@@ -148,6 +160,7 @@ export class PaymentOrdersService {
             currency: data.currency,
             invoiceAmount: data.invoiceAmount,
             taxAmount: data.taxAmount,
+            discountAmount: discountAmount,
             withdrawalDate,
             expectedPaymentMonth: expectedPaymentMonthStr,
             status: data.status || "Pendente",
@@ -205,6 +218,7 @@ export class PaymentOrdersService {
         currency: string;
         invoiceAmount: number;
         taxAmount: number;
+        discountAmount?: number;
         withdrawalDate: string | Date | null;
         expectedPaymentMonth: number;
         expectedPaymentYear: number;
@@ -242,6 +256,19 @@ export class PaymentOrdersService {
                 throw new Error("Tax value cannot exceed invoice value");
             }
             payload.taxAmount = data.taxAmount;
+        }
+
+        if (data.discountAmount !== undefined) {
+            if (data.discountAmount < 0) {
+                throw new Error("Discount value cannot be negative");
+            }
+            const invoiceAmount = data.invoiceAmount ?? existing.invoiceAmount;
+            const taxAmount = data.taxAmount ?? existing.taxAmount;
+            const discountAmount = data.discountAmount ?? 0;
+            if (taxAmount + discountAmount > invoiceAmount) {
+                throw new Error("Tax and discount combined cannot exceed invoice value");
+            }
+            payload.discountAmount = discountAmount;
         }
 
         if (data.expectedPaymentMonth !== undefined) {
@@ -549,10 +576,12 @@ export class PaymentOrdersService {
             throw new Error("Order not found");
         }
 
+        const discountAmount = order.discountAmount ?? 0;
         return {
             invoiceAmount: order.invoiceAmount,
             taxAmount: order.taxAmount,
-            netAmount: order.invoiceAmount - order.taxAmount
+            discountAmount: discountAmount,
+            netAmount: order.invoiceAmount - order.taxAmount - discountAmount
         };
     }
 }

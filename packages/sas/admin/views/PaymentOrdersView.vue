@@ -719,7 +719,9 @@
                                 type="text"
                                 required
                                 class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                @input="calculateTaxFromInvoice"
+                                @input="handleCurrencyInput"
+                                @paste.prevent="handleCurrencyPaste"
+                                @keydown="handleCurrencyKeydown"
                             />
                         </div>
                         <div>
@@ -744,6 +746,32 @@
                             </label>
                             <input
                                 :value="formatCurrency(form.taxAmount, form.currency)"
+                                type="text"
+                                readonly
+                                class="w-full px-3 py-2 bg-neutral-600 border border-neutral-600 rounded-md text-neutral-300 cursor-not-allowed"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-300 mb-2">
+                                Valor de Desconto
+                            </label>
+                            <input
+                                v-model="form.discountAmount"
+                                v-currency="getCurrencyOptions()"
+                                type="text"
+                                class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                @input="handleDiscountInput"
+                                @paste.prevent="handleDiscountPaste"
+                                @keydown="handleCurrencyKeydown"
+                                placeholder="0,00"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-300 mb-2">
+                                Valor Líquido (Calculado)
+                            </label>
+                            <input
+                                :value="formatCurrency(calculateNetAmount(), form.currency)"
                                 type="text"
                                 readonly
                                 class="w-full px-3 py-2 bg-neutral-600 border border-neutral-600 rounded-md text-neutral-300 cursor-not-allowed"
@@ -906,6 +934,7 @@ const form = ref({
     currency: 'BRL',
     invoiceAmount: 0,
     taxAmount: 0,
+    discountAmount: 0,
     withdrawalDate: '',
     expectedPaymentMonth: new Date().getMonth() + 1,
     expectedPaymentYear: new Date().getFullYear(),
@@ -998,8 +1027,10 @@ const sortItems = (items: any[], sortKey: string, sortOrder: 'asc' | 'desc') => 
                 bValue = calculateTaxPercentageNumber(b);
                 break;
             case 'netValue':
-                aValue = a.invoiceAmount - a.taxAmount || 0;
-                bValue = b.invoiceAmount - b.taxAmount || 0;
+                const discountA = a.discountAmount || 0;
+                const discountB = b.discountAmount || 0;
+                aValue = (a.invoiceAmount - a.taxAmount - discountA) || 0;
+                bValue = (b.invoiceAmount - b.taxAmount - discountB) || 0;
                 break;
             case 'paidValue':
                 aValue = a.paidValue || 0;
@@ -1286,7 +1317,8 @@ const getExchangeRateDisplay = (item: any) => {
 
 // Calcular valor líquido (função auxiliar, não usada diretamente no template)
 const calculateNetValue = (item: any) => {
-    const netValue = item.invoiceAmount - item.taxAmount;
+    const discountAmount = item.discountAmount || 0;
+    const netValue = item.invoiceAmount - item.taxAmount - discountAmount;
     if (item.currency === 'BRL') return netValue;
     
     const currencyPair = `${item.currency}-BRL`;
@@ -1308,7 +1340,8 @@ const calculateNetValue = (item: any) => {
 };
 
 const formatNetValue = (item: any) => {
-    const netValue = item.invoiceAmount - item.taxAmount;
+    const discountAmount = item.discountAmount || 0;
+    const netValue = item.invoiceAmount - item.taxAmount - discountAmount;
     if (item.currency === 'BRL') {
         return formatCurrency(netValue, 'BRL');
     }
@@ -1357,8 +1390,9 @@ const formatPaidValue = (item: any) => {
 const getPaidValueColor = (item: any) => {
     if (!item.paidValue) return 'text-white';
     
-    // Calcular valor líquido esperado
-    const netValue = item.invoiceAmount - item.taxAmount;
+    // Calcular valor líquido esperado (fatura - imposto - desconto)
+    const discountAmount = item.discountAmount || 0;
+    const netValue = item.invoiceAmount - item.taxAmount - discountAmount;
     let expectedNetValue = netValue;
     
     if (item.currency !== 'BRL') {
@@ -1505,6 +1539,7 @@ const openAddDialog = () => {
         currency: 'BRL',
         invoiceAmount: 0,
         taxAmount: 0,
+        discountAmount: 0,
         withdrawalDate: '',
         expectedPaymentMonth: new Date().getMonth() + 1,
         expectedPaymentYear: new Date().getFullYear(),
@@ -1547,6 +1582,7 @@ const editItem = (item: any) => {
         currency: item.currency || 'BRL',
         invoiceAmount,
         taxAmount,
+        discountAmount: item.discountAmount || 0,
         withdrawalDate: item.withdrawalDate ? (() => {
             const d = new Date(item.withdrawalDate);
             const year = d.getUTCFullYear();
@@ -1585,6 +1621,7 @@ const closeDialog = () => {
         currency: 'BRL',
         invoiceAmount: 0,
         taxAmount: 0,
+        discountAmount: 0,
         withdrawalDate: '',
         expectedPaymentMonth: new Date().getMonth() + 1,
         expectedPaymentYear: new Date().getFullYear(),
@@ -1599,8 +1636,9 @@ const closeDialog = () => {
 const markAsPaid = async (item: any) => {
     markAsPaidItem.value = item;
     
-    // Calcular valor líquido padrão
-    const netValue = item.invoiceAmount - item.taxAmount;
+    // Calcular valor líquido padrão (fatura - imposto - desconto)
+    const discountAmount = item.discountAmount || 0;
+    const netValue = item.invoiceAmount - item.taxAmount - discountAmount;
     let defaultPaidValue = netValue;
     
     if (item.currency !== 'BRL') {
@@ -1714,13 +1752,286 @@ const getCurrencyOptions = () => {
     };
 };
 
+// Handler para keydown no campo de moeda - bloqueia letras
+const handleCurrencyKeydown = (event: KeyboardEvent) => {
+    const key = event.key;
+    const currency = form.value.currency;
+    
+    // Permitir teclas de controle (Backspace, Delete, Tab, Arrow keys, etc.)
+    if (['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(key)) {
+        return;
+    }
+    
+    // Permitir Ctrl/Cmd + A, C, V, X (copiar, colar, selecionar tudo, cortar)
+    if (event.ctrlKey || event.metaKey) {
+        if (['a', 'c', 'v', 'x'].includes(key.toLowerCase())) {
+            return;
+        }
+    }
+    
+    // Para BRL: permitir apenas números e vírgula
+    if (currency === 'BRL') {
+        if (!/[\d,]/.test(key)) {
+            event.preventDefault();
+            return;
+        }
+        // Se for vírgula, verificar se já existe uma no campo
+        if (key === ',') {
+            const input = event.target as HTMLInputElement;
+            if (input.value.includes(',')) {
+                event.preventDefault();
+                return;
+            }
+        }
+    } else {
+        // Para USD/EUR: permitir apenas números e ponto
+        if (!/[\d.]/.test(key)) {
+            event.preventDefault();
+            return;
+        }
+        // Se for ponto, verificar se já existe um no campo
+        if (key === '.') {
+            const input = event.target as HTMLInputElement;
+            if (input.value.includes('.')) {
+                event.preventDefault();
+                return;
+            }
+        }
+    }
+};
+
+// Handler para input no campo de moeda - apenas calcula o imposto
+// O vue-currency-input já faz a formatação, então apenas validamos se há letras
+const handleCurrencyInput = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    const value = input.value;
+    
+    // Verificar se há letras no valor (após formatação do vue-currency-input)
+    // Se houver, remover e atualizar
+    const hasLetters = /[a-zA-Z]/.test(value);
+    if (hasLetters) {
+        // Remover letras e manter apenas números e separadores
+        const currency = form.value.currency;
+        let cleaned = value;
+        
+        if (currency === 'BRL') {
+            cleaned = cleaned.replace(/[^\d,]/g, '');
+        } else {
+            cleaned = cleaned.replace(/[^\d.]/g, '');
+        }
+        
+        // Se o valor foi alterado, atualizar
+        if (cleaned !== value) {
+            input.value = cleaned;
+            // Forçar atualização do vue-currency-input
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    }
+    
+    // Calcular imposto
+    calculateTaxFromInvoice();
+};
+
+// Handler para paste no campo de moeda - filtra apenas números
+const handleCurrencyPaste = (event: ClipboardEvent) => {
+    event.preventDefault();
+    const pastedText = event.clipboardData?.getData('text') || '';
+    
+    // Remover todos os caracteres não numéricos exceto ponto e vírgula
+    // Para BRL (pt-BR): aceita vírgula como separador decimal
+    // Para USD/EUR: aceita ponto como separador decimal
+    const currency = form.value.currency;
+    let cleanedText = pastedText;
+    
+    if (currency === 'BRL') {
+        // Para BRL: remover tudo exceto números e vírgula
+        cleanedText = cleanedText.replace(/[^\d,]/g, '');
+        // Garantir apenas uma vírgula
+        const parts = cleanedText.split(',');
+        if (parts.length > 2) {
+            cleanedText = parts[0] + ',' + parts.slice(1).join('');
+        }
+        // Limitar a 2 casas decimais após a vírgula
+        if (parts.length === 2 && parts[1].length > 2) {
+            cleanedText = parts[0] + ',' + parts[1].substring(0, 2);
+        }
+    } else {
+        // Para USD/EUR: remover tudo exceto números e ponto
+        cleanedText = cleanedText.replace(/[^\d.]/g, '');
+        // Garantir apenas um ponto
+        const parts = cleanedText.split('.');
+        if (parts.length > 2) {
+            cleanedText = parts[0] + '.' + parts.slice(1).join('');
+        }
+        // Limitar a 2 casas decimais após o ponto
+        if (parts.length === 2 && parts[1].length > 2) {
+            cleanedText = parts[0] + '.' + parts[1].substring(0, 2);
+        }
+    }
+    
+    // Se não houver nada válido, não fazer nada
+    if (!cleanedText || cleanedText === '' || cleanedText === ',' || cleanedText === '.') {
+        return;
+    }
+    
+    // Converter para número e atualizar o campo
+    let numericValue: number;
+    if (currency === 'BRL') {
+        numericValue = parseFloat(cleanedText.replace(',', '.')) || 0;
+    } else {
+        numericValue = parseFloat(cleanedText) || 0;
+    }
+    
+    // Atualizar o valor do formulário
+    form.value.invoiceAmount = numericValue;
+    
+    // Disparar evento de input para atualizar a formatação
+    const input = event.target as HTMLInputElement;
+    if (input) {
+        // Forçar atualização do vue-currency-input
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    
+    // Calcular imposto se necessário
+    calculateTaxFromInvoice();
+};
+
+
+// Função auxiliar para converter valor formatado para número
+const parseCurrencyValue = (value: any): number => {
+    // Se já for número, retornar diretamente
+    if (typeof value === 'number') {
+        return isNaN(value) ? 0 : value;
+    }
+    
+    // Se for null, undefined ou vazio, retornar 0
+    if (value === null || value === undefined || value === '') {
+        return 0;
+    }
+    
+    // Se não for string, tentar converter
+    if (typeof value !== 'string') {
+        const num = Number(value);
+        return isNaN(num) ? 0 : num;
+    }
+    
+    const currency = form.value.currency;
+    
+    // Remover símbolos de moeda e espaços
+    let cleaned = value.replace(/[^\d,.-]/g, '');
+    
+    // Se não sobrou nada, retornar 0
+    if (!cleaned || cleaned === '' || cleaned === ',' || cleaned === '.') {
+        return 0;
+    }
+    
+    if (currency === 'BRL') {
+        // Para BRL: remover pontos (separadores de milhar) e substituir vírgula por ponto
+        // Exemplo: "1.234,56" -> "1234.56"
+        cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+    } else {
+        // Para USD/EUR: remover vírgulas (separadores de milhar) e manter ponto
+        // Exemplo: "1,234.56" -> "1234.56"
+        cleaned = cleaned.replace(/,/g, '');
+    }
+    
+    const numValue = parseFloat(cleaned);
+    return isNaN(numValue) ? 0 : numValue;
+};
 
 // Cálculos no formulário
 const calculateTaxFromInvoice = () => {
-    if (form.value.invoiceAmount && taxPercentage.value) {
-        form.value.taxAmount = (form.value.invoiceAmount * taxPercentage.value) / 100;
+    // Converter o valor formatado para número
+    const invoiceAmount = parseCurrencyValue(form.value.invoiceAmount);
+    
+    if (invoiceAmount > 0 && taxPercentage.value) {
+        form.value.taxAmount = (invoiceAmount * taxPercentage.value) / 100;
         // Atualizar o input formatado
         taxPercentageInput.value = taxPercentage.value.toFixed(2).replace('.', ',');
+    } else {
+        form.value.taxAmount = 0;
+    }
+};
+
+// Calcular valor líquido (fatura - imposto - desconto)
+const calculateNetAmount = (): number => {
+    const invoiceAmount = parseCurrencyValue(form.value.invoiceAmount);
+    const taxAmount = form.value.taxAmount || 0;
+    const discountAmount = parseCurrencyValue(form.value.discountAmount);
+    return Math.max(0, invoiceAmount - taxAmount - discountAmount);
+};
+
+// Handler para input no campo de desconto
+const handleDiscountInput = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    const value = input.value;
+    
+    // Verificar se há letras no valor (após formatação do vue-currency-input)
+    const hasLetters = /[a-zA-Z]/.test(value);
+    if (hasLetters) {
+        // Remover letras e manter apenas números e separadores
+        const currency = form.value.currency;
+        let cleaned = value;
+        
+        if (currency === 'BRL') {
+            cleaned = cleaned.replace(/[^\d,]/g, '');
+        } else {
+            cleaned = cleaned.replace(/[^\d.]/g, '');
+        }
+        
+        // Se o valor foi alterado, atualizar
+        if (cleaned !== value) {
+            input.value = cleaned;
+            // Forçar atualização do vue-currency-input
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    }
+};
+
+// Handler para paste no campo de desconto
+const handleDiscountPaste = (event: ClipboardEvent) => {
+    event.preventDefault();
+    const pastedText = event.clipboardData?.getData('text') || '';
+    
+    const currency = form.value.currency;
+    let cleanedText = pastedText;
+    
+    if (currency === 'BRL') {
+        cleanedText = cleanedText.replace(/[^\d,]/g, '');
+        const parts = cleanedText.split(',');
+        if (parts.length > 2) {
+            cleanedText = parts[0] + ',' + parts.slice(1).join('');
+        }
+        if (parts.length === 2 && parts[1].length > 2) {
+            cleanedText = parts[0] + ',' + parts[1].substring(0, 2);
+        }
+    } else {
+        cleanedText = cleanedText.replace(/[^\d.]/g, '');
+        const parts = cleanedText.split('.');
+        if (parts.length > 2) {
+            cleanedText = parts[0] + '.' + parts.slice(1).join('');
+        }
+        if (parts.length === 2 && parts[1].length > 2) {
+            cleanedText = parts[0] + '.' + parts[1].substring(0, 2);
+        }
+    }
+    
+    if (!cleanedText || cleanedText === '' || cleanedText === ',' || cleanedText === '.') {
+        return;
+    }
+    
+    let numericValue: number;
+    if (currency === 'BRL') {
+        numericValue = parseFloat(cleanedText.replace(',', '.')) || 0;
+    } else {
+        numericValue = parseFloat(cleanedText) || 0;
+    }
+    
+    form.value.discountAmount = numericValue;
+    
+    const input = event.target as HTMLInputElement;
+    if (input) {
+        input.dispatchEvent(new Event('input', { bubbles: true }));
     }
 };
 
@@ -1754,16 +2065,18 @@ const handleTaxPercentageInput = (event: Event) => {
     taxPercentageInput.value = displayValue;
     
     // Calcular imposto
-    if (form.value.invoiceAmount && taxPercentage.value) {
-        form.value.taxAmount = (form.value.invoiceAmount * taxPercentage.value) / 100;
+    const invoiceAmount = parseCurrencyValue(form.value.invoiceAmount);
+    if (invoiceAmount > 0 && taxPercentage.value) {
+        form.value.taxAmount = (invoiceAmount * taxPercentage.value) / 100;
     }
 };
 
 const calculateTaxFromPercentage = () => {
-    if (form.value.invoiceAmount && taxPercentage.value) {
-        form.value.taxAmount = (form.value.invoiceAmount * taxPercentage.value) / 100;
-    } else if (form.value.invoiceAmount && form.value.taxAmount) {
-        taxPercentage.value = (form.value.taxAmount / form.value.invoiceAmount) * 100;
+    const invoiceAmount = parseCurrencyValue(form.value.invoiceAmount);
+    if (invoiceAmount > 0 && taxPercentage.value) {
+        form.value.taxAmount = (invoiceAmount * taxPercentage.value) / 100;
+    } else if (invoiceAmount > 0 && form.value.taxAmount) {
+        taxPercentage.value = (form.value.taxAmount / invoiceAmount) * 100;
         taxPercentageInput.value = taxPercentage.value.toFixed(2).replace('.', ',');
     }
 };
@@ -1781,8 +2094,9 @@ const saveOrder = async () => {
             commercialPartnerId: form.value.commercialPartnerId,
             costCenterId: form.value.costCenterId,
             currency: form.value.currency,
-            invoiceAmount: Number(form.value.invoiceAmount),
+            invoiceAmount: parseCurrencyValue(form.value.invoiceAmount),
             taxAmount: Number(form.value.taxAmount),
+            discountAmount: parseCurrencyValue(form.value.discountAmount),
             withdrawalDate: form.value.withdrawalDate || null,
             expectedPaymentMonth: Number(form.value.expectedPaymentMonth),
             expectedPaymentYear: Number(form.value.expectedPaymentYear),
