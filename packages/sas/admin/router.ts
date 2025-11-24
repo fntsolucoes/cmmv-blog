@@ -11,6 +11,9 @@ import ShareholdersView from './views/ShareholdersView.vue';
 import ExchangeRatesView from './views/ExchangeRatesView.vue';
 import ProfitSharingView from './views/ProfitSharingView.vue';
 import PaymentChecklistView from './views/PaymentChecklistView.vue';
+import TicketsView from './views/TicketsView.vue';
+import ActivationTicketsView from './views/ActivationTicketsView.vue';
+import ScriptCreationTicketsView from './views/ScriptCreationTicketsView.vue';
 
 export const sasRoutes: RouteRecordRaw[] = [
     {
@@ -56,6 +59,21 @@ export const sasRoutes: RouteRecordRaw[] = [
                 path: 'payment-checklist',
                 component: PaymentChecklistView,
                 name: 'sas.payment-checklist'
+            },
+            {
+                path: 'tickets',
+                component: TicketsView,
+                name: 'sas.tickets'
+            },
+            {
+                path: 'tickets/activation',
+                component: ActivationTicketsView,
+                name: 'sas.tickets.activation'
+            },
+            {
+                path: 'tickets/script-creation',
+                component: ScriptCreationTicketsView,
+                name: 'sas.tickets.script-creation'
             }
         ]
     },
@@ -109,6 +127,24 @@ useNavbar().addItems([
         icon: 'fas fa-clipboard-check',
         to: '/sas/payment-checklist',
         group: 'SaS'
+    },
+    {
+        label: 'Tickets',
+        icon: 'fas fa-ticket-alt',
+        to: '/sas/tickets',
+        group: 'Chamados'
+    },
+    {
+        label: 'Ativação/Desativação',
+        icon: 'fas fa-power-off',
+        to: '/sas/tickets/activation',
+        group: 'Chamados'
+    },
+    {
+        label: 'Criação de Scripts',
+        icon: 'fas fa-code',
+        to: '/sas/tickets/script-creation',
+        group: 'Chamados'
     }
 ])
 

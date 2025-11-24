@@ -165,6 +165,69 @@ export const useSasClient = () => {
         }
     };
 
+    const tickets = {
+        get: async (filters: Record<string, any>) => {
+            // Filtrar valores null, undefined e strings vazias
+            const cleanFilters: Record<string, string> = {};
+            for (const [key, value] of Object.entries(filters)) {
+                if (value !== null && value !== undefined && value !== '') {
+                    // Converter null explícito para string 'null' se necessário
+                    // Mas normalmente não incluímos null na query
+                    if (value === null) {
+                        cleanFilters[key] = 'null';
+                    } else {
+                        cleanFilters[key] = String(value);
+                    }
+                }
+            }
+            const query = new URLSearchParams(cleanFilters).toString();
+            return api.authRequest(`sas/tickets${query ? `?${query}` : ''}`, "GET");
+        },
+        getById: async (id: string) => {
+            return api.authRequest(`sas/tickets/${id}`, "GET");
+        },
+        create: async (data: any) => {
+            return api.authRequest("sas/tickets", "POST", data);
+        },
+        updateStatus: async (id: string, data: { status: string; resolutionNote?: string; userId: string }) => {
+            return api.authRequest(`sas/tickets/${id}/status`, "PATCH", data);
+        },
+        reopen: async (id: string, data: { userId: string; maxDaysToReopen?: number }) => {
+            return api.authRequest(`sas/tickets/${id}/reopen`, "PATCH", data);
+        },
+        assign: async (id: string, data: { assignedTo: string; userId: string; assignmentType?: 'manual' | 'automatic' | 'random' }) => {
+            return api.authRequest(`sas/tickets/${id}/assign`, "PATCH", data);
+        },
+        updatePriority: async (id: string, data: { priority: string; userId: string }) => {
+            return api.authRequest(`sas/tickets/${id}/priority`, "PATCH", data);
+        },
+        getHistory: async (id: string) => {
+            return api.authRequest(`sas/tickets/${id}/history`, "GET");
+        },
+        checkSLAs: async () => {
+            return api.authRequest("sas/tickets/check-slas", "POST");
+        },
+        open: async (id: string, data: { userId: string }) => {
+            return api.authRequest(`sas/tickets/${id}/open`, "POST", data);
+        }
+    };
+
+    const ticketComments = {
+        get: async (ticketId: string) => {
+            const query = new URLSearchParams({ ticketId }).toString();
+            return api.authRequest(`sas/ticket-comments?${query}`, "GET");
+        },
+        create: async (data: { ticketId: string; userId: string; content: string; isInternal?: boolean }) => {
+            return api.authRequest("sas/ticket-comments", "POST", data);
+        },
+        update: async (id: string, data: { content: string; isInternal?: boolean }) => {
+            return api.authRequest(`sas/ticket-comments/${id}`, "PUT", data);
+        },
+        delete: async (id: string) => {
+            return api.authRequest(`sas/ticket-comments/${id}`, "DELETE");
+        }
+    };
+
     return {
         costCenters,
         commercialPartners,
@@ -173,7 +236,9 @@ export const useSasClient = () => {
         shareholders,
         exchangeRates,
         profitSharing,
-        paymentChecklist
+        paymentChecklist,
+        tickets,
+        ticketComments
     };
 };
 

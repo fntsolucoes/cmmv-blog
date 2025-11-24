@@ -7,7 +7,12 @@ import {
     SasPaymentOrdersContract,
     SasShareholdersContract,
     SasExchangeRatesContract,
-    SasPaymentChecklistContract
+    SasPaymentChecklistContract,
+    SasTicketsContract,
+    SasTicketQueuesContract,
+    SasTicketCommentsContract,
+    SasTicketAttachmentsContract,
+    SasTicketHistoryContract
 } from '../contracts';
 
 import { SasCostCentersModule } from './cost-centers/cost-centers.module';
@@ -19,6 +24,9 @@ import { SasExchangeRatesModule } from './exchange-rates/exchange-rates.module';
 import { SasProfitSharingModule } from './profit-sharing/profit-sharing.module';
 import { SasDashboardModule } from './dashboard/dashboard.module';
 import { SasPaymentChecklistModule } from './payment-checklist/payment-checklist.module';
+import { SasTicketsModule } from './tickets/tickets.module';
+import { SasTicketCommentsModule } from './ticket-comments/ticket-comments.module';
+import { SasUsersModule } from './users/users.module';
 
 export const SasModule = new Module('sas', {
     contracts: [
@@ -28,7 +36,12 @@ export const SasModule = new Module('sas', {
         SasPaymentOrdersContract,
         SasShareholdersContract,
         SasExchangeRatesContract,
-        SasPaymentChecklistContract
+        SasPaymentChecklistContract,
+        SasTicketsContract,
+        SasTicketQueuesContract,
+        SasTicketCommentsContract,
+        SasTicketAttachmentsContract,
+        SasTicketHistoryContract
     ],
     submodules: [
         SasCostCentersModule,
@@ -39,7 +52,10 @@ export const SasModule = new Module('sas', {
         SasExchangeRatesModule,
         SasProfitSharingModule,
         SasDashboardModule,
-        SasPaymentChecklistModule
+        SasPaymentChecklistModule,
+        SasUsersModule,
+        SasTicketsModule,
+        SasTicketCommentsModule
     ]
 });
 
