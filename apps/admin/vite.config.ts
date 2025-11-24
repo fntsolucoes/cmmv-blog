@@ -157,10 +157,16 @@ export default defineConfig(async ({ mode }: ConfigEnv): Promise<UserConfig> => 
                         'vue': ['vue', 'vue-router', 'pinia']
                     }
                 }
+            },
+            commonjsOptions: {
+                include: [/vue-currency-input/, /node_modules/]
             }
         },
+        optimizeDeps: {
+            include: ['vue-currency-input']
+        },
         ssr: {
-            noExternal: []
+            noExternal: ['vue-currency-input']
         },
         resolve: {
             preserveSymlinks: true,
