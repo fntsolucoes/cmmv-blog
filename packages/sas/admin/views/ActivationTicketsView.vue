@@ -76,20 +76,20 @@
             </div>
             <div v-else>
                 <table class="min-w-full divide-y divide-neutral-700">
-                    <thead class="bg-neutral-700">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Número</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Campanha</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Tipo</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Parceiro</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Status</th>
+                <thead class="bg-neutral-700">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Número</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Campanha</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Tipo</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Parceiro</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Status</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Prioridade</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Criado em</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Criado em</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Última atualização</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-neutral-800 divide-y divide-neutral-700">
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Ações</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-neutral-800 divide-y divide-neutral-700">
                         <tr v-for="ticket in paginatedOpenTickets" :key="ticket.id" class="hover:bg-neutral-700">
                         <td class="px-4 py-3 text-sm text-white font-mono">{{ ticket.ticketNumber }}</td>
                         <td class="px-4 py-3 text-sm text-white">{{ getCampaignName(ticket.campaignId) }}</td>
@@ -120,8 +120,8 @@
                             </button>
                         </td>
                     </tr>
-                    </tbody>
-                </table>
+                </tbody>
+            </table>
                 <!-- Paginação Tickets em Aberto -->
                 <div v-if="totalOpenPages > 1" class="bg-neutral-700 px-6 py-4 border-t border-neutral-600 flex items-center justify-between">
                     <div class="text-sm text-neutral-400">
@@ -285,7 +285,7 @@
                                     type="text"
                                     placeholder="Digite para buscar campanha..."
                                     class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    required
+                                required
                                 />
                                 <div v-if="showCampaignDropdown && filteredCampaignsList.length > 0" class="absolute z-50 w-full mt-1 bg-neutral-700 border border-neutral-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
                                     <div
@@ -293,7 +293,7 @@
                                         :key="item.id"
                                         @mousedown.prevent="selectCampaign(item)"
                                         class="px-3 py-2 hover:bg-neutral-600 cursor-pointer text-white text-sm"
-                                    >
+                            >
                                         <div class="font-medium">{{ item.name }}</div>
                                         <div class="text-xs text-neutral-400">{{ item.partnerName }}</div>
                                     </div>
@@ -926,7 +926,7 @@ const prepareCampaignsList = () => {
             name: campaign.name,
             partnerName: partner ? partner.name : 'N/A',
             type: 'campaign'
-        });
+});
     });
     
     // Adicionar parceiros diretos (como campanhas)
@@ -1052,7 +1052,7 @@ const createTicket = async () => {
             } else {
                 showNotification('error', 'Campanha não encontrada.');
                 saving.value = false;
-                return;
+            return;
             }
         }
 

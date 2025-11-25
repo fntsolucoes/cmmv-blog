@@ -55,7 +55,15 @@ export class ProfitSharingService {
         const totalsByCurrency: Record<string, number> = {};
         
         for (const order of orders) {
-            const netAmount = order.invoiceAmount - order.taxAmount;
+            // Considerar também o desconto (mesma moeda da fatura)
+            const discountAmount = order.discountAmount ?? 0;
+            let netAmount = order.invoiceAmount - order.taxAmount - discountAmount;
+            
+            // Garantir que não fique negativo por dados antigos inconsistentes
+            if (netAmount < 0) {
+                netAmount = 0;
+            }
+
             if (!totalsByCurrency[order.currency]) {
                 totalsByCurrency[order.currency] = 0;
             }
@@ -68,16 +76,22 @@ export class ProfitSharingService {
 
         // Converter USD e EUR para BRL usando a taxa de cada ordem
         for (const order of orders) {
+            // Desconto também está na mesma moeda da ordem
+            const discountAmount = order.discountAmount ?? 0;
+            let netAmount = order.invoiceAmount - order.taxAmount - discountAmount;
+            
+            if (netAmount < 0) {
+                netAmount = 0;
+            }
+
             if (order.currency === 'USD' && order.effectivePaymentDate) {
                 const usdRate = await this.getExchangeRate('USD-BRL', new Date(order.effectivePaymentDate));
                 if (usdRate) {
-                    const netAmount = order.invoiceAmount - order.taxAmount;
                     totalBRL += netAmount * Number(usdRate.rate);
                 }
             } else if (order.currency === 'EUR' && order.effectivePaymentDate) {
                 const eurRate = await this.getExchangeRate('EUR-BRL', new Date(order.effectivePaymentDate));
                 if (eurRate) {
-                    const netAmount = order.invoiceAmount - order.taxAmount;
                     totalBRL += netAmount * Number(eurRate.rate);
                 }
             }

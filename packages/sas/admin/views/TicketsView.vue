@@ -74,19 +74,19 @@
             </div>
             <div v-else>
                 <table class="min-w-full divide-y divide-neutral-700">
-                    <thead class="bg-neutral-700">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Número</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Título</th>
+                <thead class="bg-neutral-700">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Número</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Título</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Status</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Prioridade</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Responsável</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Criado em</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Prioridade</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Responsável</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Criado em</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Última atualização</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-neutral-800 divide-y divide-neutral-700">
+                        <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Ações</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-neutral-800 divide-y divide-neutral-700">
                         <tr v-for="ticket in paginatedOpenTickets" :key="ticket.id" class="hover:bg-neutral-700">
                         <td class="px-4 py-3 text-sm text-white font-mono">{{ ticket.ticketNumber }}</td>
                         <td class="px-4 py-3 text-sm text-white">{{ ticket.title }}</td>
@@ -116,8 +116,8 @@
                             </button>
                         </td>
                     </tr>
-                    </tbody>
-                </table>
+                </tbody>
+            </table>
                 <!-- Paginação Tickets em Aberto -->
                 <div v-if="totalOpenPages > 1" class="bg-neutral-700 px-6 py-4 border-t border-neutral-600 flex items-center justify-between">
                     <div class="text-sm text-neutral-400">
