@@ -95,7 +95,7 @@
                         <input
                             v-model="form.name"
                             type="text"
-                            placeholder="Ex: 1001, Ixan, Renan"
+                            placeholder="Informe o nome do parceiro"
                             class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             required
                         />
@@ -110,7 +110,7 @@
                         <input
                             v-model="form.displayName"
                             type="text"
-                            placeholder="Ex: 1001 (padrão)"
+                            placeholder="Informe o nome de exibição (opcional)"
                             class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <p class="mt-1 text-xs text-neutral-400">Nome que será exibido na interface (opcional)</p>
