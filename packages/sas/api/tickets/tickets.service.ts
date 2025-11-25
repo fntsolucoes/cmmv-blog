@@ -304,13 +304,32 @@ export class TicketsService {
             if (!validActivationTypes.includes(data.activationType)) {
                 throw new Error(`Invalid activation type. Must be one of: ${validActivationTypes.join(', ')}`);
             }
-            // Definir parceiro padrão se não fornecido
+
+            // Validação dinâmica de parceiro usando SasTicketPartnersEntity
+            const TicketPartnersEntity = Repository.getEntity("SasTicketPartnersEntity");
+
+            // Se não vier parceiro do front, tentar usar o parceiro padrão ativo
             if (!data.partner) {
-                data.partner = '1001';
+                const defaultPartner = await Repository.findOne(TicketPartnersEntity, {
+                    isDefault: true,
+                    active: true
+                });
+
+                if (defaultPartner) {
+                    data.partner = defaultPartner.name;
+                }
             }
-            const validPartners = ['1001', 'Ixan', 'Renan'];
-            if (!validPartners.includes(data.partner)) {
-                throw new Error(`Invalid partner. Must be one of: ${validPartners.join(', ')}`);
+
+            // Se ainda existir valor em data.partner, garantir que ele exista e esteja ativo na configuração
+            if (data.partner) {
+                const existingPartner = await Repository.findOne(TicketPartnersEntity, {
+                    name: data.partner,
+                    active: true
+                });
+
+                if (!existingPartner) {
+                    throw new Error("Invalid partner. Partner not found or inactive in ticket partners configuration");
+                }
             }
         }
 
