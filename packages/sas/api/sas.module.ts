@@ -12,7 +12,8 @@ import {
     SasTicketQueuesContract,
     SasTicketCommentsContract,
     SasTicketAttachmentsContract,
-    SasTicketHistoryContract
+    SasTicketHistoryContract,
+    SasTicketPartnersContract
 } from '../contracts';
 
 import { SasCostCentersModule } from './cost-centers/cost-centers.module';
@@ -26,6 +27,7 @@ import { SasDashboardModule } from './dashboard/dashboard.module';
 import { SasPaymentChecklistModule } from './payment-checklist/payment-checklist.module';
 import { SasTicketsModule } from './tickets/tickets.module';
 import { SasTicketCommentsModule } from './ticket-comments/ticket-comments.module';
+import { SasTicketPartnersModule } from './ticket-partners/ticket-partners.module';
 import { SasUsersModule } from './users/users.module';
 
 export const SasModule = new Module('sas', {
@@ -41,7 +43,8 @@ export const SasModule = new Module('sas', {
         SasTicketQueuesContract,
         SasTicketCommentsContract,
         SasTicketAttachmentsContract,
-        SasTicketHistoryContract
+        SasTicketHistoryContract,
+        SasTicketPartnersContract
     ],
     submodules: [
         SasCostCentersModule,
@@ -55,7 +58,8 @@ export const SasModule = new Module('sas', {
         SasPaymentChecklistModule,
         SasUsersModule,
         SasTicketsModule,
-        SasTicketCommentsModule
+        SasTicketCommentsModule,
+        SasTicketPartnersModule
     ]
 });
 

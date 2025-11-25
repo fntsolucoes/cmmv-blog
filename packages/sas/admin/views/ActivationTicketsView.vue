@@ -94,7 +94,7 @@
                         <td class="px-4 py-3 text-sm text-white font-mono">{{ ticket.ticketNumber }}</td>
                         <td class="px-4 py-3 text-sm text-white">{{ getCampaignName(ticket.campaignId) }}</td>
                         <td class="px-4 py-3 text-sm text-white">{{ ticket.activationType || '-' }}</td>
-                        <td class="px-4 py-3 text-sm text-white">{{ ticket.partner || '1001' }}</td>
+                        <td class="px-4 py-3 text-sm text-white">{{ ticket.partner || getDefaultPartnerName() }}</td>
                         <td class="px-4 py-3 text-sm">
                             <span :class="getStatusClass(ticket.status)" class="px-2 py-1 text-xs rounded-full">
                                 {{ ticket.status }}
@@ -202,7 +202,7 @@
                             <td class="px-4 py-3 text-sm text-white font-mono">{{ ticket.ticketNumber }}</td>
                             <td class="px-4 py-3 text-sm text-white">{{ getCampaignName(ticket.campaignId) }}</td>
                             <td class="px-4 py-3 text-sm text-white">{{ ticket.activationType || '-' }}</td>
-                            <td class="px-4 py-3 text-sm text-white">{{ ticket.partner || '1001' }}</td>
+                            <td class="px-4 py-3 text-sm text-white">{{ ticket.partner || getDefaultPartnerName() }}</td>
                             <td class="px-4 py-3 text-sm">
                                 <span :class="getStatusClass(ticket.status)" class="px-2 py-1 text-xs rounded-full">
                                     {{ ticket.status }}
@@ -329,9 +329,9 @@
                                 v-model="form.partner"
                                 class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                                <option value="1001">1001 (padrão)</option>
-                                <option value="Ixan">Ixan</option>
-                                <option value="Renan">Renan</option>
+                                <option v-for="partner in ticketPartners" :key="partner.id" :value="partner.name">
+                                    {{ partner.displayName || partner.name }}{{ partner.isDefault ? ' (padrão)' : '' }}
+                                </option>
                             </select>
                         </div>
                     </div>
@@ -412,7 +412,7 @@
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-neutral-400">Parceiro:</span>
-                                    <span class="text-white">{{ selectedTicket.partner || '1001' }}</span>
+                                    <span class="text-white">{{ selectedTicket.partner || getDefaultPartnerName() }}</span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-neutral-400">Atribuído a:</span>
@@ -663,6 +663,7 @@ const tickets = ref<any[]>([]);
 const campaigns = ref<any[]>([]);
 const partners = ref<any[]>([]);
 const directPartners = ref<any[]>([]);
+const ticketPartners = ref<any[]>([]);
 const loading = ref(false);
 const showCreateDialog = ref(false);
 const saving = ref(false);
@@ -871,6 +872,11 @@ const getPartnerName = (partnerId: string | null | undefined) => {
     return partner ? partner.name : '';
 };
 
+const getDefaultPartnerName = () => {
+    const defaultPartner = ticketPartners.value.find(p => p.isDefault && p.active);
+    return defaultPartner ? defaultPartner.name : '';
+};
+
 const clearFilters = () => {
     filters.value = {
         status: '',
@@ -883,7 +889,7 @@ const form = ref({
     description: '',
     campaignId: '',
     activationType: '',
-    partner: '1001'
+    partner: ''
 });
 
 // Filtrar campanhas baseado na busca
@@ -941,11 +947,13 @@ const prepareCampaignsList = () => {
 };
 
 const openCreateDialog = () => {
+    // Buscar parceiro padrão
+    const defaultPartner = ticketPartners.value.find(p => p.isDefault && p.active);
     form.value = {
         description: '',
         campaignId: '',
         activationType: '',
-        partner: '1001'
+        partner: defaultPartner ? defaultPartner.name : (ticketPartners.value.length > 0 ? ticketPartners.value[0].name : '')
     };
     campaignSearch.value = '';
     selectedCampaignName.value = '';
@@ -955,11 +963,12 @@ const openCreateDialog = () => {
 
 const closeCreateDialog = () => {
     showCreateDialog.value = false;
+    const defaultPartner = ticketPartners.value.find(p => p.isDefault && p.active);
     form.value = {
         description: '',
         campaignId: '',
         activationType: '',
-        partner: '1001'
+        partner: defaultPartner ? defaultPartner.name : (ticketPartners.value.length > 0 ? ticketPartners.value[0].name : '')
     };
     campaignSearch.value = '';
     selectedCampaignName.value = '';
@@ -1053,7 +1062,7 @@ const createTicket = async () => {
             ticketType: 'activation',
             campaignId: form.value.campaignId,
             activationType: form.value.activationType,
-            partner: form.value.partner || '1001',
+            partner: form.value.partner || (ticketPartners.value.find(p => p.isDefault && p.active)?.name || ''),
             createdBy: userId
         };
 
@@ -1498,6 +1507,29 @@ const loadPartners = async () => {
     }
 };
 
+const loadTicketPartners = async () => {
+    try {
+        const response = await client.ticketPartners.getAll();
+        let partnersData = [];
+        if (Array.isArray(response.data)) {
+            partnersData = response.data;
+        } else if (response.data && Array.isArray(response.data.data)) {
+            partnersData = response.data.data;
+        } else if (Array.isArray(response)) {
+            partnersData = response;
+        }
+        ticketPartners.value = partnersData;
+        
+        // Se não há parceiro padrão definido no form, definir agora
+        if (!form.value.partner && partnersData.length > 0) {
+            const defaultPartner = partnersData.find(p => p.isDefault && p.active);
+            form.value.partner = defaultPartner ? defaultPartner.name : partnersData[0].name;
+        }
+    } catch (error) {
+        console.error('Erro ao carregar parceiros de tickets:', error);
+    }
+};
+
 // Resetar páginas quando filtros mudarem
 watch(() => [filters.value.status, filters.value.activationType, filters.value.search], () => {
     openTicketsPage.value = 1;
@@ -1508,6 +1540,7 @@ onMounted(() => {
     loadTickets();
     loadCampaigns();
     loadPartners();
+    loadTicketPartners();
 });
 </script>
 

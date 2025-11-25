@@ -228,6 +228,30 @@ export const useSasClient = () => {
         }
     };
 
+    const ticketPartners = {
+        getAll: async () => {
+            return api.authRequest(`sas/ticket-partners/all`, "GET");
+        },
+        getAllIncludingInactive: async () => {
+            return api.authRequest(`sas/ticket-partners/all-including-inactive`, "GET");
+        },
+        getDefault: async () => {
+            return api.authRequest(`sas/ticket-partners/default`, "GET");
+        },
+        getById: async (id: string) => {
+            return api.authRequest(`sas/ticket-partners/${id}`, "GET");
+        },
+        insert: async (data: any) => {
+            return api.authRequest("sas/ticket-partners", "POST", data);
+        },
+        update: async (id: string, data: any) => {
+            return api.authRequest(`sas/ticket-partners/${id}`, "PUT", data);
+        },
+        delete: async (id: string) => {
+            return api.authRequest(`sas/ticket-partners/${id}`, "DELETE");
+        }
+    };
+
     return {
         costCenters,
         commercialPartners,
@@ -238,7 +262,8 @@ export const useSasClient = () => {
         profitSharing,
         paymentChecklist,
         tickets,
-        ticketComments
+        ticketComments,
+        ticketPartners
     };
 };
 

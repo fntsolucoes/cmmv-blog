@@ -72,11 +72,11 @@ export class SasTicketsContract extends AbstractContract {
 
     @ContractField({
         protoType: 'string',
-        nullable: false,
+        nullable: true, // permite valores antigos nulos no banco
         defaultValue: 'geral',
         index: true,
     })
-    ticketType!: string; // 'activation', 'script-creation' ou 'geral' (tickets gerais)
+    ticketType?: string; // 'activation', 'script-creation' ou 'geral' (tickets gerais)
 
     @ContractField({
         protoType: 'string',

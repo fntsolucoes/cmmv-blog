@@ -14,6 +14,7 @@ import PaymentChecklistView from './views/PaymentChecklistView.vue';
 import TicketsView from './views/TicketsView.vue';
 import ActivationTicketsView from './views/ActivationTicketsView.vue';
 import ScriptCreationTicketsView from './views/ScriptCreationTicketsView.vue';
+import TicketSettingsView from './views/TicketSettingsView.vue';
 
 export const sasRoutes: RouteRecordRaw[] = [
     {
@@ -74,6 +75,11 @@ export const sasRoutes: RouteRecordRaw[] = [
                 path: 'tickets/script-creation',
                 component: ScriptCreationTicketsView,
                 name: 'sas.tickets.script-creation'
+            },
+            {
+                path: 'tickets/settings',
+                component: TicketSettingsView,
+                name: 'sas.tickets.settings'
             }
         ]
     },
@@ -144,6 +150,12 @@ useNavbar().addItems([
         label: 'Criação de Scripts',
         icon: 'fas fa-code',
         to: '/sas/tickets/script-creation',
+        group: 'Chamados'
+    },
+    {
+        label: 'Configurações de Tickets',
+        icon: 'fas fa-cog',
+        to: '/sas/tickets/settings',
         group: 'Chamados'
     }
 ])
