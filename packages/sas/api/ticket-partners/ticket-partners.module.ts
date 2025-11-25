@@ -13,3 +13,4 @@ export const SasTicketPartnersModule = new Module('sas-ticket-partners', {
     controllers: [TicketPartnersController]
 });
 
+
