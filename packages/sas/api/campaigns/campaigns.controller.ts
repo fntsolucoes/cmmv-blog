@@ -6,7 +6,7 @@ import {
     CampaignsService
 } from "./campaigns.service";
 
-@Controller("sas/campaigns")
+@Controller("affiliation-manager/campaigns")
 export class CampaignsController {
     constructor(private readonly campaignsService: CampaignsService){}
 

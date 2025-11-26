@@ -6,9 +6,9 @@ import {
 @Contract({
     namespace: 'Sas',
     controllerName: 'SasCampaigns',
-    controllerCustomPath: 'sas/campaigns',
+    controllerCustomPath: 'affiliation-manager/campaigns',
     protoPackage: 'sas',
-    subPath: '/sas',
+    subPath: '/affiliation-manager',
     generateController: true,
     generateBoilerplates: false,
     auth: true,

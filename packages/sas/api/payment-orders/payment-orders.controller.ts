@@ -7,7 +7,7 @@ import {
     PaymentOrdersService
 } from "./payment-orders.service";
 
-@Controller("sas/payment-orders/v2")
+@Controller("affiliation-manager/payment-orders/v2")
 export class PaymentOrdersBusinessController {
     constructor(private readonly paymentOrdersService: PaymentOrdersService){}
 

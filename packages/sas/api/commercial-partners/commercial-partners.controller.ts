@@ -6,7 +6,7 @@ import {
     CommercialPartnersService
 } from "./commercial-partners.service";
 
-@Controller("sas/commercial-partners")
+@Controller("affiliation-manager/commercial-partners")
 export class CommercialPartnersController {
     constructor(private readonly commercialPartnersService: CommercialPartnersService){}
 

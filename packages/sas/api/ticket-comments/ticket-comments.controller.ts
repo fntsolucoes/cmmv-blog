@@ -6,7 +6,7 @@ import {
     TicketCommentsService
 } from "./ticket-comments.service";
 
-@Controller("sas/ticket-comments")
+@Controller("affiliation-manager/ticket-comments")
 export class TicketCommentsController {
     constructor(private readonly ticketCommentsService: TicketCommentsService) {}
 

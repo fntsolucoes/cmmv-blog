@@ -6,7 +6,7 @@ import {
     ExchangeRatesService
 } from "./exchange-rates.service";
 
-@Controller("sas/exchange-rates")
+@Controller("affiliation-manager/exchange-rates")
 export class ExchangeRatesController {
     constructor(private readonly exchangeRatesService: ExchangeRatesService){}
 

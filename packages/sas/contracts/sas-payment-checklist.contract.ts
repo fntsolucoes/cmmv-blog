@@ -6,9 +6,9 @@ import {
 @Contract({
     namespace: 'Sas',
     controllerName: 'SasPaymentChecklist',
-    controllerCustomPath: 'sas/payment-checklist',
+    controllerCustomPath: 'affiliation-manager/payment-checklist',
     protoPackage: 'sas',
-    subPath: '/sas',
+    subPath: '/affiliation-manager',
     generateController: false,
     generateBoilerplates: false,
     auth: true,

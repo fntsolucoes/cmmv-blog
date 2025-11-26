@@ -6,9 +6,9 @@ import {
 @Contract({
     namespace: 'Sas',
     controllerName: 'SasTicketComments',
-    controllerCustomPath: 'sas/ticket-comments',
+    controllerCustomPath: 'affiliation-manager/ticket-comments',
     protoPackage: 'sas',
-    subPath: '/sas',
+    subPath: '/affiliation-manager',
     // Usamos um controller customizado em api/ticket-comments/ticket-comments.controller.ts
     // portanto desativamos o controller automático para evitar conflitos de rota.
     generateController: false,

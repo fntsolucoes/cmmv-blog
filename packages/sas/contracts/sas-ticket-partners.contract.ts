@@ -6,9 +6,9 @@ import {
 @Contract({
     namespace: 'Sas',
     controllerName: 'SasTicketPartners',
-    controllerCustomPath: 'sas/ticket-partners',
+    controllerCustomPath: 'affiliation-manager/ticket-partners',
     protoPackage: 'sas',
-    subPath: '/sas',
+    subPath: '/affiliation-manager',
     generateController: false, // Desabilitado porque temos controller customizado
     generateBoilerplates: false,
     auth: true,

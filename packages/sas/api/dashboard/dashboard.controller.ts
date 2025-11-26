@@ -6,7 +6,7 @@ import {
     DashboardService
 } from "./dashboard.service";
 
-@Controller("sas/dashboard")
+@Controller("affiliation-manager/dashboard")
 export class DashboardController {
     constructor(private readonly dashboardService: DashboardService){}
 

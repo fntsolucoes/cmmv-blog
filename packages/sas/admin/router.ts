@@ -11,6 +11,7 @@ import ShareholdersView from './views/ShareholdersView.vue';
 import ExchangeRatesView from './views/ExchangeRatesView.vue';
 import ProfitSharingView from './views/ProfitSharingView.vue';
 import PaymentChecklistView from './views/PaymentChecklistView.vue';
+import TagsView from './views/TagsView.vue';
 import TicketsView from './views/TicketsView.vue';
 import ActivationTicketsView from './views/ActivationTicketsView.vue';
 import ScriptCreationTicketsView from './views/ScriptCreationTicketsView.vue';
@@ -18,144 +19,159 @@ import TicketSettingsView from './views/TicketSettingsView.vue';
 
 export const sasRoutes: RouteRecordRaw[] = [
     {
-        path: '/sas',
+        path: '/affiliation-manager',
         component: AdminLayout,
         children: [
             {
                 path: 'cost-centers',
                 component: CostCentersView,
-                name: 'sas.cost-centers'
+                name: 'affiliation-manager.cost-centers'
             },
             {
                 path: 'commercial-partners',
                 component: CommercialPartnersView,
-                name: 'sas.commercial-partners'
+                name: 'affiliation-manager.commercial-partners'
             },
             {
                 path: 'campaigns',
                 component: CampaignsView,
-                name: 'sas.campaigns'
+                name: 'affiliation-manager.campaigns'
             },
             {
                 path: 'payment-orders',
                 component: PaymentOrdersView,
-                name: 'sas.payment-orders'
+                name: 'affiliation-manager.payment-orders'
             },
             {
                 path: 'shareholders',
                 component: ShareholdersView,
-                name: 'sas.shareholders'
+                name: 'affiliation-manager.shareholders'
             },
             {
                 path: 'exchange-rates',
                 component: ExchangeRatesView,
-                name: 'sas.exchange-rates'
+                name: 'affiliation-manager.exchange-rates'
             },
             {
                 path: 'profit-sharing',
                 component: ProfitSharingView,
-                name: 'sas.profit-sharing'
+                name: 'affiliation-manager.profit-sharing'
             },
             {
                 path: 'payment-checklist',
                 component: PaymentChecklistView,
-                name: 'sas.payment-checklist'
+                name: 'affiliation-manager.payment-checklist'
+            },
+            {
+                path: 'tags',
+                component: TagsView,
+                name: 'affiliation-manager.tags'
             },
             {
                 path: 'tickets',
                 component: TicketsView,
-                name: 'sas.tickets'
+                name: 'affiliation-manager.tickets'
             },
             {
                 path: 'tickets/activation',
                 component: ActivationTicketsView,
-                name: 'sas.tickets.activation'
+                name: 'affiliation-manager.tickets.activation'
             },
             {
                 path: 'tickets/script-creation',
                 component: ScriptCreationTicketsView,
-                name: 'sas.tickets.script-creation'
+                name: 'affiliation-manager.tickets.script-creation'
             },
             {
                 path: 'tickets/settings',
                 component: TicketSettingsView,
-                name: 'sas.tickets.settings'
+                name: 'affiliation-manager.tickets.settings'
             }
         ]
     },
 ] as RouteRecordRaw[]
 
 useNavbar().addItems([
-    {
-        label: 'Centros de Custos',
-        icon: 'fas fa-building',
-        to: '/sas/cost-centers',
-        group: 'SaS'
-    },
+    // Grupo CAMPANHAS
     {
         label: 'Parceiros Comerciais',
         icon: 'fas fa-handshake',
-        to: '/sas/commercial-partners',
-        group: 'SaS'
+        to: '/affiliation-manager/commercial-partners',
+        group: 'CAMPANHAS'
     },
     {
         label: 'Campanhas',
         icon: 'fas fa-bullhorn',
-        to: '/sas/campaigns',
-        group: 'SaS'
+        to: '/affiliation-manager/campaigns',
+        group: 'CAMPANHAS'
+    },
+    // Grupo FINANCEIRO
+    {
+        label: 'Centros de Custos',
+        icon: 'fas fa-building',
+        to: '/affiliation-manager/cost-centers',
+        group: 'FINANCEIRO'
     },
     {
         label: 'Ordens de Pagamento',
         icon: 'fas fa-file-invoice-dollar',
-        to: '/sas/payment-orders',
-        group: 'SaS'
+        to: '/affiliation-manager/payment-orders',
+        group: 'FINANCEIRO'
     },
     {
         label: 'Sócios',
         icon: 'fas fa-users',
-        to: '/sas/shareholders',
-        group: 'SaS'
+        to: '/affiliation-manager/shareholders',
+        group: 'FINANCEIRO'
     },
     {
-        label: 'Taxas de Câmbio',
+        label: 'Cotações de Moedas',
         icon: 'fas fa-exchange-alt',
-        to: '/sas/exchange-rates',
-        group: 'SaS'
+        to: '/affiliation-manager/exchange-rates',
+        group: 'FINANCEIRO'
     },
     {
         label: 'Divisão de Lucros',
         icon: 'fas fa-chart-pie',
-        to: '/sas/profit-sharing',
-        group: 'SaS'
+        to: '/affiliation-manager/profit-sharing',
+        group: 'FINANCEIRO'
     },
     {
         label: 'Checklist de Pagamentos',
         icon: 'fas fa-clipboard-check',
-        to: '/sas/payment-checklist',
-        group: 'SaS'
+        to: '/affiliation-manager/payment-checklist',
+        group: 'FINANCEIRO'
     },
+    // Grupo TAGS
+    {
+        label: 'Tags',
+        icon: 'fas fa-tags',
+        to: '/affiliation-manager/tags',
+        group: 'TAGS'
+    },
+    // Grupo Chamados
     {
         label: 'Tickets',
         icon: 'fas fa-ticket-alt',
-        to: '/sas/tickets',
+        to: '/affiliation-manager/tickets',
         group: 'Chamados'
     },
     {
         label: 'Ativação/Desativação',
         icon: 'fas fa-power-off',
-        to: '/sas/tickets/activation',
+        to: '/affiliation-manager/tickets/activation',
         group: 'Chamados'
     },
     {
         label: 'Criação de Scripts',
         icon: 'fas fa-code',
-        to: '/sas/tickets/script-creation',
+        to: '/affiliation-manager/tickets/script-creation',
         group: 'Chamados'
     },
     {
         label: 'Configurações de Tickets',
         icon: 'fas fa-cog',
-        to: '/sas/tickets/settings',
+        to: '/affiliation-manager/tickets/settings',
         group: 'Chamados'
     }
 ])

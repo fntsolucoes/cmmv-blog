@@ -5,6 +5,7 @@ export * from "./sas-payment-orders.contract";
 export * from "./sas-shareholders.contract";
 export * from "./sas-exchange-rates.contract";
 export * from "./sas-payment-checklist.contract";
+export * from "./sas-tags.contract";
 export * from "./sas-tickets.contract";
 export * from "./sas-ticket-queues.contract";
 export * from "./sas-ticket-comments.contract";

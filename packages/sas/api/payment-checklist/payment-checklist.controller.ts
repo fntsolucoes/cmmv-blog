@@ -6,7 +6,7 @@ import {
     PaymentChecklistService
 } from "./payment-checklist.service";
 
-@Controller("sas/payment-checklist")
+@Controller("affiliation-manager/payment-checklist")
 export class PaymentChecklistController {
     constructor(private readonly paymentChecklistService: PaymentChecklistService){}
 

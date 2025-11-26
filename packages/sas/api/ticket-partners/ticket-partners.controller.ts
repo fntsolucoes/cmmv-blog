@@ -10,7 +10,7 @@ import {
     TicketPartnersService
 } from "./ticket-partners.service";
 
-@Controller("sas/ticket-partners")
+@Controller("affiliation-manager/ticket-partners")
 export class TicketPartnersController {
     constructor(private readonly ticketPartnersService: TicketPartnersService){}
 

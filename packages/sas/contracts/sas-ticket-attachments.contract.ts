@@ -6,9 +6,9 @@ import {
 @Contract({
     namespace: 'Sas',
     controllerName: 'SasTicketAttachments',
-    controllerCustomPath: 'sas/ticket-attachments',
+    controllerCustomPath: 'affiliation-manager/ticket-attachments',
     protoPackage: 'sas',
-    subPath: '/sas',
+    subPath: '/affiliation-manager',
     generateController: true,
     generateBoilerplates: false,
     auth: true,

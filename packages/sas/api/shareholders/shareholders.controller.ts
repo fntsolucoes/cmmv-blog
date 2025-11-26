@@ -10,7 +10,7 @@ import {
     Repository
 } from "@cmmv/repository";
 
-@Controller("sas/shareholders")
+@Controller("affiliation-manager/shareholders")
 export class ShareholdersController {
     constructor(private readonly shareholdersService: ShareholdersService){}
 

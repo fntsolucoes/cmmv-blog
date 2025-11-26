@@ -6,7 +6,7 @@ import {
     ProfitSharingService
 } from "./profit-sharing.service";
 
-@Controller("sas/profit-sharing")
+@Controller("affiliation-manager/profit-sharing")
 export class ProfitSharingController {
     constructor(private readonly profitSharingService: ProfitSharingService){}
 

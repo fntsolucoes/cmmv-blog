@@ -5,8 +5,8 @@ import {
 
 @Contract({
     namespace: 'Sas',
-    controllerName: 'SasShareholders',
-    controllerCustomPath: 'affiliation-manager/shareholders',
+    controllerName: 'SasTags',
+    controllerCustomPath: 'affiliation-manager/tags',
     protoPackage: 'sas',
     subPath: '/affiliation-manager',
     generateController: true,
@@ -14,24 +14,29 @@ import {
     auth: true,
     options: {
         moduleContract: true,
-        databaseSchemaName: "sas_shareholders",
+        databaseSchemaName: "sas_tags",
         databaseTimestamps: true
     }
 })
-export class SasShareholdersContract extends AbstractContract {
+export class SasTagsContract extends AbstractContract {
     @ContractField({
         protoType: 'string',
         nullable: false,
         index: true,
     })
-    name!: string; // Nome do Sócio
+    name!: string; // Nome da Tag (2-255 caracteres, sem caracteres orientais)
 
     @ContractField({
-        protoType: 'double',
-        nullable: false,
-        index: true,
+        protoType: 'string',
+        nullable: true,
     })
-    percentage!: number; // Porcentagem de participação (0-100)
+    description?: string; // Descrição da tag (opcional)
+
+    @ContractField({
+        protoType: 'string',
+        nullable: true,
+    })
+    color?: string; // Cor da tag (hexadecimal, ex: #FF5733)
 
     @ContractField({
         protoType: 'boolean',
@@ -39,16 +44,6 @@ export class SasShareholdersContract extends AbstractContract {
         defaultValue: true,
         index: true
     })
-    active!: boolean;
+    active!: boolean; // Status ativo/inativo
 }
-
-
-
-
-
-
-
-
-
-
 

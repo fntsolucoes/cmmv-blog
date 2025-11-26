@@ -7,7 +7,7 @@ import {
     TicketsService
 } from "./tickets.service";
 
-@Controller("sas/tickets")
+@Controller("affiliation-manager/tickets")
 export class TicketsController {
     constructor(private readonly ticketsService: TicketsService) {}
 
