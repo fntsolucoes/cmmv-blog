@@ -150,7 +150,7 @@ export class CampaignsService {
     }
 
     /**
-     * Valida links de todas as campanhas ativas
+     * Valida links de todas as campanhas (ativas e inativas) que possuem links
      * Roda automaticamente a cada 2 horas via cron job
      */
     @Cron('0 */2 * * *') // A cada 2 horas
@@ -169,14 +169,14 @@ export class CampaignsService {
      * Implementação interna da validação de links
      */
     private async validateActiveCampaignsLinksInternal() {
-        this.logger.log('🔄 Iniciando validação de links de campanhas ativas...');
+        this.logger.log('🔄 Iniciando validação de links de todas as campanhas...');
         
         try {
             const CampaignsEntity = Repository.getEntity("SasCampaignsEntity");
             
-            // Buscar todas as campanhas ativas que possuem link
+            // Buscar todas as campanhas que possuem link (ativas e inativas)
             const result = await Repository.findAll(CampaignsEntity, {
-                active: true
+                // Sem filtro de active para buscar TODAS as campanhas
             }, [], {
                 limit: 10000
             });
@@ -184,7 +184,7 @@ export class CampaignsService {
             const campaigns = result?.data || [];
             const campaignsWithLinks = campaigns.filter((campaign: any) => campaign.link && campaign.link.trim());
             
-            this.logger.log(`📊 Encontradas ${campaignsWithLinks.length} campanhas ativas com links para validar`);
+            this.logger.log(`📊 Encontradas ${campaignsWithLinks.length} campanhas com links para validar`);
 
             let validated = 0;
             let okCount = 0;

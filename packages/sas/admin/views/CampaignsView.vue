@@ -1235,7 +1235,7 @@ const savePartner = async () => {
 const validateAllLinks = async () => {
     if (validatingAllLinks.value) return;
     
-    if (!confirm('Deseja validar os links de todas as campanhas ativas (rede de afiliação e diretas)? Isso pode levar alguns minutos.')) {
+    if (!confirm('Deseja validar os links de todas as campanhas que possuem links cadastrados (ativas e inativas)? Isso pode levar alguns minutos.')) {
         return;
     }
     
