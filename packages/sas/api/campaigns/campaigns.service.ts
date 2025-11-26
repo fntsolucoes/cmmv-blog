@@ -155,6 +155,20 @@ export class CampaignsService {
      */
     @Cron('0 */2 * * *') // A cada 2 horas
     async validateActiveCampaignsLinks() {
+        // Garantir que o contexto this seja preservado
+        const self = this;
+        if (!self || !self.logger) {
+            console.error('[CampaignsService] Erro: contexto this ou logger não disponível no cron job');
+            return;
+        }
+        
+        return await self.validateActiveCampaignsLinksInternal();
+    }
+
+    /**
+     * Implementação interna da validação de links
+     */
+    private async validateActiveCampaignsLinksInternal() {
         this.logger.log('🔄 Iniciando validação de links de campanhas ativas...');
         
         try {

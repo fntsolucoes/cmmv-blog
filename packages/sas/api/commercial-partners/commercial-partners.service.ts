@@ -84,6 +84,20 @@ export class CommercialPartnersService {
      */
     @Cron('5 */2 * * *') // A cada 2 horas, com pequeno offset
     async validateDirectPartnersLinks() {
+        // Garantir que o contexto this seja preservado
+        const self = this;
+        if (!self || !self.logger) {
+            console.error('[CommercialPartnersService] Erro: contexto this ou logger não disponível no cron job');
+            return;
+        }
+        
+        return await self.validateDirectPartnersLinksInternal();
+    }
+
+    /**
+     * Implementação interna da validação de links de parceiros diretos
+     */
+    private async validateDirectPartnersLinksInternal() {
         this.logger.log('🔄 Iniciando validação de links de parceiros diretos ativos...');
 
         try {
