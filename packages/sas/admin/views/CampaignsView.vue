@@ -1,14 +1,30 @@
 <template>
     <div class="space-y-6">
         <!-- Cabeçalho e Ações -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
             <h1 class="text-2xl font-bold text-white">Campanhas</h1>
-            <button @click="openAddDialog" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Nova Campanha
-            </button>
+            <div class="flex gap-2">
+                <button 
+                    @click="validateAllLinks" 
+                    :disabled="validatingAllLinks"
+                    class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors flex items-center"
+                >
+                    <svg v-if="!validatingAllLinks" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <svg v-else class="animate-spin h-3.5 w-3.5 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {{ validatingAllLinks ? 'Validando...' : 'Validar Todos os Links' }}
+                </button>
+                <button @click="openAddDialog" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Nova Campanha
+                </button>
+            </div>
         </div>
 
         <!-- Filtros -->
@@ -89,12 +105,13 @@
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Tag</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Ponderação</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Link</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Ações</th>
                     </tr>
                 </thead>
                 <tbody class="bg-neutral-800 divide-y divide-neutral-700">
                     <tr v-if="paginatedItems.length === 0">
-                        <td colspan="6" class="px-6 py-4 text-center text-sm text-neutral-400">
+                        <td colspan="7" class="px-6 py-4 text-center text-sm text-neutral-400">
                             Nenhum item encontrado
                         </td>
                     </tr>
@@ -114,8 +131,31 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">
                             {{ getWeightingDisplay(item) }}
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span v-if="item.link" :class="getLinkStatusClass(item)" class="px-2 py-1 text-xs rounded-full text-white border">
+                                {{ getLinkStatusText(item) }}
+                            </span>
+                            <span v-else class="text-xs text-neutral-500">-</span>
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button @click="editItem(item)" class="text-blue-400 hover:text-blue-300">Editar</button>
+                            <div class="flex items-center gap-2">
+                                <button 
+                                    v-if="item.link && item.link.trim()"
+                                    @click="validateLink(item)" 
+                                    :disabled="validatingLinks[item.id]"
+                                    class="text-yellow-400 hover:text-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                                    :title="item.type === 'campaign' ? 'Validar link da campanha' : 'Validar link do parceiro direto'"
+                                >
+                                    <svg v-if="!validatingLinks[item.id]" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    <svg v-else class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </button>
+                                <button @click="editItem(item)" class="text-blue-400 hover:text-blue-300">Editar</button>
+                            </div>
                         </td>
                     </tr>
                 </tbody>
@@ -498,6 +538,8 @@ const isEditing = ref(false);
 const saving = ref(false);
 const editingItem = ref<any>(null);
 const formErrors = ref<Record<string, string>>({});
+const validatingAllLinks = ref(false);
+const validatingLinks = ref<Record<string, boolean>>({});
 
 // Formulários
 const campaignForm = ref({
@@ -731,6 +773,36 @@ const getWeightingDisplay = (item: any): string => {
         }
     }
     return '-';
+};
+
+const getLinkStatusText = (item: any): string => {
+    if (!item.link || !item.link.trim()) {
+        return '-';
+    }
+    
+    if (item.linkStatus === 'OK') {
+        return 'Link Ok';
+    }
+    
+    if (item.linkStatus === 'Quebrado') {
+        return 'Link Quebrado';
+    }
+    
+    // Se não tem status ainda, retornar "Não validado"
+    return 'Não validado';
+};
+
+const getLinkStatusClass = (item: any): string => {
+    if (item.linkStatus === 'OK') {
+        return 'bg-green-500 border-green-600';
+    }
+    
+    if (item.linkStatus === 'Quebrado') {
+        return 'bg-red-500 border-red-600';
+    }
+    
+    // Status não validado
+    return 'bg-yellow-500 border-yellow-600';
 };
 
 // Ordenação
@@ -1156,6 +1228,81 @@ const savePartner = async () => {
         alert('Erro ao salvar parceiro. Verifique o console para mais detalhes.');
     } finally {
         saving.value = false;
+    }
+};
+
+// Validação de links
+const validateAllLinks = async () => {
+    if (validatingAllLinks.value) return;
+    
+    if (!confirm('Deseja validar os links de todas as campanhas ativas (rede de afiliação e diretas)? Isso pode levar alguns minutos.')) {
+        return;
+    }
+    
+    validatingAllLinks.value = true;
+    
+    try {
+        const [campaignsResult, partnersResult] = await Promise.all([
+            client.campaigns.validateLinks(),
+            client.commercialPartners.validateLinks()
+        ]);
+
+        console.log('Resultado da validação de campanhas:', campaignsResult);
+        console.log('Resultado da validação de parceiros diretos:', partnersResult);
+        
+        // Recarregar dados para atualizar os status
+        await loadData();
+
+        const total = (campaignsResult?.total || 0) + (partnersResult?.total || 0);
+        const ok = (campaignsResult?.ok || 0) + (partnersResult?.ok || 0);
+        const broken = (campaignsResult?.broken || 0) + (partnersResult?.broken || 0);
+        
+        alert(`Validação concluída!\nTotal: ${total}\nOK: ${ok}\nQuebrados: ${broken}`);
+    } catch (error: any) {
+        console.error('Erro ao validar links:', error);
+        alert('Erro ao validar links. Verifique o console para mais detalhes.');
+    } finally {
+        validatingAllLinks.value = false;
+    }
+};
+
+const validateLink = async (item: any) => {
+    if (!item || !item.id) return;
+
+    const id = item.id as string;
+
+    if (validatingLinks.value[id]) return;
+    
+    validatingLinks.value[id] = true;
+    
+    try {
+        let result: any = null;
+
+        if (item.type === 'campaign') {
+            result = await client.campaigns.validateLink(id);
+        } else if (item.type === 'partner') {
+            result = await client.commercialPartners.validateLink(id);
+        } else {
+            return;
+        }
+
+        console.log('Resultado da validação:', result);
+        
+        // Recarregar dados para atualizar o status
+        await loadData();
+        
+        const status = result?.linkStatus === 'OK'
+            ? 'Link Ok'
+            : result?.linkStatus === 'Quebrado'
+                ? 'Link Quebrado'
+                : 'Não validado';
+
+        alert(`Link validado: ${status}`);
+    } catch (error: any) {
+        console.error('Erro ao validar link:', error);
+        alert('Erro ao validar link. Verifique o console para mais detalhes.');
+    } finally {
+        validatingLinks.value[id] = false;
     }
 };
 

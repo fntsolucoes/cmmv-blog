@@ -1,5 +1,5 @@
 import {
-    Controller, Get, Param
+    Controller, Get, Param, Post
 } from "@cmmv/http";
 
 import {
@@ -23,6 +23,16 @@ export class CommercialPartnersController {
     @Get(":id")
     async getPartnerById(@Param("id") id: string) {
         return await this.commercialPartnersService.getPartnerById(id);
+    }
+
+    @Post("validate-links")
+    async validateDirectPartnersLinks() {
+        return await this.commercialPartnersService.validateDirectPartnersLinks();
+    }
+
+    @Post(":id/validate-link")
+    async validateDirectPartnerLink(@Param("id") id: string) {
+        return await this.commercialPartnersService.validateDirectPartnerLink(id);
     }
 }
 

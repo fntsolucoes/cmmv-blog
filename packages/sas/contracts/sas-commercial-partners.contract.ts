@@ -82,6 +82,13 @@ export class SasCommercialPartnersContract extends AbstractContract {
     link?: string; // Link (até 500 caracteres)
 
     @ContractField({
+        protoType: 'string',
+        nullable: true,
+        index: true,
+    })
+    linkStatus?: string; // Status do link: 'OK' ou 'Quebrado'
+
+    @ContractField({
         protoType: 'date',
         nullable: true,
         index: true,

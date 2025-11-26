@@ -1,5 +1,5 @@
 import {
-    Controller, Get, Param
+    Controller, Get, Param, Post
 } from "@cmmv/http";
 
 import {
@@ -23,6 +23,16 @@ export class CampaignsController {
     @Get("all")
     async getAllCampaigns() {
         return await this.campaignsService.getAllCampaigns();
+    }
+
+    @Post("validate-links")
+    async validateAllActiveCampaignsLinks() {
+        return await this.campaignsService.validateActiveCampaignsLinks();
+    }
+
+    @Post(":campaignId/validate-link")
+    async validateCampaignLink(@Param("campaignId") campaignId: string) {
+        return await this.campaignsService.validateCampaignLink(campaignId);
     }
 }
 

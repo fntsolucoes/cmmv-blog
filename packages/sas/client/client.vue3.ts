@@ -42,6 +42,12 @@ export const useSasClient = () => {
         },
         getPaymentOrdersHistory: async (id: string) => {
             return api.authRequest(`sas/commercial-partners/${id}/payment-orders`, "GET");
+        },
+        validateLinks: async () => {
+            return api.authRequest("sas/commercial-partners/validate-links", "POST");
+        },
+        validateLink: async (id: string) => {
+            return api.authRequest(`sas/commercial-partners/${id}/validate-link`, "POST");
         }
     };
 
@@ -67,6 +73,12 @@ export const useSasClient = () => {
         },
         getAllByPartner: async (partnerId: string) => {
             return api.authRequest(`sas/campaigns/partner/${partnerId}/all`, "GET");
+        },
+        validateLinks: async () => {
+            return api.authRequest("sas/campaigns/validate-links", "POST");
+        },
+        validateLink: async (campaignId: string) => {
+            return api.authRequest(`sas/campaigns/${campaignId}/validate-link`, "POST");
         }
     };
 

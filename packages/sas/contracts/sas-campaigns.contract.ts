@@ -74,6 +74,13 @@ export class SasCampaignsContract extends AbstractContract {
     link?: string; // Link (até 500 caracteres)
 
     @ContractField({
+        protoType: 'string',
+        nullable: true,
+        index: true,
+    })
+    linkStatus?: string; // Status do link: 'OK' ou 'Quebrado'
+
+    @ContractField({
         protoType: 'boolean',
         nullable: false,
         defaultValue: true,

@@ -1,13 +1,20 @@
 import {
-    Service
+    Service, Logger, Cron
 } from "@cmmv/core";
 
 import {
     Repository
 } from "@cmmv/repository";
 
+import {
+    LinkValidatorService
+} from "./link-validator.service";
+
 @Service()
 export class CampaignsService {
+    private readonly logger = new Logger("CampaignsService");
+
+    constructor(private readonly linkValidatorService: LinkValidatorService) {}
     /**
      * Buscar campanhas ativas de um parceiro
      */
@@ -140,6 +147,109 @@ export class CampaignsService {
         
         console.log(`[getAllCampaigns] ✅ Retornando ${returnedCount} campanhas`);
         return result;
+    }
+
+    /**
+     * Valida links de todas as campanhas ativas
+     * Roda automaticamente a cada 2 horas via cron job
+     */
+    @Cron('0 */2 * * *') // A cada 2 horas
+    async validateActiveCampaignsLinks() {
+        this.logger.log('🔄 Iniciando validação de links de campanhas ativas...');
+        
+        try {
+            const CampaignsEntity = Repository.getEntity("SasCampaignsEntity");
+            
+            // Buscar todas as campanhas ativas que possuem link
+            const result = await Repository.findAll(CampaignsEntity, {
+                active: true
+            }, [], {
+                limit: 10000
+            });
+
+            const campaigns = result?.data || [];
+            const campaignsWithLinks = campaigns.filter((campaign: any) => campaign.link && campaign.link.trim());
+            
+            this.logger.log(`📊 Encontradas ${campaignsWithLinks.length} campanhas ativas com links para validar`);
+
+            let validated = 0;
+            let okCount = 0;
+            let brokenCount = 0;
+
+            // Validar cada link
+            for (const campaign of campaignsWithLinks) {
+                try {
+                    const linkStatus = await this.linkValidatorService.validateLink(campaign.link);
+                    
+                    // Atualizar o status do link no banco
+                    await Repository.update(CampaignsEntity, {
+                        id: campaign.id
+                    }, {
+                        linkStatus: linkStatus
+                    });
+
+                    validated++;
+                    if (linkStatus === 'OK') {
+                        okCount++;
+                    } else {
+                        brokenCount++;
+                    }
+
+                    // Pequeno delay para não sobrecarregar o servidor
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (error: any) {
+                    this.logger.error(`Erro ao validar link da campanha ${campaign.id}:`, error);
+                }
+            }
+
+            this.logger.log(`✅ Validação concluída: ${validated} links validados (${okCount} OK, ${brokenCount} Quebrados)`);
+            
+            return {
+                total: campaignsWithLinks.length,
+                validated,
+                ok: okCount,
+                broken: brokenCount
+            };
+        } catch (error: any) {
+            this.logger.error('❌ Erro ao validar links de campanhas:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Valida o link de uma campanha específica
+     * @param campaignId - ID da campanha
+     */
+    async validateCampaignLink(campaignId: string) {
+        const CampaignsEntity = Repository.getEntity("SasCampaignsEntity");
+        
+        const campaign = await Repository.findOne(CampaignsEntity, {
+            id: campaignId
+        });
+
+        if (!campaign) {
+            throw new Error(`Campanha com ID ${campaignId} não encontrada`);
+        }
+
+        if (!campaign.link || !campaign.link.trim()) {
+            // Se não tem link, remover status
+            await Repository.update(CampaignsEntity, {
+                id: campaignId
+            }, {
+                linkStatus: null
+            });
+            return { linkStatus: null };
+        }
+
+        const linkStatus = await this.linkValidatorService.validateLink(campaign.link);
+        
+        await Repository.update(CampaignsEntity, {
+            id: campaignId
+        }, {
+            linkStatus: linkStatus
+        });
+
+        return { linkStatus };
     }
 }
 
