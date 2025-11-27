@@ -131,7 +131,7 @@ export const useAdminClient = () => {
     };
 
     const sasDashboard = {
-        getDashboard: () => api.authRequest('sas/dashboard', 'GET'),
+        getDashboard: () => api.authRequest('affiliation-manager/dashboard', 'GET'),
     };
 
     const comments = {
