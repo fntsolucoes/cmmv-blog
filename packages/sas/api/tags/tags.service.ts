@@ -1,18 +1,25 @@
 import {
-    Service, Logger
+    Service, Logger, Cron
 } from "@cmmv/core";
 
 import {
     Repository
 } from "@cmmv/repository";
 
+import * as fs from "fs";
+import * as path from "path";
+
 import {
     ScriptSettingsService
 } from "../script-settings/script-settings.service";
 
+import puppeteer from "puppeteer";
+
 @Service()
 export class SasTagsCustomService {
     private readonly logger = new Logger("SasTagsCustomService");
+    private readonly timeout = 30000; // 30s para validação de página
+    private proxies: string[] | null = null;
 
     constructor(private readonly scriptSettingsService: ScriptSettingsService) {}
 
@@ -24,6 +31,11 @@ export class SasTagsCustomService {
         try {
             const TagsEntity = Repository.getEntity("SasTagsEntity");
             const CampaignsEntity = Repository.getEntity("SasCampaignsEntity");
+
+            // Garantir que novas tags comecem com status "Não verificada"
+            if (!body.scriptStatus) {
+                body.scriptStatus = "Não verificada";
+            }
 
             // Criar a tag normalmente
             const inserted = await Repository.insert(TagsEntity, body);
@@ -61,6 +73,673 @@ export class SasTagsCustomService {
         } catch (error: any) {
             this.logger.error('Erro ao criar tag e atrelar script à campanha:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Carrega a lista de proxies do arquivo sas/proxies.txt
+     */
+    private loadProxies(): string[] {
+        if (this.proxies !== null) {
+            return this.proxies;
+        }
+
+        try {
+            // Caminho relativo ao dist da API: ../../proxies.txt
+            const proxiesPath = path.resolve(process.cwd(), "proxies.txt");
+            if (!fs.existsSync(proxiesPath)) {
+                this.logger.log(`[ScriptValidator] Arquivo de proxies não encontrado em: ${proxiesPath}`);
+                this.proxies = [];
+                return this.proxies;
+            }
+
+            const content = fs.readFileSync(proxiesPath, "utf8");
+            this.proxies = content
+                .split(/\r?\n/)
+                .map(line => line.trim())
+                .filter(line => line && !line.startsWith("#"));
+
+            this.logger.log(`[ScriptValidator] ${this.proxies.length} proxies carregados do arquivo`);
+            return this.proxies;
+        } catch (error: any) {
+            this.logger.error("[ScriptValidator] Erro ao carregar proxies:", error);
+            this.proxies = [];
+            return this.proxies;
+        }
+    }
+
+    /**
+     * Seleciona um proxy aleatório da lista (se existir)
+     */
+    private getRandomProxy(): string | null {
+        const proxies = this.loadProxies();
+        if (!proxies || proxies.length === 0) {
+            return null;
+        }
+        const index = Math.floor(Math.random() * proxies.length);
+        return proxies[index];
+    }
+
+    /**
+     * Faz download do HTML da página destino usando Puppeteer (headless browser)
+     * para capturar scripts carregados dinamicamente via JavaScript.
+     */
+    private async fetchPageHtml(url: string): Promise<string | null> {
+        const normalizedUrl = this.normalizeUrl(url);
+        let browser: puppeteer.Browser | null = null;
+
+        try {
+            this.logger.log(`[ScriptValidator] Iniciando navegador headless para: ${normalizedUrl}`);
+
+            // Configurar proxy se disponível
+            const proxy = this.getRandomProxy();
+            const launchOptions: any = {
+                headless: "new", // Usar novo modo headless (evita deprecation warning)
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--disable-gpu',
+                    '--window-size=1920,1080',
+                    '--disable-blink-features=AutomationControlled' // Evitar detecção de bot
+                ]
+            };
+
+            // Tentar usar Chrome do sistema se disponível (útil em WSL/Linux)
+            // Se não encontrar, o Puppeteer tentará baixar automaticamente
+            try {
+                // Verificar se há Chrome/Chromium instalado no sistema
+                const { execSync } = require('child_process');
+                try {
+                    execSync('which google-chrome || which chromium || which chromium-browser', { stdio: 'ignore' });
+                    // Se chegou aqui, há Chrome/Chromium no sistema
+                    // Puppeteer tentará usar automaticamente
+                } catch {
+                    // Chrome não encontrado no PATH, Puppeteer usará o bundled
+                }
+            } catch {
+                // Ignorar erros ao verificar Chrome do sistema
+            }
+
+            if (proxy) {
+                this.logger.log(`[ScriptValidator] Usando proxy para navegador headless: ${proxy}`);
+                // Extrair host e porta do proxy
+                const proxyMatch = proxy.match(/http:\/\/([^:]+):(\d+)/);
+                if (proxyMatch) {
+                    launchOptions.args.push(`--proxy-server=${proxy}`);
+                }
+            }
+
+            // Lançar navegador
+            browser = await puppeteer.launch(launchOptions);
+            const page = await browser.newPage();
+
+            // Configurar User-Agent e outros headers
+            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+            await page.setExtraHTTPHeaders({
+                'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+            });
+
+            // Navegar para a página com timeout de 60 segundos
+            this.logger.log(`[ScriptValidator] Navegando para: ${normalizedUrl}`);
+            await page.goto(normalizedUrl, {
+                waitUntil: 'networkidle2', // Aguarda até que não haja mais de 2 conexões de rede por pelo menos 500ms
+                timeout: 60000
+            });
+
+            // Aguardar 30 segundos adicionais para scripts dinâmicos carregarem completamente
+            this.logger.log(`[ScriptValidator] Aguardando 30s para scripts dinâmicos carregarem...`);
+            await page.waitForTimeout(30000);
+
+            // Capturar o HTML renderizado (incluindo scripts injetados dinamicamente)
+            const html = await page.content();
+            this.logger.log(`[ScriptValidator] HTML capturado do navegador headless: ${html.length} caracteres`);
+
+            await browser.close();
+            browser = null;
+
+            return html || null;
+        } catch (error: any) {
+            if (browser) {
+                try {
+                    await browser.close();
+                } catch (closeError) {
+                    // Ignorar erros ao fechar
+                }
+            }
+
+            if (error.message?.includes('Could not find Chrome') || error.message?.includes('Chrome')) {
+                this.logger.error(
+                    `[ScriptValidator] Chrome não encontrado para Puppeteer.\n` +
+                    `  Para instalar, execute no diretório do projeto:\n` +
+                    `  npx puppeteer browsers install chrome\n` +
+                    `  Ou no WSL: cd /mnt/c/Users/ferna/Desktop/Projetos/sas && npx puppeteer browsers install chrome`
+                );
+            } else if (error.message?.includes('timeout') || error.message?.includes('Navigation timeout')) {
+                this.logger.log(`[ScriptValidator] Timeout ao carregar página ${normalizedUrl} no navegador headless`);
+            } else {
+                this.logger.error(`[ScriptValidator] Erro ao usar navegador headless para ${normalizedUrl}:`, error);
+            }
+
+            // Fallback: tentar com fetch simples se Puppeteer falhar
+            this.logger.log(`[ScriptValidator] Tentando fallback com fetch simples...`);
+            return await this.fetchPageHtmlFallback(normalizedUrl);
+        }
+    }
+
+    /**
+     * Fallback: faz download do HTML usando fetch simples (caso Puppeteer falhe)
+     */
+    private async fetchPageHtmlFallback(url: string): Promise<string | null> {
+        const normalizedUrl = this.normalizeUrl(url);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+        try {
+            this.logger.log(`[ScriptValidator] Fazendo GET (fallback) em: ${normalizedUrl}`);
+
+            const response = await fetch(normalizedUrl, {
+                method: "GET",
+                signal: controller.signal,
+                redirect: "follow",
+                headers: {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+                    "Connection": "keep-alive",
+                    "Cache-Control": "no-cache"
+                }
+            } as any);
+
+            clearTimeout(timeoutId);
+
+            if (!response || !response.ok) {
+                this.logger.log(`[ScriptValidator] Resposta inválida (fallback) para ${normalizedUrl}: status=${response?.status}`);
+                return null;
+            }
+
+            const html = await (response as any).text();
+            return html || null;
+        } catch (error: any) {
+            clearTimeout(timeoutId);
+            if (error.name === "AbortError" || error.message?.includes("aborted")) {
+                this.logger.log(`[ScriptValidator] Timeout (fallback) ao buscar HTML de ${normalizedUrl}`);
+            } else {
+                this.logger.error(`[ScriptValidator] Erro (fallback) ao buscar HTML de ${normalizedUrl}:`, error);
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Normaliza uma URL (adiciona https:// se necessário)
+     */
+    private normalizeUrl(url: string): string {
+        let normalized = (url || "").trim();
+        if (!normalized.match(/^https?:\/\//i)) {
+            normalized = `https://${normalized}`;
+        }
+        return normalized;
+    }
+
+    /**
+     * Extrai a URL do script a partir do campo generatedScript da tag
+     * Suporta múltiplos formatos: '...', "...", sem aspas, etc.
+     */
+    private extractScriptUrlFromGeneratedScript(generatedScript: string | null | undefined): string | null {
+        if (!generatedScript) return null;
+        try {
+            // Tentar múltiplos padrões
+            const patterns = [
+                /script\.src\s*=\s*'([^']+)'/,           // script.src = '...'
+                /script\.src\s*=\s*"([^"]+)"/,          // script.src = "..."
+                /script\.src\s*=\s*`([^`]+)`/,          // script.src = `...`
+                /script\.src\s*=\s*([^\s;'">]+)/,       // script.src = ... (sem aspas)
+                /src\s*=\s*['"]([^'"]+\.js[^'"]*)/,     // src="...js"
+                /['"](https?:\/\/[^'"]+\.js[^'"]*)/      // Qualquer URL .js entre aspas
+            ];
+
+            for (const pattern of patterns) {
+                const match = generatedScript.match(pattern);
+                if (match && match[1]) {
+                    const url = match[1].trim();
+                    // Validar que é uma URL válida
+                    if (url.startsWith('http://') || url.startsWith('https://')) {
+                        return url;
+                    }
+                }
+            }
+        } catch (error: any) {
+            this.logger.error(`[ScriptValidator] Erro ao extrair URL do script:`, error);
+        }
+        return null;
+    }
+
+    /**
+     * Escapa caracteres especiais para uso em regex
+     */
+    private escapeRegex(str: string): string {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    /**
+     * Método de debug: analisa o HTML e loga informações relevantes quando o script não é encontrado
+     */
+    private logDebugInfo(html: string, scriptUrl: string, code: string, domain: string | null) {
+        try {
+            // Buscar todas as ocorrências de "script" no HTML (case-insensitive)
+            const scriptMatches = html.match(/<script[^>]*>[\s\S]*?<\/script>/gi) || [];
+            this.logger.log(`[ScriptValidator DEBUG] Encontradas ${scriptMatches.length} tags <script> no HTML`);
+
+            // Buscar ocorrências do código em qualquer contexto
+            const codeMatches = html.match(new RegExp(`[^\\s]{0,50}${this.escapeRegex(code)}[^\\s]{0,50}`, 'gi')) || [];
+            if (codeMatches.length > 0) {
+                this.logger.log(`[ScriptValidator DEBUG] Encontradas ${codeMatches.length} ocorrências do código "${code}" no HTML:`);
+                codeMatches.slice(0, 5).forEach((match, idx) => {
+                    this.logger.log(`[ScriptValidator DEBUG]   Ocorrência ${idx + 1}: ${match.substring(0, 200)}`);
+                });
+            } else {
+                this.logger.log(`[ScriptValidator DEBUG] Código "${code}" NÃO encontrado no HTML`);
+            }
+
+            // Buscar ocorrências do domínio
+            if (domain) {
+                const domainMatches = html.match(new RegExp(`[^\\s]{0,50}${this.escapeRegex(domain)}[^\\s]{0,50}`, 'gi')) || [];
+                if (domainMatches.length > 0) {
+                    this.logger.log(`[ScriptValidator DEBUG] Encontradas ${domainMatches.length} ocorrências do domínio "${domain}" no HTML`);
+                } else {
+                    this.logger.log(`[ScriptValidator DEBUG] Domínio "${domain}" NÃO encontrado no HTML`);
+                }
+            }
+
+            // Buscar por padrões comuns de script dinâmico
+            const dynamicPatterns = [
+                /document\.createElement\s*\(\s*['"]script['"]\s*\)/gi,
+                /appendChild\s*\(/gi,
+                /\.src\s*=/gi
+            ];
+
+            dynamicPatterns.forEach((pattern, idx) => {
+                const matches = html.match(pattern) || [];
+                if (matches.length > 0) {
+                    this.logger.log(`[ScriptValidator DEBUG] Padrão dinâmico ${idx + 1} encontrado ${matches.length} vezes`);
+                }
+            });
+
+            // Logar um trecho do HTML onde o código deveria estar (se houver menção ao domínio)
+            if (domain && html.toLowerCase().includes(domain.toLowerCase())) {
+                const domainIndex = html.toLowerCase().indexOf(domain.toLowerCase());
+                const snippetStart = Math.max(0, domainIndex - 200);
+                const snippetEnd = Math.min(html.length, domainIndex + 500);
+                const snippet = html.substring(snippetStart, snippetEnd);
+                this.logger.log(`[ScriptValidator DEBUG] Trecho do HTML próximo ao domínio "${domain}":\n${snippet}`);
+            }
+        } catch (error: any) {
+            this.logger.error(`[ScriptValidator DEBUG] Erro ao analisar HTML para debug:`, error);
+        }
+    }
+
+    /**
+     * Valida o script de uma única tag: verifica se o script está presente na página da campanha.
+     */
+    private async validateSingleTagScript(tag: any, CampaignsEntity: any) {
+        // Deve ter script gerado e campanhas vinculadas
+        if (!tag || !tag.generatedScript || !tag.campaignIds) {
+            return {
+                tagId: tag?.id,
+                status: "ignorado",
+                reason: "Tag sem script gerado ou sem campanha vinculada"
+            };
+        }
+
+        // Extrair URL do script
+        const scriptUrl = this.extractScriptUrlFromGeneratedScript(tag.generatedScript);
+        if (!scriptUrl) {
+            return {
+                tagId: tag.id,
+                status: "erro",
+                reason: "Não foi possível extrair a URL do script"
+            };
+        }
+
+        // Descobrir campanha vinculada (primeiro ID)
+        let campaignId: string | null = null;
+        try {
+            const parsed = typeof tag.campaignIds === "string"
+                ? JSON.parse(tag.campaignIds)
+                : tag.campaignIds;
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                campaignId = parsed[0];
+            }
+        } catch (error: any) {
+            this.logger.error(`[ScriptValidator] Erro ao parsear campaignIds para tag ${tag.id}:`, error);
+        }
+
+        if (!campaignId) {
+            return {
+                tagId: tag.id,
+                status: "erro",
+                reason: "Nenhuma campanha válida vinculada à tag"
+            };
+        }
+
+        // Buscar campanha
+        const campaign = await Repository.findOne(CampaignsEntity, { id: campaignId }, []);
+        if (!campaign) {
+            return {
+                tagId: tag.id,
+                campaignId,
+                status: "erro",
+                reason: "Campanha vinculada não encontrada"
+            };
+        }
+
+        // Determinar URL da página do seller
+        let pageUrl: string | null = null;
+        if (campaign.sellerDomain && String(campaign.sellerDomain).trim() !== "") {
+            pageUrl = String(campaign.sellerDomain).trim();
+        } else if (campaign.link && String(campaign.link).trim() !== "") {
+            // Fallback: usar link da campanha, se o domínio não estiver preenchido
+            pageUrl = String(campaign.link).trim();
+        }
+
+        if (!pageUrl) {
+            return {
+                tagId: tag.id,
+                campaignId,
+                status: "erro",
+                reason: "Campanha sem domínio seller ou link configurado"
+            };
+        }
+
+        const finalPageUrl = this.normalizeUrl(pageUrl);
+
+        // Buscar HTML da página
+        const html = await this.fetchPageHtml(finalPageUrl);
+        if (!html) {
+            return {
+                tagId: tag.id,
+                campaignId,
+                pageUrl: finalPageUrl,
+                scriptUrl,
+                status: "erro",
+                reason: "Não foi possível obter o HTML da página"
+            };
+        }
+
+        // Múltiplas estratégias de detecção para aumentar a taxa de sucesso
+        const detectionResults: any = {
+            foundByUrl: false,
+            foundByUrlCaseInsensitive: false,
+            foundByCode: false,
+            foundByCodeCaseInsensitive: false,
+            foundByDomainAndCode: false,
+            foundByScriptTag: false,
+            foundByDynamicScript: false,
+            foundByEscapedUrl: false
+        };
+
+        const htmlLower = html.toLowerCase();
+        const scriptUrlLower = scriptUrl.toLowerCase();
+
+        // 1) Buscar a URL completa do script no HTML (case-sensitive)
+        detectionResults.foundByUrl = html.includes(scriptUrl);
+
+        // 2) Buscar a URL completa do script no HTML (case-insensitive)
+        detectionResults.foundByUrlCaseInsensitive = htmlLower.includes(scriptUrlLower);
+
+        // 3) Extrair código da tag (ex: dio31ds4h6as25520)
+        let codeFromUrl: string | null = null;
+        let domainFromUrl: string | null = null;
+
+        try {
+            // Extrair código: último segmento antes de .js
+            const matchCode = scriptUrl.match(/\/([^\/]+)\.js(?:[\?'"]|$)/i);
+            if (matchCode && matchCode[1]) {
+                codeFromUrl = matchCode[1];
+            }
+
+            // Extrair domínio: adtag.cloud, rt-pixel.com, etc.
+            const matchDomain = scriptUrl.match(/https?:\/\/([^\/]+)\//i);
+            if (matchDomain && matchDomain[1]) {
+                domainFromUrl = matchDomain[1];
+            }
+        } catch (error: any) {
+            this.logger.error(`[ScriptValidator] Erro ao extrair código/domínio de ${scriptUrl}:`, error);
+        }
+
+        // 4) Buscar apenas o código (case-sensitive)
+        if (codeFromUrl) {
+            detectionResults.foundByCode = html.includes(codeFromUrl);
+        }
+
+        // 5) Buscar apenas o código (case-insensitive)
+        if (codeFromUrl) {
+            detectionResults.foundByCodeCaseInsensitive = htmlLower.includes(codeFromUrl.toLowerCase());
+            
+            // 5b) Buscar partes do código (últimos 8-12 caracteres) para casos onde o código pode estar truncado
+            if (!detectionResults.foundByCodeCaseInsensitive && codeFromUrl.length > 8) {
+                const codeSuffix = codeFromUrl.substring(codeFromUrl.length - 12).toLowerCase();
+                detectionResults.foundByCodeCaseInsensitive = htmlLower.includes(codeSuffix);
+                if (detectionResults.foundByCodeCaseInsensitive) {
+                    this.logger.log(`[ScriptValidator] Código encontrado parcialmente (sufixo): ${codeSuffix}`);
+                }
+            }
+        }
+
+        // 6) Buscar domínio + código (ex: "adtag.cloud" e "dio31ds4h6as25520" próximos)
+        if (domainFromUrl && codeFromUrl) {
+            const domainLower = domainFromUrl.toLowerCase();
+            const codeLower = codeFromUrl.toLowerCase();
+            // Verificar se ambos aparecem no HTML (não necessariamente juntos)
+            const hasDomain = htmlLower.includes(domainLower);
+            const hasCode = htmlLower.includes(codeLower);
+            detectionResults.foundByDomainAndCode = hasDomain && hasCode;
+        }
+
+        // 7) Buscar em tags <script> (procurar por script.src ou script tags com a URL)
+        try {
+            // Padrão: script.src = '...' ou script.src = "..."
+            const scriptSrcPattern = new RegExp(
+                `script\\.src\\s*=\\s*['"]?${this.escapeRegex(scriptUrl)}['"]?`,
+                'i'
+            );
+            detectionResults.foundByScriptTag = scriptSrcPattern.test(html);
+
+            // Também procurar por <script src="...">
+            const scriptTagPattern = new RegExp(
+                `<script[^>]*src\\s*=\\s*['"]?${this.escapeRegex(scriptUrl)}['"]?[^>]*>`,
+                'i'
+            );
+            if (!detectionResults.foundByScriptTag) {
+                detectionResults.foundByScriptTag = scriptTagPattern.test(html);
+            }
+        } catch (error: any) {
+            this.logger.error(`[ScriptValidator] Erro ao buscar em tags script:`, error);
+        }
+
+        // 8) Buscar por criação dinâmica de script (document.createElement('script'))
+        if (codeFromUrl) {
+            try {
+                // Padrão comum: document.createElement('script') seguido do código
+                // Buscar em um contexto maior (até 2000 caracteres entre createElement e o código)
+                const dynamicPattern = new RegExp(
+                    `document\\.createElement\\s*\\(\\s*['"]script['"]\\s*\\)[\\s\\S]{0,2000}${this.escapeRegex(codeFromUrl)}`,
+                    'i'
+                );
+                detectionResults.foundByDynamicScript = dynamicPattern.test(html);
+                
+                // Também buscar padrão alternativo: qualquer menção ao código próximo a "script" ou "src"
+                if (!detectionResults.foundByDynamicScript) {
+                    const altPattern = new RegExp(
+                        `(script|src|appendChild)[\\s\\S]{0,500}${this.escapeRegex(codeFromUrl)}`,
+                        'i'
+                    );
+                    detectionResults.foundByDynamicScript = altPattern.test(html);
+                }
+            } catch (error: any) {
+                // Ignorar erros de regex
+            }
+        }
+
+        // 9) Buscar URL com escape (ex: https:\/\/adtag.cloud)
+        try {
+            const escapedUrl = scriptUrl.replace(/\//g, '\\/');
+            detectionResults.foundByEscapedUrl = html.includes(escapedUrl) || htmlLower.includes(escapedUrl.toLowerCase());
+        } catch {
+            // Ignorar erros
+        }
+
+        // Considerar encontrado se QUALQUER estratégia funcionar
+        const found = Object.values(detectionResults).some((value: any) => value === true);
+
+        // Log detalhado para debug
+        this.logger.log(
+            `[ScriptValidator] Resultado para tag ${tag.id} / campanha ${campaignId}\n` +
+            `  URL da página: ${finalPageUrl}\n` +
+            `  Script URL: ${scriptUrl}\n` +
+            `  Código extraído: ${codeFromUrl || "N/A"}\n` +
+            `  Domínio extraído: ${domainFromUrl || "N/A"}\n` +
+            `  Estratégias de detecção:\n` +
+            `    - URL completa (case-sensitive): ${detectionResults.foundByUrl}\n` +
+            `    - URL completa (case-insensitive): ${detectionResults.foundByUrlCaseInsensitive}\n` +
+            `    - Código apenas (case-sensitive): ${detectionResults.foundByCode}\n` +
+            `    - Código apenas (case-insensitive): ${detectionResults.foundByCodeCaseInsensitive}\n` +
+            `    - Domínio + código: ${detectionResults.foundByDomainAndCode}\n` +
+            `    - Em tag <script>: ${detectionResults.foundByScriptTag}\n` +
+            `    - Criação dinâmica: ${detectionResults.foundByDynamicScript}\n` +
+            `    - URL com escape: ${detectionResults.foundByEscapedUrl}\n` +
+            `  RESULTADO FINAL: ${found ? "ENCONTRADO" : "NÃO ENCONTRADO"}\n` +
+            `  Tamanho do HTML: ${html.length} caracteres`
+        );
+
+        // Se não encontrou, fazer uma busca mais profunda e logar trechos relevantes
+        if (!found && codeFromUrl) {
+            this.logDebugInfo(html, scriptUrl, codeFromUrl, domainFromUrl);
+        }
+
+        return {
+            tagId: tag.id,
+            campaignId,
+            pageUrl: finalPageUrl,
+            scriptUrl,
+            status: found ? "encontrado" : "nao_encontrado"
+        };
+    }
+
+    /**
+     * Valida os scripts de todas as tags.
+     * Retorna um resumo com total, encontrados, não encontrados e erros.
+     */
+    async validateAllTagsScripts() {
+        const TagsEntity = Repository.getEntity("SasTagsEntity");
+        const CampaignsEntity = Repository.getEntity("SasCampaignsEntity");
+
+        this.logger.log("[ScriptValidator] Iniciando validação de scripts de todas as tags...");
+
+        const result = await Repository.findAll(TagsEntity, {}, [], { limit: 10000 });
+        const tags = result?.data || [];
+
+        let total = tags.length;
+        let validated = 0;
+        let encontrados = 0;
+        let naoEncontrados = 0;
+        let erros = 0;
+
+        const detalhes: any[] = [];
+
+        for (const tag of tags) {
+            try {
+                const validationResult = await this.validateSingleTagScript(tag, CampaignsEntity);
+
+                if (!validationResult) continue;
+
+                if (validationResult.status === "ignorado") {
+                    detalhes.push(validationResult);
+                    continue;
+                }
+
+                validated++;
+
+                // Determinar novo status baseado na lógica de negócio
+                const previousStatus = tag.scriptStatus || "Não verificada";
+                let newStatus: string;
+
+                if (validationResult.status === "encontrado") {
+                    newStatus = "Ativo";
+                    encontrados++;
+                } else if (validationResult.status === "nao_encontrado") {
+                    // Se estava "Ativo" e agora não encontrado = "Caiu"
+                    // Se nunca foi validado = "Não verificada"
+                    if (previousStatus === "Ativo") {
+                        newStatus = "Caiu";
+                    } else {
+                        newStatus = "Não verificada";
+                    }
+                    naoEncontrados++;
+                } else {
+                    // Erro: manter status atual ou definir como "Não verificada"
+                    newStatus = previousStatus === "Não verificada" ? "Não verificada" : previousStatus;
+                    erros++;
+                }
+
+                // Atualizar status da tag no banco de dados
+                try {
+                    await Repository.update(TagsEntity, { id: tag.id }, {
+                        scriptStatus: newStatus
+                    });
+                    this.logger.log(`[ScriptValidator] Tag ${tag.id} atualizada: ${previousStatus} -> ${newStatus}`);
+                } catch (updateError: any) {
+                    this.logger.error(`[ScriptValidator] Erro ao atualizar status da tag ${tag.id}:`, updateError);
+                }
+
+                detalhes.push({
+                    ...validationResult,
+                    previousStatus,
+                    newStatus
+                });
+            } catch (error: any) {
+                erros++;
+                this.logger.error(`[ScriptValidator] Erro ao validar tag ${tag?.id}:`, error);
+                detalhes.push({
+                    tagId: tag?.id,
+                    status: "erro",
+                    reason: error?.message || "Erro desconhecido"
+                });
+            }
+        }
+
+        const resumo = {
+            total,
+            validated,
+            encontrados,
+            naoEncontrados,
+            erros,
+            detalhes
+        };
+
+        this.logger.log(`[ScriptValidator] Validação concluída. Total: ${total}, Validadas: ${validated}, Encontradas: ${encontrados}, Não encontradas: ${naoEncontrados}, Erros: ${erros}`);
+
+        return resumo;
+    }
+
+    /**
+     * Tarefa agendada: a cada 2h, validar scripts de todas as tags.
+     */
+    @Cron("0 */2 * * *")
+    async validateAllTagsScriptsCron() {
+        const self = this as any;
+        if (!self || !self.logger) {
+            console.error("[SasTagsCustomService] Contexto this/logger indisponível no cron de validação de scripts");
+            return;
+        }
+
+        try {
+            await self.validateAllTagsScripts();
+        } catch (error: any) {
+            console.error("[SasTagsCustomService] Erro no cron de validação de scripts:", error);
         }
     }
 

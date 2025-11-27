@@ -56,5 +56,13 @@ export class SasTagsCustomController {
         const result = await this.tagsService.generateScript(scriptSettingId);
         return result;
     }
+
+    /**
+     * Validar scripts de todas as tags (verifica se o script está presente na página da campanha)
+     */
+    @Post("validate-scripts")
+    async validateScripts() {
+        return await this.tagsService.validateAllTagsScripts();
+    }
 }
 

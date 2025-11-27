@@ -2,12 +2,28 @@
     <div class="space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
             <h1 class="text-2xl font-bold text-white">Tags</h1>
-            <button @click="openAddDialog" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Nova Tag
-            </button>
+            <div class="flex gap-2">
+                <button 
+                    @click="validateAllScripts" 
+                    :disabled="validatingScripts"
+                    class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors flex items-center"
+                >
+                    <svg v-if="!validatingScripts" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <svg v-else class="animate-spin h-3.5 w-3.5 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {{ validatingScripts ? 'Validando...' : 'Validar Scripts' }}
+                </button>
+                <button @click="openAddDialog" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Nova Tag
+                </button>
+            </div>
         </div>
 
         <!-- Filtros -->
@@ -75,8 +91,11 @@
                             {{ item.generatedCode || '-' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span :class="item.active ? 'bg-green-500' : 'bg-red-500'" class="px-2 py-1 text-xs rounded-full text-white">
-                                {{ item.active ? 'Ativo' : 'Inativo' }}
+                            <span 
+                                :class="getStatusClass(item.scriptStatus)" 
+                                class="px-2 py-1 text-xs rounded-full text-white font-medium"
+                            >
+                                {{ getStatusLabel(item.scriptStatus) }}
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -293,12 +312,21 @@
                 </div>
             </div>
         </div>
+        <!-- Toast Notification -->
+        <ToastNotification
+            :show="notification.show"
+            :message="notification.message"
+            :type="notification.type"
+            :duration="notification.duration"
+            @close="notification.show = false"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue';
 import { useSasClient } from '../client';
+import ToastNotification from '@cmmv/blog/admin/components/ToastNotification.vue';
 
 const client = useSasClient();
 
@@ -317,6 +345,28 @@ const scriptToView = ref<string>('');
 const campaignSearch = ref<string>('');
 const modelFilter = ref<string>('');
 const campaignSearchTable = ref<string>('');
+const validatingScripts = ref(false);
+
+// Toast notification (nativo do site)
+const notification = ref({
+    show: false,
+    message: '',
+    type: 'success' as 'success' | 'error',
+    duration: 3000
+});
+
+const showNotification = (type: 'success' | 'error', message: string) => {
+    notification.value = {
+        show: true,
+        message,
+        type,
+        duration: 3000
+    };
+
+    setTimeout(() => {
+        notification.value.show = false;
+    }, notification.value.duration);
+};
 const itemsPerPage = 30;
 const currentPage = ref(1);
 
@@ -417,7 +467,7 @@ const loadData = async () => {
         allCampaigns.value = campaignsResult?.data || [];
     } catch (error) {
         console.error('Erro ao carregar dados:', error);
-        alert('Erro ao carregar dados. Verifique o console para mais detalhes.');
+        showNotification('error', 'Erro ao carregar dados. Verifique o console para mais detalhes.');
     }
 };
 
@@ -466,6 +516,28 @@ const getItemCampaignName = (item: any, campaignMapParam?: Map<string, string>):
     } catch {
         return '';
     }
+};
+
+// Obter classe CSS para o status do script
+const getStatusClass = (scriptStatus: string | null | undefined): string => {
+    if (!scriptStatus) return 'bg-gray-500';
+    
+    switch (scriptStatus) {
+        case 'Ativo':
+            return 'bg-green-500';
+        case 'Caiu':
+            return 'bg-red-500';
+        case 'Não verificada':
+            return 'bg-yellow-500';
+        default:
+            return 'bg-gray-500';
+    }
+};
+
+// Obter label para o status do script
+const getStatusLabel = (scriptStatus: string | null | undefined): string => {
+    if (!scriptStatus) return 'Não verificada';
+    return scriptStatus;
 };
 
 // Quando o modelo de script muda
@@ -550,10 +622,10 @@ const copyScript = async () => {
     
     try {
         await navigator.clipboard.writeText(form.value.generatedScript);
-        alert('Script copiado para a área de transferência!');
+        showNotification('success', 'Script copiado para a área de transferência!');
     } catch (error) {
         console.error('Erro ao copiar script:', error);
-        alert('Erro ao copiar script. Tente selecionar e copiar manualmente.');
+        showNotification('error', 'Erro ao copiar script. Tente selecionar e copiar manualmente.');
     }
 };
 
@@ -563,10 +635,10 @@ const copyScriptToClipboard = async (script: string) => {
     
     try {
         await navigator.clipboard.writeText(script);
-        alert('Script copiado para a área de transferência!');
+        showNotification('success', 'Script copiado para a área de transferência!');
     } catch (error) {
         console.error('Erro ao copiar script:', error);
-        alert('Erro ao copiar script. Tente selecionar e copiar manualmente.');
+        showNotification('error', 'Erro ao copiar script. Tente selecionar e copiar manualmente.');
     }
 };
 
@@ -696,12 +768,45 @@ const saveTag = async () => {
         console.error('Erro ao salvar tag:', error);
         
         if (error.response?.data?.message) {
-            alert(`Erro ao salvar: ${error.response.data.message}`);
+            showNotification('error', `Erro ao salvar: ${error.response.data.message}`);
         } else {
-            alert('Erro ao salvar tag. Verifique o console para mais detalhes.');
+            showNotification('error', 'Erro ao salvar tag. Verifique o console para mais detalhes.');
         }
     } finally {
         saving.value = false;
+    }
+};
+
+// Validar scripts de todas as tags
+const validateAllScripts = async () => {
+    if (validatingScripts.value) {
+        return;
+    }
+
+    validatingScripts.value = true;
+
+    try {
+        const result = await client.tags.validateScripts();
+        console.log('[TagsView] Resultado da validação de scripts:', result);
+
+        // Recarregar dados para garantir que qualquer mudança futura seja refletida
+        await loadData();
+
+        const total = result?.total ?? 0;
+        const encontrados = result?.encontrados ?? 0;
+        const naoEncontrados = result?.naoEncontrados ?? 0;
+        const erros = result?.erros ?? 0;
+
+        const message =
+            `Validação concluída. ` +
+            `Total: ${total} | Ativos: ${encontrados} | Caiu/Não encontrados: ${naoEncontrados} | Erros: ${erros}`;
+
+        showNotification('success', message);
+    } catch (error: any) {
+        console.error('[TagsView] Erro ao validar scripts:', error);
+        showNotification('error', 'Erro ao validar scripts. Verifique o console para mais detalhes.');
+    } finally {
+        validatingScripts.value = false;
     }
 };
 
@@ -716,7 +821,7 @@ const deleteItem = async (id: string) => {
         await loadData();
     } catch (error) {
         console.error('Erro ao excluir:', error);
-        alert('Erro ao excluir tag. Verifique o console para mais detalhes.');
+        showNotification('error', 'Erro ao excluir tag. Verifique o console para mais detalhes.');
     }
 };
 

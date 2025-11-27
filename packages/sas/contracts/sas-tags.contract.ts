@@ -65,5 +65,13 @@ export class SasTagsContract extends AbstractContract {
         index: true
     })
     active!: boolean; // Status ativo/inativo
+
+    @ContractField({
+        protoType: 'string',
+        nullable: true,
+        index: true,
+        defaultValue: 'Não verificada'
+    })
+    scriptStatus?: string; // Status da validação: 'Ativo', 'Caiu', 'Não verificada'
 }
 

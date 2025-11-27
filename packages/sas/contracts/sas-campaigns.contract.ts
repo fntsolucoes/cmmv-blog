@@ -30,6 +30,14 @@ export class SasCampaignsContract extends AbstractContract {
         protoType: 'string',
         nullable: false,
         index: true,
+        defaultValue: '',
+    })
+    sellerDomain!: string; // Domínio do seller (obrigatório, sem caracteres orientais)
+
+    @ContractField({
+        protoType: 'string',
+        nullable: false,
+        index: true,
     })
     name!: string; // Nome da Campanha (2-255 caracteres, sem caracteres orientais)
 

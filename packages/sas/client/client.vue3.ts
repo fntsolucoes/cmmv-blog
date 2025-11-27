@@ -101,6 +101,9 @@ export const useSasClient = () => {
         },
         generateScript: async (scriptSettingId: string) => {
             return api.authRequest(`affiliation-manager/tags/generate-script/${scriptSettingId}`, "POST");
+        },
+        validateScripts: async () => {
+            return api.authRequest("affiliation-manager/tags/validate-scripts", "POST");
         }
     };
 
