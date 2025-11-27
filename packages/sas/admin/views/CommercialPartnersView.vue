@@ -40,6 +40,7 @@
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Nome</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Tipo</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Rede de Afiliação</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Empresa de Recebimento</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Moeda Padrão</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Status</th>
@@ -50,13 +51,16 @@
                 </thead>
                 <tbody class="bg-neutral-800 divide-y divide-neutral-700">
                     <tr v-if="paginatedItems.length === 0">
-                        <td colspan="8" class="px-6 py-4 text-center text-sm text-neutral-400">
+                        <td colspan="9" class="px-6 py-4 text-center text-sm text-neutral-400">
                             Nenhum parceiro comercial cadastrado
                         </td>
                     </tr>
                     <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-neutral-700">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.name }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.partnerType }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-300">
+                            {{ item.affiliateNetworkId ? getAffiliateNetworkName(item.affiliateNetworkId) : '-' }}
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ getCostCenterName(item.costCenterId) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.defaultCurrency }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -185,6 +189,34 @@
                             <option value="Direto">Direto</option>
                         </select>
                         <p v-if="formErrors.partnerType" class="mt-1 text-sm text-red-400">{{ formErrors.partnerType }}</p>
+                    </div>
+
+                    <!-- Rede de Afiliação (apenas quando tipo = "Rede de Afiliação") -->
+                    <div v-if="form.partnerType === 'Rede de Afiliação'">
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            Rede de Afiliação
+                        </label>
+                        <div v-if="loadingAffiliateNetworks" class="flex items-center py-2">
+                            <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-500"></div>
+                            <span class="ml-2 text-neutral-400 text-sm">Carregando redes de afiliação...</span>
+                        </div>
+                        <select
+                            v-else
+                            v-model="form.affiliateNetworkId"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            :class="{ 'border-red-500': formErrors.affiliateNetworkId }"
+                        >
+                            <option value="">Selecione uma rede de afiliação (opcional)</option>
+                            <option
+                                v-for="network in affiliateNetworks"
+                                :key="network.id"
+                                :value="network.id"
+                            >
+                                {{ network.name }}
+                            </option>
+                        </select>
+                        <p v-if="formErrors.affiliateNetworkId" class="mt-1 text-sm text-red-400">{{ formErrors.affiliateNetworkId }}</p>
+                        <p class="mt-1 text-xs text-neutral-400">Selecione a rede de afiliação vinculada a este parceiro</p>
                     </div>
 
                     <!-- Empresa de Recebimento -->
@@ -517,16 +549,21 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useSasClient } from '../client';
+// @ts-ignore
+import { useAffiliateClient } from '@cmmv/affiliate/admin/client';
 
 const router = useRouter();
 const client = useSasClient();
+const affiliateClient = useAffiliateClient();
 const items = ref<any[]>([]);
 const costCenters = ref<any[]>([]);
+const affiliateNetworks = ref<any[]>([]);
 const campaignsByPartner = ref<Record<string, any[]>>({});
 const showDialog = ref(false);
 const isEditing = ref(false);
 const saving = ref(false);
 const loadingCostCenters = ref(false);
+const loadingAffiliateNetworks = ref(false);
 const editingItem = ref<any>(null);
 const formErrors = ref<Record<string, string>>({});
 
@@ -592,6 +629,7 @@ const campaignForm = ref({
 const form = ref({
     name: '',
     partnerType: '',
+    affiliateNetworkId: '',
     costCenterId: '',
     defaultCurrency: '',
     active: true,
@@ -757,6 +795,25 @@ const getCostCenterName = (costCenterId: string): string => {
     return costCenter ? costCenter.name : 'N/A';
 };
 
+// Obter nome da rede de afiliação
+const getAffiliateNetworkName = (networkId: string): string => {
+    const network = affiliateNetworks.value.find(n => n.id === networkId);
+    return network ? network.name : 'N/A';
+};
+
+// Carregar redes de afiliação
+const loadAffiliateNetworks = async () => {
+    loadingAffiliateNetworks.value = true;
+    try {
+        const response = await affiliateClient.networks.get({});
+        affiliateNetworks.value = response.data || [];
+    } catch (error) {
+        console.error('Erro ao carregar redes de afiliação:', error);
+    } finally {
+        loadingAffiliateNetworks.value = false;
+    }
+};
+
 // Obter contagem de campanhas ativas
 const getActiveCampaignsCount = (item: any): number => {
     if (item.partnerType === 'Rede de Afiliação') {
@@ -883,6 +940,7 @@ const openAddDialog = async () => {
     form.value = {
         name: '',
         partnerType: '',
+        affiliateNetworkId: '',
         costCenterId: '',
         defaultCurrency: '',
         active: true,
@@ -891,6 +949,7 @@ const openAddDialog = async () => {
     };
     formErrors.value = {};
     await loadCostCenters();
+    await loadAffiliateNetworks();
     showDialog.value = true;
 };
 
@@ -932,6 +991,7 @@ const editItem = async (item: any) => {
     form.value = {
         name: item.name || '',
         partnerType: item.partnerType || '',
+        affiliateNetworkId: item.affiliateNetworkId || '',
         costCenterId: item.costCenterId || '',
         defaultCurrency: item.defaultCurrency || '',
         active: item.active !== undefined ? item.active : true,
@@ -939,6 +999,7 @@ const editItem = async (item: any) => {
         campaigns: mappedCampaigns
     };
     formErrors.value = {};
+    await loadAffiliateNetworks();
     showDialog.value = true;
 };
 
@@ -950,6 +1011,7 @@ const closeDialog = () => {
     form.value = {
         name: '',
         partnerType: '',
+        affiliateNetworkId: '',
         costCenterId: '',
         defaultCurrency: '',
         active: true,
@@ -1088,6 +1150,7 @@ const savePartner = async () => {
         const data = {
             name: form.value.name.trim(),
             partnerType: form.value.partnerType,
+            affiliateNetworkId: form.value.affiliateNetworkId || null,
             costCenterId: form.value.costCenterId,
             notes: form.value.notes || null,
             defaultCurrency: form.value.defaultCurrency,
@@ -1186,5 +1249,6 @@ watch(searchName, () => {
 onMounted(() => {
     loadData();
     loadCostCenters();
+    loadAffiliateNetworks();
 });
 </script>

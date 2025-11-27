@@ -10,37 +10,69 @@
             </button>
         </div>
 
+        <!-- Filtros -->
+        <div class="bg-neutral-800 rounded-lg px-6 py-4 mb-4 flex flex-col md:flex-row gap-4 md:items-end">
+            <div class="flex-1">
+                <label class="block text-xs font-medium text-neutral-400 mb-1">
+                    Filtrar por modelo de script
+                </label>
+                <select
+                    v-model="modelFilter"
+                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    <option value="">Todos os modelos</option>
+                    <option 
+                        v-for="setting in scriptSettings" 
+                        :key="setting.id" 
+                        :value="setting.id"
+                    >
+                        {{ getScriptSettingDisplayName(setting) }}
+                    </option>
+                </select>
+            </div>
+            <div class="flex-1">
+                <label class="block text-xs font-medium text-neutral-400 mb-1">
+                    Buscar por campanha
+                </label>
+                <input
+                    v-model="campaignSearchTable"
+                    type="text"
+                    placeholder="Digite o nome da campanha..."
+                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+            </div>
+        </div>
+
         <!-- Tabela de Tags -->
         <div class="bg-neutral-800 rounded-lg overflow-hidden">
             <table class="min-w-full divide-y divide-neutral-700">
                 <thead class="bg-neutral-700">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Nome</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Descrição</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Cor</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Modelo de Script</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Campanhas</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Código</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Status</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Ações</th>
                     </tr>
                 </thead>
                 <tbody class="bg-neutral-800 divide-y divide-neutral-700">
-                    <tr v-if="items.length === 0">
+                    <tr v-if="filteredItems.length === 0">
                         <td colspan="5" class="px-6 py-4 text-center text-sm text-neutral-400">
                             Nenhuma tag cadastrada
                         </td>
                     </tr>
-                    <tr v-for="item in items" :key="item.id" class="hover:bg-neutral-700">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-white font-medium">{{ item.name }}</td>
-                        <td class="px-6 py-4 text-sm text-neutral-300">{{ item.description || '-' }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center gap-2">
-                                <div 
-                                    v-if="item.color" 
-                                    class="w-6 h-6 rounded border border-neutral-600"
-                                    :style="{ backgroundColor: item.color }"
-                                ></div>
-                                <span v-if="item.color" class="text-xs text-neutral-400">{{ item.color }}</span>
-                                <span v-else class="text-xs text-neutral-500">-</span>
-                            </div>
+                    <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-neutral-700">
+                        <td class="px-6 py-4 text-sm text-neutral-300">
+                            {{ item.scriptSettingId ? getScriptSettingName(item.scriptSettingId) : '-' }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-neutral-300">
+                            <span v-if="getItemCampaignName(item)" class="text-xs">
+                                {{ getItemCampaignName(item) }}
+                            </span>
+                            <span v-else class="text-neutral-500">-</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-300 font-mono">
+                            {{ item.generatedCode || '-' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span :class="item.active ? 'bg-green-500' : 'bg-red-500'" class="px-2 py-1 text-xs rounded-full text-white">
@@ -48,17 +80,59 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button @click="editItem(item)" class="text-blue-400 hover:text-blue-300 mr-3">Editar</button>
-                            <button @click="deleteItem(item.id)" class="text-red-400 hover:text-red-300">Excluir</button>
+                            <div class="flex items-center gap-2">
+                                <button 
+                                    v-if="item.generatedScript"
+                                    @click="viewScript(item)" 
+                                    class="text-green-400 hover:text-green-300"
+                                    title="Ver script"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </button>
+                                <button @click="editItem(item)" class="text-blue-400 hover:text-blue-300 mr-3">Editar</button>
+                                <button @click="deleteItem(item.id)" class="text-red-400 hover:text-red-300">Excluir</button>
+                            </div>
                         </td>
                     </tr>
                 </tbody>
             </table>
+
+            <!-- Paginação -->
+            <div 
+                v-if="filteredItems.length > 0" 
+                class="px-6 py-3 border-t border-neutral-700 flex items-center justify-between text-xs text-neutral-400"
+            >
+                <div>
+                    Mostrando {{ pageStart }} - {{ pageEnd }} de {{ filteredItems.length }} tag(s)
+                </div>
+                <div class="flex items-center gap-2">
+                    <button
+                        class="px-2 py-1 rounded bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        :disabled="currentPage === 1"
+                        @click="currentPage = currentPage - 1"
+                    >
+                        Anterior
+                    </button>
+                    <span>
+                        Página {{ currentPage }} de {{ totalPages }}
+                    </span>
+                    <button
+                        class="px-2 py-1 rounded bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        :disabled="currentPage === totalPages"
+                        @click="currentPage = currentPage + 1"
+                    >
+                        Próxima
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Modal de Cadastro/Edição -->
         <div v-if="showDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
-            <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-md mx-auto">
+            <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-2xl mx-auto max-h-[90vh] overflow-y-auto">
                 <div class="p-6 border-b border-neutral-700 flex justify-between items-center">
                     <h3 class="text-lg font-medium text-white">{{ isEditing ? 'Editar Tag' : 'Nova Tag' }}</h3>
                     <button @click="closeDialog" class="text-neutral-400 hover:text-white">
@@ -69,55 +143,94 @@
                 </div>
 
                 <form @submit.prevent="saveTag" class="p-6 space-y-4">
-                    <!-- Nome -->
+                    <!-- Modelo de Script -->
                     <div>
                         <label class="block text-sm font-medium text-neutral-300 mb-2">
-                            Nome <span class="text-red-500">*</span>
+                            Modelo de Script
                         </label>
-                        <input
-                            v-model="form.name"
-                            type="text"
-                            placeholder="Nome da tag"
-                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            :class="{ 'border-red-500': formErrors.name }"
-                            required
-                        />
-                        <p v-if="formErrors.name" class="mt-1 text-sm text-red-400">{{ formErrors.name }}</p>
+                        <select
+                            v-model="form.scriptSettingId"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            :class="{ 'border-red-500': formErrors.scriptSettingId }"
+                            @change="onScriptSettingChange"
+                        >
+                            <option value="">Selecione um modelo de script (opcional)</option>
+                            <option 
+                                v-for="setting in scriptSettings" 
+                                :key="setting.id" 
+                                :value="setting.id"
+                            >
+                                {{ getScriptSettingDisplayName(setting) }}
+                            </option>
+                        </select>
+                        <p v-if="formErrors.scriptSettingId" class="mt-1 text-sm text-red-400">{{ formErrors.scriptSettingId }}</p>
+                        <p class="mt-1 text-xs text-neutral-400">Primeiro, selecione o modelo de script</p>
                     </div>
 
-                    <!-- Descrição -->
-                    <div>
+                    <!-- Campanhas (apenas quando modelo de script for selecionado) -->
+                    <div v-if="form.scriptSettingId">
                         <label class="block text-sm font-medium text-neutral-300 mb-2">
-                            Descrição
+                            Campanhas <span class="text-red-500">*</span>
                         </label>
-                        <textarea
-                            v-model="form.description"
-                            placeholder="Descrição da tag (opcional)"
-                            rows="3"
-                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        ></textarea>
-                    </div>
-
-                    <!-- Cor -->
-                    <div>
-                        <label class="block text-sm font-medium text-neutral-300 mb-2">
-                            Cor
-                        </label>
-                        <div class="flex items-center gap-3">
+                        <!-- Campo de busca -->
+                        <div class="mb-3">
                             <input
-                                v-model="form.color"
-                                type="color"
-                                class="h-10 w-20 rounded border border-neutral-600 cursor-pointer"
-                            />
-                            <input
-                                v-model="form.color"
+                                v-model="campaignSearch"
                                 type="text"
-                                placeholder="#FF5733"
-                                pattern="^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
-                                class="flex-1 px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Buscar campanha por nome..."
+                                class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
-                        <p class="mt-1 text-xs text-neutral-400">Selecione uma cor ou digite o código hexadecimal</p>
+                        <div v-if="loadingCampaigns" class="flex items-center py-2">
+                            <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-500"></div>
+                            <span class="ml-2 text-neutral-400 text-sm">Carregando campanhas...</span>
+                        </div>
+                        <div v-else class="max-h-48 overflow-y-auto border border-neutral-600 rounded-md p-3 bg-neutral-700">
+                            <div v-if="filteredCampaigns.length === 0" class="text-sm text-neutral-400 italic">
+                                {{ campaignSearch ? 'Nenhuma campanha encontrada com este nome' : 'Nenhuma campanha disponível para este modelo' }}
+                            </div>
+                            <div v-else class="space-y-2">
+                                <label 
+                                    v-for="campaign in filteredCampaigns" 
+                                    :key="campaign.id"
+                                    class="flex items-center text-sm text-neutral-300 hover:text-white cursor-pointer"
+                                >
+                                    <input
+                                        type="radio"
+                                        :value="campaign.id"
+                                        v-model="form.campaignId"
+                                        class="w-4 h-4 text-blue-600 bg-neutral-700 border-neutral-600 rounded focus:ring-blue-500 mr-2"
+                                        name="tag-campaign"
+                                    />
+                                    <span>{{ campaign.name }}</span>
+                                </label>
+                            </div>
+                        </div>
+                        <p v-if="formErrors.campaignIds" class="mt-1 text-sm text-red-400">{{ formErrors.campaignIds }}</p>
+                        <p class="mt-1 text-xs text-neutral-400">Selecione as campanhas que usarão este script</p>
+                    </div>
+
+                    <!-- Script Gerado (apenas quando houver script) -->
+                    <div v-if="form.generatedScript" class="p-3 bg-neutral-900 rounded-md border border-neutral-700">
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            Script Gerado
+                        </label>
+                        <div class="relative">
+                            <pre class="text-xs text-neutral-300 font-mono whitespace-pre-wrap break-all overflow-x-auto p-3 bg-neutral-800 rounded border border-neutral-600">{{ form.generatedScript }}</pre>
+                            <button
+                                type="button"
+                                @click="copyScript"
+                                class="absolute top-2 right-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+                                title="Copiar script"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                            </button>
+                        </div>
+                        <p class="mt-2 text-xs text-neutral-400">
+                            Código gerado: <span class="font-mono text-neutral-300">{{ form.generatedCode }}</span>
+                        </p>
                     </div>
 
                     <!-- Status Ativo -->
@@ -154,39 +267,313 @@
                 </form>
             </div>
         </div>
+
+        <!-- Modal para visualizar script completo -->
+        <div v-if="showScriptModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
+            <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-3xl mx-auto max-h-[90vh] overflow-y-auto">
+                <div class="p-6 border-b border-neutral-700 flex justify-between items-center">
+                    <h3 class="text-lg font-medium text-white">Script Gerado</h3>
+                    <button @click="showScriptModal = false" class="text-neutral-400 hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="relative">
+                        <pre class="text-sm text-neutral-300 font-mono whitespace-pre-wrap break-all overflow-x-auto p-4 bg-neutral-900 rounded border border-neutral-600">{{ scriptToView }}</pre>
+                        <button
+                            type="button"
+                            @click="copyScriptToClipboard(scriptToView)"
+                            class="absolute top-4 right-4 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+                        >
+                            Copiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { useSasClient } from '../client';
 
 const client = useSasClient();
 
 const items = ref<any[]>([]);
+const scriptSettings = ref<any[]>([]);
+const commercialPartners = ref<any[]>([]);
+const allCampaigns = ref<any[]>([]);
+const availableCampaigns = ref<any[]>([]);
 const showDialog = ref(false);
 const isEditing = ref(false);
 const editingItem = ref<any>(null);
 const saving = ref(false);
+const loadingCampaigns = ref(false);
+const showScriptModal = ref(false);
+const scriptToView = ref<string>('');
+const campaignSearch = ref<string>('');
+const modelFilter = ref<string>('');
+const campaignSearchTable = ref<string>('');
+const itemsPerPage = 30;
+const currentPage = ref(1);
 
 const form = ref({
-    name: '',
     description: '',
-    color: '#3B82F6',
+    scriptSettingId: '',
+    campaignId: '',
+    generatedScript: '',
+    generatedCode: '',
     active: true
 });
 
 const formErrors = ref<Record<string, string>>({});
 
+// Filtrar campanhas baseado na busca (seleção no modal)
+const filteredCampaigns = computed(() => {
+    if (!campaignSearch.value || campaignSearch.value.trim() === '') {
+        return availableCampaigns.value;
+    }
+    const searchTerm = campaignSearch.value.toLowerCase().trim();
+    return availableCampaigns.value.filter(campaign => 
+        campaign.name.toLowerCase().includes(searchTerm)
+    );
+});
+
+// Lista de tags filtrada por modelo e nome de campanha
+const filteredItems = computed(() => {
+    // Cria mapa de campanhas por id para busca rápida
+    const campaignMap = new Map<string, string>();
+    for (const c of allCampaigns.value) {
+        if (c.id && c.name) {
+            campaignMap.set(c.id, c.name);
+        }
+    }
+
+    const searchTerm = campaignSearchTable.value.toLowerCase().trim();
+
+    return items.value.filter((item: any) => {
+        // Filtrar por modelo
+        if (modelFilter.value && item.scriptSettingId !== modelFilter.value) {
+            return false;
+        }
+
+        // Filtrar por nome de campanha
+        if (searchTerm) {
+            const campaignName = getItemCampaignName(item, campaignMap).toLowerCase();
+            if (!campaignName.includes(searchTerm)) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+});
+
+// Itens paginados
+const totalPages = computed(() => {
+    if (filteredItems.value.length === 0) return 1;
+    return Math.ceil(filteredItems.value.length / itemsPerPage);
+});
+
+const paginatedItems = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return filteredItems.value.slice(start, end);
+});
+
+const pageStart = computed(() => {
+    if (filteredItems.value.length === 0) return 0;
+    return (currentPage.value - 1) * itemsPerPage + 1;
+});
+
+const pageEnd = computed(() => {
+    if (filteredItems.value.length === 0) return 0;
+    const end = currentPage.value * itemsPerPage;
+    return end > filteredItems.value.length ? filteredItems.value.length : end;
+});
+
+// Ajustar página atual quando o filtro mudar
+watch(filteredItems, () => {
+    if (currentPage.value > totalPages.value) {
+        currentPage.value = 1;
+    }
+});
+
 // Carregar dados
 const loadData = async () => {
     try {
-        const result = await client.tags.getAll();
-        items.value = result?.data || [];
+        const [tagsResult, scriptSettingsResult, partnersResult, campaignsResult] = await Promise.all([
+            client.tags.getAll(),
+            client.scriptSettings.getAll(),
+            client.commercialPartners.getAll(),
+            client.campaigns.getAll()
+        ]);
+        items.value = tagsResult?.data || [];
+        scriptSettings.value = scriptSettingsResult?.data || [];
+        commercialPartners.value = partnersResult?.data || [];
+        allCampaigns.value = campaignsResult?.data || [];
     } catch (error) {
-        console.error('Erro ao carregar tags:', error);
-        alert('Erro ao carregar tags. Verifique o console para mais detalhes.');
+        console.error('Erro ao carregar dados:', error);
+        alert('Erro ao carregar dados. Verifique o console para mais detalhes.');
     }
+};
+
+// Obter nome do modelo de script
+const getScriptSettingName = (scriptSettingId: string): string => {
+    const setting = scriptSettings.value.find(s => s.id === scriptSettingId);
+    if (!setting) return scriptSettingId;
+    
+    if (!setting.commercialPartnerId) {
+        return 'Modelo Único - Direto';
+    }
+    
+    // Buscar nome do parceiro
+    const partner = commercialPartners.value.find(p => p.id === setting.commercialPartnerId);
+    return partner ? `Modelo - ${partner.name}` : `Modelo - ${scriptSettingId}`;
+};
+
+// Obter nome para exibição no select
+const getScriptSettingDisplayName = (setting: any): string => {
+    if (!setting.commercialPartnerId) {
+        return 'Modelo Único - Direto';
+    }
+    
+    // Buscar nome do parceiro
+    const partner = commercialPartners.value.find(p => p.id === setting.commercialPartnerId);
+    return partner ? `Modelo - ${partner.name}` : `Modelo - ${setting.commercialPartnerId}`;
+};
+
+// Obter nome da campanha para um item
+const getItemCampaignName = (item: any, campaignMapParam?: Map<string, string>): string => {
+    try {
+        if (!item.campaignIds) return '';
+        const ids = JSON.parse(item.campaignIds);
+        if (!Array.isArray(ids) || ids.length === 0) return '';
+        const firstId = ids[0];
+
+        const mapToUse = campaignMapParam ?? (() => {
+            const m = new Map<string, string>();
+            for (const c of allCampaigns.value) {
+                if (c.id && c.name) m.set(c.id, c.name);
+            }
+            return m;
+        })();
+
+        return mapToUse.get(firstId) || '';
+    } catch {
+        return '';
+    }
+};
+
+// Quando o modelo de script muda
+const onScriptSettingChange = async () => {
+    if (!form.value.scriptSettingId) {
+        form.value.campaignId = '';
+        form.value.generatedScript = '';
+        form.value.generatedCode = '';
+        availableCampaigns.value = [];
+        campaignSearch.value = '';
+        return;
+    }
+
+    // Limpar seleção de campanhas e busca
+    form.value.campaignId = '';
+    campaignSearch.value = '';
+    
+    // Carregar campanhas disponíveis baseado no modelo
+    await loadAvailableCampaigns();
+    
+    // Gerar o script automaticamente
+    await generateScript();
+};
+
+// Carregar campanhas disponíveis
+const loadAvailableCampaigns = async () => {
+    if (!form.value.scriptSettingId) return;
+
+    loadingCampaigns.value = true;
+    try {
+        const setting = scriptSettings.value.find(s => s.id === form.value.scriptSettingId);
+        if (!setting) return;
+
+        // Se for modelo Direto (sem commercialPartnerId), buscar todas as campanhas de parceiros Direto
+        if (!setting.commercialPartnerId) {
+            const allCampaigns = await client.campaigns.getAll();
+            const allPartners = await client.commercialPartners.getAll();
+            
+            // Filtrar campanhas de parceiros Direto
+            const directPartners = (allPartners?.data || []).filter((p: any) => p.partnerType === 'Direto');
+            const directPartnerIds = directPartners.map((p: any) => p.id);
+            
+            availableCampaigns.value = (allCampaigns?.data || []).filter((c: any) => 
+                directPartnerIds.includes(c.commercialPartnerId)
+            );
+        } else {
+            // Se for modelo de Rede, buscar campanhas do parceiro específico
+            const campaigns = await client.campaigns.getAllByPartner(setting.commercialPartnerId);
+            availableCampaigns.value = campaigns?.data || [];
+        }
+    } catch (error) {
+        console.error('Erro ao carregar campanhas:', error);
+        availableCampaigns.value = [];
+    } finally {
+        loadingCampaigns.value = false;
+    }
+};
+
+// Gerar script automaticamente
+const generateScript = async () => {
+    if (!form.value.scriptSettingId) {
+        form.value.generatedScript = '';
+        form.value.generatedCode = '';
+        return;
+    }
+
+    try {
+        const result = await client.tags.generateScript(form.value.scriptSettingId);
+        form.value.generatedScript = result.script;
+        form.value.generatedCode = result.code;
+    } catch (error: any) {
+        console.error('Erro ao gerar script:', error);
+        formErrors.value.scriptSettingId = 'Erro ao gerar script. Verifique o console.';
+        form.value.generatedScript = '';
+        form.value.generatedCode = '';
+    }
+};
+
+// Copiar script para clipboard
+const copyScript = async () => {
+    if (!form.value.generatedScript) return;
+    
+    try {
+        await navigator.clipboard.writeText(form.value.generatedScript);
+        alert('Script copiado para a área de transferência!');
+    } catch (error) {
+        console.error('Erro ao copiar script:', error);
+        alert('Erro ao copiar script. Tente selecionar e copiar manualmente.');
+    }
+};
+
+// Copiar script do modal
+const copyScriptToClipboard = async (script: string) => {
+    if (!script) return;
+    
+    try {
+        await navigator.clipboard.writeText(script);
+        alert('Script copiado para a área de transferência!');
+    } catch (error) {
+        console.error('Erro ao copiar script:', error);
+        alert('Erro ao copiar script. Tente selecionar e copiar manualmente.');
+    }
+};
+
+// Ver script completo
+const viewScript = (item: any) => {
+    scriptToView.value = item.generatedScript || '';
+    showScriptModal.value = true;
 };
 
 // Abrir dialog para adicionar
@@ -194,12 +581,16 @@ const openAddDialog = () => {
     isEditing.value = false;
     editingItem.value = null;
     form.value = {
-        name: '',
         description: '',
-        color: '#3B82F6',
+        scriptSettingId: '',
+        campaignId: '',
+        generatedScript: '',
+        generatedCode: '',
         active: true
     };
     formErrors.value = {};
+    availableCampaigns.value = [];
+    campaignSearch.value = '';
     showDialog.value = true;
 };
 
@@ -208,12 +599,31 @@ const editItem = (item: any) => {
     isEditing.value = true;
     editingItem.value = item;
     form.value = {
-        name: item.name || '',
         description: item.description || '',
-        color: item.color || '#3B82F6',
+        scriptSettingId: item.scriptSettingId || '',
+        campaignId: (() => {
+            if (item.campaignIds) {
+                try {
+                    const ids = JSON.parse(item.campaignIds);
+                    return Array.isArray(ids) && ids.length > 0 ? ids[0] : '';
+                } catch {
+                    return '';
+                }
+            }
+            return '';
+        })(),
+        generatedScript: item.generatedScript || '',
+        generatedCode: item.generatedCode || '',
         active: item.active !== undefined ? item.active : true
     };
     formErrors.value = {};
+    campaignSearch.value = '';
+    
+    // Carregar campanhas se houver modelo selecionado
+    if (form.value.scriptSettingId) {
+        loadAvailableCampaigns();
+    }
+    
     showDialog.value = true;
 };
 
@@ -223,42 +633,54 @@ const closeDialog = () => {
     isEditing.value = false;
     editingItem.value = null;
     form.value = {
-        name: '',
         description: '',
-        color: '#3B82F6',
+        scriptSettingId: '',
+        campaignId: '',
+        generatedScript: '',
+        generatedCode: '',
         active: true
     };
     formErrors.value = {};
+    availableCampaigns.value = [];
+    campaignSearch.value = '';
 };
 
 // Salvar tag
 const saveTag = async () => {
     formErrors.value = {};
 
-    // Validações
-    if (!form.value.name || form.value.name.trim() === '') {
-        formErrors.value.name = 'Nome é obrigatório';
+    // Validar modelo de script
+    if (!form.value.scriptSettingId) {
+        formErrors.value.scriptSettingId = 'Selecione um modelo de script';
         return;
     }
 
-    if (form.value.name.length < 2 || form.value.name.length > 255) {
-        formErrors.value.name = 'Nome deve ter entre 2 e 255 caracteres';
+    // Validar campanhas se modelo de script foi selecionado
+    if (form.value.scriptSettingId && (!form.value.campaignId || form.value.campaignId === '')) {
+        formErrors.value.campaignIds = 'Selecione pelo menos uma campanha';
         return;
     }
 
-    // Validar cor se fornecida
-    if (form.value.color && !form.value.color.match(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)) {
-        formErrors.value.color = 'Cor deve ser um código hexadecimal válido (ex: #FF5733)';
-        return;
+    // Se modelo foi selecionado mas script não foi gerado, gerar agora
+    if (form.value.scriptSettingId && !form.value.generatedScript) {
+        await generateScript();
+        if (!form.value.generatedScript) {
+            formErrors.value.scriptSettingId = 'Erro ao gerar script. Tente novamente.';
+            return;
+        }
     }
 
     saving.value = true;
 
     try {
         const data = {
-            name: form.value.name.trim(),
             description: form.value.description?.trim() || null,
-            color: form.value.color || null,
+            scriptSettingId: form.value.scriptSettingId || null,
+            campaignIds: form.value.campaignId 
+                ? JSON.stringify([form.value.campaignId]) 
+                : null,
+            generatedScript: form.value.generatedScript || null,
+            generatedCode: form.value.generatedCode || null,
             active: form.value.active
         };
 
@@ -274,12 +696,7 @@ const saveTag = async () => {
         console.error('Erro ao salvar tag:', error);
         
         if (error.response?.data?.message) {
-            const errorMessage = error.response.data.message;
-            if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
-                formErrors.value.name = 'Já existe uma tag com este nome';
-            } else {
-                alert(`Erro ao salvar: ${errorMessage}`);
-            }
+            alert(`Erro ao salvar: ${error.response.data.message}`);
         } else {
             alert('Erro ao salvar tag. Verifique o console para mais detalhes.');
         }

@@ -12,6 +12,7 @@ import ExchangeRatesView from './views/ExchangeRatesView.vue';
 import ProfitSharingView from './views/ProfitSharingView.vue';
 import PaymentChecklistView from './views/PaymentChecklistView.vue';
 import TagsView from './views/TagsView.vue';
+import ScriptSettingsView from './views/ScriptSettingsView.vue';
 import TicketsView from './views/TicketsView.vue';
 import ActivationTicketsView from './views/ActivationTicketsView.vue';
 import ScriptCreationTicketsView from './views/ScriptCreationTicketsView.vue';
@@ -66,6 +67,11 @@ export const sasRoutes: RouteRecordRaw[] = [
                 path: 'tags',
                 component: TagsView,
                 name: 'affiliation-manager.tags'
+            },
+            {
+                path: 'script-settings',
+                component: ScriptSettingsView,
+                name: 'affiliation-manager.script-settings'
             },
             {
                 path: 'tickets',
@@ -147,6 +153,12 @@ useNavbar().addItems([
         label: 'Tags',
         icon: 'fas fa-tags',
         to: '/affiliation-manager/tags',
+        group: 'TAGS'
+    },
+    {
+        label: 'Configurações de Scripts',
+        icon: 'fas fa-code',
+        to: '/affiliation-manager/script-settings',
         group: 'TAGS'
     },
     // Grupo Chamados

@@ -1,15 +1,19 @@
 import { Module } from '@cmmv/core';
 
 import {
-    TagsService
+    SasTagsCustomService
 } from "./tags.service";
 
 import {
-    TagsController
+    SasTagsCustomController
 } from "./tags.controller";
 
+import {
+    ScriptSettingsService
+} from "../script-settings/script-settings.service";
+
 export const SasTagsModule = new Module('sas-tags', {
-    providers: [TagsService],
-    controllers: [TagsController]
+    providers: [SasTagsCustomService, ScriptSettingsService],
+    controllers: [SasTagsCustomController]
 });
 

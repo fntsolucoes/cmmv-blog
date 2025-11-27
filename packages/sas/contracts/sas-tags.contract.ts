@@ -9,7 +9,7 @@ import {
     controllerCustomPath: 'affiliation-manager/tags',
     protoPackage: 'sas',
     subPath: '/affiliation-manager',
-    generateController: true,
+    generateController: false, // Desabilitado porque temos controller customizado
     generateBoilerplates: false,
     auth: true,
     options: {
@@ -21,10 +21,10 @@ import {
 export class SasTagsContract extends AbstractContract {
     @ContractField({
         protoType: 'string',
-        nullable: false,
+        nullable: true,
         index: true,
     })
-    name!: string; // Nome da Tag (2-255 caracteres, sem caracteres orientais)
+    name?: string; // Nome da Tag (opcional, não usado mais)
 
     @ContractField({
         protoType: 'string',
@@ -32,11 +32,31 @@ export class SasTagsContract extends AbstractContract {
     })
     description?: string; // Descrição da tag (opcional)
 
+
+    @ContractField({
+        protoType: 'string',
+        nullable: true,
+        index: true,
+    })
+    scriptSettingId?: string; // ID do modelo de script utilizado
+
+    @ContractField({
+        protoType: 'text',
+        nullable: true,
+    })
+    campaignIds?: string; // IDs das campanhas (JSON array)
+
+    @ContractField({
+        protoType: 'text',
+        nullable: true,
+    })
+    generatedScript?: string; // Script gerado automaticamente
+
     @ContractField({
         protoType: 'string',
         nullable: true,
     })
-    color?: string; // Cor da tag (hexadecimal, ex: #FF5733)
+    generatedCode?: string; // Código sequencial gerado
 
     @ContractField({
         protoType: 'boolean',

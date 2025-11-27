@@ -35,6 +35,13 @@ export class SasCommercialPartnersContract extends AbstractContract {
 
     @ContractField({
         protoType: 'string',
+        nullable: true,
+        index: true,
+    })
+    affiliateNetworkId?: string; // ID da Rede de Afiliação (quando partnerType = "Rede")
+
+    @ContractField({
+        protoType: 'string',
         nullable: false,
         index: true,
     })

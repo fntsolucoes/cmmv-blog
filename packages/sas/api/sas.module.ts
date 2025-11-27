@@ -9,6 +9,7 @@ import {
     SasExchangeRatesContract,
     SasPaymentChecklistContract,
     SasTagsContract,
+    SasScriptSettingsContract,
     SasTicketsContract,
     SasTicketQueuesContract,
     SasTicketCommentsContract,
@@ -27,6 +28,7 @@ import { SasProfitSharingModule } from './profit-sharing/profit-sharing.module';
 import { SasDashboardModule } from './dashboard/dashboard.module';
 import { SasPaymentChecklistModule } from './payment-checklist/payment-checklist.module';
 import { SasTagsModule } from './tags/tags.module';
+import { SasScriptSettingsModule } from './script-settings/script-settings.module';
 import { SasTicketsModule } from './tickets/tickets.module';
 import { SasTicketCommentsModule } from './ticket-comments/ticket-comments.module';
 import { SasTicketPartnersModule } from './ticket-partners/ticket-partners.module';
@@ -42,6 +44,7 @@ export const SasModule = new Module('sas', {
         SasExchangeRatesContract,
         SasPaymentChecklistContract,
         SasTagsContract,
+        SasScriptSettingsContract,
         SasTicketsContract,
         SasTicketQueuesContract,
         SasTicketCommentsContract,
@@ -60,6 +63,7 @@ export const SasModule = new Module('sas', {
         SasDashboardModule,
         SasPaymentChecklistModule,
         SasTagsModule,
+        SasScriptSettingsModule,
         SasUsersModule,
         SasTicketsModule,
         SasTicketCommentsModule,

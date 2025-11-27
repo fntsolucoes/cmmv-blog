@@ -98,6 +98,31 @@ export const useSasClient = () => {
         },
         delete: async (id: string) => {
             return api.authRequest(`affiliation-manager/tags/${id}`, "DELETE");
+        },
+        generateScript: async (scriptSettingId: string) => {
+            return api.authRequest(`affiliation-manager/tags/generate-script/${scriptSettingId}`, "POST");
+        }
+    };
+
+    const scriptSettings = {
+        get: async (filters: Record<string, string>) => {
+            const query = new URLSearchParams(filters).toString();
+            return api.authRequest(`affiliation-manager/script-settings?${query}`, "GET");
+        },
+        getAll: async () => {
+            return api.authRequest(`affiliation-manager/script-settings/all`, "GET");
+        },
+        insert: async (data: any) => {
+            return api.authRequest("affiliation-manager/script-settings", "POST", data);
+        },
+        update: async (id: string, data: any) => {
+            return api.authRequest(`affiliation-manager/script-settings/${id}`, "PUT", data);
+        },
+        delete: async (id: string) => {
+            return api.authRequest(`affiliation-manager/script-settings/${id}`, "DELETE");
+        },
+        generateNextCode: async (id: string) => {
+            return api.authRequest(`affiliation-manager/script-settings/${id}/generate-next-code`, "POST");
         }
     };
 
@@ -293,6 +318,7 @@ export const useSasClient = () => {
         profitSharing,
         paymentChecklist,
         tags,
+        scriptSettings,
         tickets,
         ticketComments,
         ticketPartners
