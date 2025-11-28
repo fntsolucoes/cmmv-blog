@@ -226,6 +226,7 @@ const sasDashboard = adminAPI.sasDashboard;
 
 const trafficChart = ref(null);
 const tagsChart = ref(null);
+let chart = null;
 let notesChart = null;
 let tagsChartInstance = null;
 

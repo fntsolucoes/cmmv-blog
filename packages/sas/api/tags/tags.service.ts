@@ -24,11 +24,44 @@ export class SasTagsCustomService {
     constructor(private readonly scriptSettingsService: ScriptSettingsService) {}
 
     /**
+     * Verifica se o schema do banco está correto
+     * Retorna true se todas as colunas necessárias existem
+     */
+    private async verifyDatabaseSchema(): Promise<boolean> {
+        try {
+            const TagsEntity = Repository.getEntity("SasTagsEntity");
+            
+            // Tentar buscar uma tag vazia para verificar se o schema está OK
+            const testResult = await Repository.findAll(TagsEntity, {}, [], { limit: 1 });
+            
+            // Se conseguir buscar sem erro, o schema provavelmente está OK
+            return true;
+        } catch (error: any) {
+            // Se der erro de coluna não encontrada, o schema está desatualizado
+            if (error?.message?.includes('no such column') || 
+                error?.message?.includes('SQLITE_ERROR') ||
+                error?.code === 'SQLITE_ERROR') {
+                this.logger.error(`[verifyDatabaseSchema] ⚠️ Schema do banco desatualizado!`);
+                this.logger.error(`[verifyDatabaseSchema] Erro: ${error.message}`);
+                return false;
+            }
+            // Outros erros podem ser normais (ex: tabela vazia)
+            return true;
+        }
+    }
+
+    /**
      * Cria uma nova tag e, se houver campanha vinculada,
      * atualiza o campo "script" da campanha com o script gerado.
      */
     async createTagAndAttachToCampaign(body: any) {
         try {
+            // Verificar schema antes de inserir
+            const schemaOk = await this.verifyDatabaseSchema();
+            if (!schemaOk) {
+                this.logger.error(`[createTagAndAttachToCampaign] ⚠️ Schema do banco desatualizado. Execute as migrações SQL antes de continuar.`);
+            }
+            
             const TagsEntity = Repository.getEntity("SasTagsEntity");
             const CampaignsEntity = Repository.getEntity("SasCampaignsEntity");
 
@@ -37,8 +70,189 @@ export class SasTagsCustomService {
                 body.scriptStatus = "Não verificada";
             }
 
-            // Criar a tag normalmente
-            const inserted = await Repository.insert(TagsEntity, body);
+            // Garantir que campos obrigatórios estejam presentes
+            if (body.active === undefined || body.active === null) {
+                body.active = true;
+            }
+
+            // Garantir que name seja uma string vazia se não fornecido (evita problemas com NOT NULL)
+            if (body.name === undefined || body.name === null) {
+                body.name = '';
+            }
+
+            // Criar objeto de dados explícito para garantir que todos os campos sejam preservados
+            // IMPORTANTE: Preservar valores exatamente como vêm, apenas substituindo undefined por null
+            const dataToInsert: any = {};
+            
+            // Copiar todos os campos do body, preservando null mas convertendo undefined para null
+            dataToInsert.name = body.name !== undefined ? body.name : '';
+            dataToInsert.description = body.description !== undefined ? body.description : null;
+            dataToInsert.scriptSettingId = body.scriptSettingId !== undefined ? body.scriptSettingId : null;
+            dataToInsert.campaignIds = body.campaignIds !== undefined ? body.campaignIds : null;
+            dataToInsert.generatedScript = body.generatedScript !== undefined ? body.generatedScript : null;
+            dataToInsert.generatedCode = body.generatedCode !== undefined ? body.generatedCode : null;
+            dataToInsert.active = body.active !== undefined && body.active !== null ? body.active : true;
+            dataToInsert.scriptStatus = body.scriptStatus !== undefined ? body.scriptStatus : 'Não verificada';
+            
+            // Log detalhado ANTES da inserção para debug
+            this.logger.log(`[createTagAndAttachToCampaign] ⚠️ DEBUG: Valores exatos que serão inseridos:`, {
+                'scriptSettingId (tipo)': typeof dataToInsert.scriptSettingId,
+                'scriptSettingId (valor)': dataToInsert.scriptSettingId,
+                'campaignIds (tipo)': typeof dataToInsert.campaignIds,
+                'campaignIds (valor)': dataToInsert.campaignIds,
+                'generatedCode (tipo)': typeof dataToInsert.generatedCode,
+                'generatedCode (valor)': dataToInsert.generatedCode,
+                'generatedScript (presente)': !!dataToInsert.generatedScript,
+                'generatedScript (tamanho)': dataToInsert.generatedScript ? dataToInsert.generatedScript.length : 0
+            });
+
+            // Log dos dados que serão inseridos
+            this.logger.log(`[createTagAndAttachToCampaign] Dados recebidos para inserção:`, {
+                name: dataToInsert.name,
+                description: dataToInsert.description,
+                scriptSettingId: dataToInsert.scriptSettingId,
+                campaignIds: dataToInsert.campaignIds,
+                generatedScript: dataToInsert.generatedScript ? `${dataToInsert.generatedScript.substring(0, 100)}...` : null,
+                generatedCode: dataToInsert.generatedCode,
+                active: dataToInsert.active,
+                scriptStatus: dataToInsert.scriptStatus
+            });
+
+            // Criar a tag normalmente usando dataToInsert ao invés de body
+            let inserted;
+            try {
+                // Log do objeto completo antes de inserir
+                this.logger.log(`[createTagAndAttachToCampaign] ⚠️ OBJETO COMPLETO dataToInsert:`, JSON.stringify(dataToInsert, null, 2));
+                
+                inserted = await Repository.insert(TagsEntity, dataToInsert);
+                
+                // Log do resultado da inserção
+                this.logger.log(`[createTagAndAttachToCampaign] ⚠️ RESULTADO DA INSERÇÃO:`, JSON.stringify(inserted, null, 2));
+                
+                // Verificar se a inserção retornou erro
+                if (inserted && typeof inserted === 'object' && 'success' in inserted && inserted.success === false) {
+                    const errorMessage = (inserted as any).message || 'Erro desconhecido ao inserir tag';
+                    this.logger.error(`[createTagAndAttachToCampaign] ❌ Erro na inserção: ${errorMessage}`);
+                    throw new Error(errorMessage);
+                }
+                
+                // Se inserted for um objeto com data, usar data
+                const insertedData = (inserted as any)?.data || inserted;
+                const insertedId = insertedData?.id || inserted?.id;
+                
+                this.logger.log(`[createTagAndAttachToCampaign] Tag inserida com sucesso. ID: ${insertedId || 'N/A'}`);
+                
+                // Verificar se a tag foi realmente inserida fazendo uma busca
+                if (insertedId) {
+                    // Aguardar um pouco para garantir que a transação foi commitada
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    const verify = await Repository.findOne(TagsEntity, { id: insertedId }, []);
+                    if (!verify) {
+                        this.logger.error(`[createTagAndAttachToCampaign] ⚠️ ATENÇÃO: Tag inserida mas não encontrada no banco! ID: ${insertedId}`);
+                        this.logger.error(`[createTagAndAttachToCampaign] Isso pode indicar um problema com transações ou sincronização do schema.`);
+                    } else {
+                        // Verificar se todos os campos importantes foram salvos
+                        const missingFields: string[] = [];
+                        if (!verify.scriptSettingId && dataToInsert.scriptSettingId) missingFields.push('scriptSettingId');
+                        if (!verify.campaignIds && dataToInsert.campaignIds) missingFields.push('campaignIds');
+                        if (!verify.generatedScript && dataToInsert.generatedScript) missingFields.push('generatedScript');
+                        if (!verify.generatedCode && dataToInsert.generatedCode) missingFields.push('generatedCode');
+                        
+                        if (missingFields.length > 0) {
+                            this.logger.error(`[createTagAndAttachToCampaign] ⚠️ ATENÇÃO: Campos não foram salvos: ${missingFields.join(', ')}`);
+                            this.logger.error(`[createTagAndAttachToCampaign] Dados enviados:`, {
+                                scriptSettingId: dataToInsert.scriptSettingId,
+                                campaignIds: dataToInsert.campaignIds,
+                                generatedScript: dataToInsert.generatedScript ? 'presente' : 'ausente',
+                                generatedCode: dataToInsert.generatedCode
+                            });
+                            this.logger.error(`[createTagAndAttachToCampaign] Dados salvos:`, {
+                                scriptSettingId: verify.scriptSettingId,
+                                campaignIds: verify.campaignIds,
+                                generatedScript: verify.generatedScript ? 'presente' : 'ausente',
+                                generatedCode: verify.generatedCode
+                            });
+                            
+                            // FORÇAR atualização dos campos faltantes imediatamente
+                            this.logger.log(`[createTagAndAttachToCampaign] ⚠️ FORÇANDO atualização dos campos faltantes...`);
+                            try {
+                                const updateData: any = {};
+                                
+                                // Forçar todos os campos críticos, mesmo que sejam null
+                                updateData.scriptSettingId = dataToInsert.scriptSettingId;
+                                updateData.campaignIds = dataToInsert.campaignIds;
+                                updateData.generatedScript = dataToInsert.generatedScript;
+                                updateData.generatedCode = dataToInsert.generatedCode;
+                                
+                                this.logger.log(`[createTagAndAttachToCampaign] ⚠️ Dados para atualização forçada:`, {
+                                    scriptSettingId: updateData.scriptSettingId,
+                                    campaignIds: updateData.campaignIds,
+                                    generatedCode: updateData.generatedCode,
+                                    generatedScript: updateData.generatedScript ? 'presente' : 'null'
+                                });
+                                
+                                const updateResult = await Repository.update(TagsEntity, { id: insertedId }, updateData);
+                                this.logger.log(`[createTagAndAttachToCampaign] ✅ Resultado da atualização forçada:`, updateResult);
+                                
+                                // Aguardar um pouco e verificar novamente
+                                await new Promise(resolve => setTimeout(resolve, 200));
+                                
+                                const verifyAfterUpdate = await Repository.findOne(TagsEntity, { id: insertedId }, []);
+                                if (verifyAfterUpdate) {
+                                    this.logger.log(`[createTagAndAttachToCampaign] ✅ Após atualização forçada:`, {
+                                        scriptSettingId: verifyAfterUpdate.scriptSettingId,
+                                        campaignIds: verifyAfterUpdate.campaignIds,
+                                        generatedCode: verifyAfterUpdate.generatedCode,
+                                        generatedScript: verifyAfterUpdate.generatedScript ? 'presente' : 'null'
+                                    });
+                                    
+                                    // Se ainda estiver faltando, é um problema sério
+                                    const stillMissing: string[] = [];
+                                    if (!verifyAfterUpdate.scriptSettingId && dataToInsert.scriptSettingId) stillMissing.push('scriptSettingId');
+                                    if (!verifyAfterUpdate.campaignIds && dataToInsert.campaignIds) stillMissing.push('campaignIds');
+                                    if (!verifyAfterUpdate.generatedCode && dataToInsert.generatedCode) stillMissing.push('generatedCode');
+                                    
+                                    if (stillMissing.length > 0) {
+                                        this.logger.error(`[createTagAndAttachToCampaign] ❌ CRÍTICO: Campos ainda faltando após atualização forçada: ${stillMissing.join(', ')}`);
+                                        this.logger.error(`[createTagAndAttachToCampaign] Isso indica um problema grave com o Repository.update ou com o schema do banco.`);
+                                    }
+                                } else {
+                                    this.logger.error(`[createTagAndAttachToCampaign] ❌ CRÍTICO: Tag não encontrada após atualização forçada!`);
+                                }
+                            } catch (updateError: any) {
+                                this.logger.error(`[createTagAndAttachToCampaign] ❌ Erro ao atualizar campos faltantes:`, updateError);
+                                this.logger.error(`[createTagAndAttachToCampaign] Stack:`, updateError.stack);
+                            }
+                        } else {
+                            this.logger.log(`[createTagAndAttachToCampaign] ✅ Tag verificada no banco. ID: ${verify.id}, generatedCode: ${verify.generatedCode}, scriptStatus: ${verify.scriptStatus}`);
+                        }
+                    }
+                } else {
+                    this.logger.error(`[createTagAndAttachToCampaign] ⚠️ ATENÇÃO: Inserção retornou sem ID! Resultado:`, JSON.stringify(inserted));
+                }
+                
+                // Usar insertedData para o resto do código
+                inserted = insertedData || inserted;
+            } catch (insertError: any) {
+                this.logger.error(`[createTagAndAttachToCampaign] ❌ Erro ao inserir tag no banco de dados:`, insertError);
+                this.logger.error(`[createTagAndAttachToCampaign] Tipo do erro: ${insertError?.constructor?.name || 'Unknown'}`);
+                this.logger.error(`[createTagAndAttachToCampaign] Mensagem: ${insertError?.message || 'Sem mensagem'}`);
+                this.logger.error(`[createTagAndAttachToCampaign] Código: ${insertError?.code || 'Sem código'}`);
+                if (insertError?.stack) {
+                    this.logger.error(`[createTagAndAttachToCampaign] Stack trace:`, insertError.stack);
+                }
+                
+                // Verificar se é erro de schema
+                if (insertError?.message?.includes('no such column') || 
+                    insertError?.message?.includes('SQLITE_ERROR') ||
+                    insertError?.code === 'SQLITE_ERROR') {
+                    this.logger.error(`[createTagAndAttachToCampaign] ⚠️ ERRO DE SCHEMA DETECTADO!`);
+                    this.logger.error(`[createTagAndAttachToCampaign] Execute o script de migração: add-tag-script-status-column.sql`);
+                }
+                
+                throw insertError;
+            }
 
             // Descobrir a campanha vinculada (primeiro ID da lista)
             const rawCampaignIds = body?.campaignIds;
@@ -59,9 +273,9 @@ export class SasTagsCustomService {
             }
 
             // Se tiver campanha e script gerado, atualizar a campanha
-            if (campaignId && body?.generatedScript) {
+            if (campaignId && dataToInsert?.generatedScript) {
                 await Repository.update(CampaignsEntity, { id: campaignId }, {
-                    script: body.generatedScript
+                    script: dataToInsert.generatedScript
                 });
 
                 this.logger.log(
@@ -746,10 +960,50 @@ export class SasTagsCustomService {
     async getAllTags() {
         try {
             const TagsEntity = Repository.getEntity("SasTagsEntity");
+            this.logger.log(`[getAllTags] Buscando todas as tags...`);
+            
+            // Primeiro, contar quantas tags existem
+            const totalCount = await Repository.count(TagsEntity, {});
+            this.logger.log(`[getAllTags] Total de tags no banco: ${totalCount}`);
+            
+            // Buscar todas as tags usando limite alto
             const result = await Repository.findAll(TagsEntity, {}, [], { limit: 10000 });
+            const data = result?.data || [];
+            const returnedCount = data.length;
+            
+            this.logger.log(`[getAllTags] Tags retornadas: ${returnedCount} de ${totalCount} esperadas`);
+            
+            if (data.length > 0) {
+                this.logger.log(`[getAllTags] Primeira tag: ID=${data[0].id}, scriptSettingId=${data[0].scriptSettingId || 'null'}, generatedCode=${data[0].generatedCode || 'null'}`);
+            } else if (totalCount > 0) {
+                this.logger.error(`[getAllTags] ⚠️ ATENÇÃO: Existem ${totalCount} tags no banco, mas nenhuma foi retornada!`);
+            }
+            
+            // Se retornou menos que o total e exatamente 10, pode haver limite padrão
+            if (returnedCount < totalCount && returnedCount === 10) {
+                this.logger.log(`[getAllTags] ⚠️ Limite padrão detectado! Tentando buscar sem filtros...`);
+                
+                // Tentar buscar sem nenhum filtro
+                const resultUnfiltered = await Repository.findAll(TagsEntity, {
+                    limit: 10000
+                }, []);
+                
+                const unfilteredCount = resultUnfiltered?.data?.length || 0;
+                this.logger.log(`[getAllTags] Tags retornadas sem filtros: ${unfilteredCount}`);
+                
+                if (unfilteredCount >= totalCount) {
+                    this.logger.log(`[getAllTags] ✅ Retornando ${unfilteredCount} tags`);
+                    return {
+                        data: resultUnfiltered?.data || [],
+                        total: unfilteredCount
+                    };
+                }
+            }
+            
+            this.logger.log(`[getAllTags] ✅ Retornando ${returnedCount} tags`);
             return {
-                data: result?.data || [],
-                total: result?.total || 0
+                data,
+                total: returnedCount > 0 ? returnedCount : totalCount // Usar returnedCount se houver dados, senão usar totalCount
             };
         } catch (error: any) {
             this.logger.error('Erro ao buscar todas as tags:', error);

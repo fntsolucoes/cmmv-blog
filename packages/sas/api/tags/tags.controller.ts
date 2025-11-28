@@ -27,6 +27,17 @@ export class SasTagsCustomController {
      */
     @Post()
     async create(@Body() body: any) {
+        // Log dos dados recebidos no controller
+        console.log('[TagsController.create] Dados recebidos:', {
+            description: body.description,
+            scriptSettingId: body.scriptSettingId,
+            campaignIds: body.campaignIds,
+            generatedScript: body.generatedScript ? `${body.generatedScript.substring(0, 100)}...` : null,
+            generatedCode: body.generatedCode,
+            active: body.active,
+            scriptStatus: body.scriptStatus
+        });
+        
         return await this.tagsService.createTagAndAttachToCampaign(body);
     }
 
@@ -44,8 +55,27 @@ export class SasTagsCustomController {
      */
     @Delete(":id")
     async delete(@Param("id") id: string) {
-        const TagsEntity = Repository.getEntity("SasTagsEntity");
-        return await Repository.delete(TagsEntity, id);
+        try {
+            const TagsEntity = Repository.getEntity("SasTagsEntity");
+            
+            console.log(`[TagsController.delete] Tentando deletar tag com ID: ${id}`);
+            
+            // Deletar a tag usando objeto { id } (padrão mais comum)
+            const result = await Repository.delete(TagsEntity, { id });
+            
+            console.log(`[TagsController.delete] Tag ${id} deletada. Resultado:`, result);
+            
+            return result || { success: true, message: 'Tag deletada com sucesso' };
+        } catch (error: any) {
+            console.error(`[TagsController.delete] Erro ao deletar tag ${id}:`, error);
+            console.error(`[TagsController.delete] Tipo do erro: ${error?.constructor?.name || 'Unknown'}`);
+            console.error(`[TagsController.delete] Mensagem: ${error?.message || 'Sem mensagem'}`);
+            console.error(`[TagsController.delete] Código: ${error?.code || 'Sem código'}`);
+            if (error?.stack) {
+                console.error(`[TagsController.delete] Stack trace:`, error.stack);
+            }
+            throw error;
+        }
     }
 
     /**
