@@ -1,6 +1,6 @@
 {
     "name": "cmmv-blog-api",
-    "version": "0.0.140",
+    "version": "0.0.141",
     "private": true,
     "description": "Blog API sample",
     "dev": {
@@ -36,7 +36,9 @@
     "scripts": {
         "dev": "cmmv dev --watch --debug",
         "build": "echo 'build'",
-        "start": "cmmv dev"
+        "start": "cmmv dev",
+        "migrate": "tsx src/scripts/run-migrations.ts",
+        "postinstall": "tsx src/scripts/run-migrations.ts || true"
     },
     "peerDependencies": {
         "cli-cursor": "^5.0.0",

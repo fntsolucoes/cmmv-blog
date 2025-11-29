@@ -14,7 +14,21 @@ import { OddsModule } from "@cmmv/odds";
 import { NewsletterModule } from "@cmmv/newsletter";
 import { SasModule } from "@cmmv/sas";
 
-Application.create({
+// Executar migrações SQL antes de inicializar a aplicação
+(async function bootstrap() {
+    try {
+        // Importar e executar migrações apenas se não estiver em modo de teste
+        if (process.env.NODE_ENV !== 'test' && !process.env.SKIP_MIGRATIONS) {
+            const { runMigrations } = await import('./scripts/run-migrations');
+            await runMigrations();
+        }
+    } catch (error) {
+        // Não bloquear a inicialização se houver erro nas migrações
+        console.warn('⚠️  Aviso: Erro ao executar migrações (continuando inicialização):', error);
+    }
+
+    // Inicializar aplicação após migrações
+    Application.create({
     httpAdapter: DefaultAdapter,
     modules: [
         DefaultHTTPModule,
@@ -34,4 +48,5 @@ Application.create({
         Repository,
         EventsService
     ]
-});
+    });
+})();
