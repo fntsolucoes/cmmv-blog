@@ -154,15 +154,18 @@ export class CampaignsService {
      * Roda automaticamente a cada 2 horas via cron job
      */
     @Cron('0 */2 * * *') // A cada 2 horas
-    async validateActiveCampaignsLinks() {
-        // Garantir que o contexto this seja preservado
-        const self = this;
-        if (!self || !self.logger) {
-            console.error('[CampaignsService] Erro: contexto this ou logger não disponível no cron job');
-            return;
+    validateActiveCampaignsLinks = async () => {
+        // Arrow function preserva automaticamente o contexto 'this'
+        try {
+            return await this.validateActiveCampaignsLinksInternal();
+        } catch (error: any) {
+            // Fallback: usar console.error se logger não estiver disponível
+            if (this.logger) {
+                this.logger.error('[CampaignsService] Erro no cron job de validação de links:', error);
+            } else {
+                console.error('[CampaignsService] Erro no cron job de validação de links:', error);
+            }
         }
-        
-        return await self.validateActiveCampaignsLinksInternal();
     }
 
     /**

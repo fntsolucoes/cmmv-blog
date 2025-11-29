@@ -1025,6 +1025,11 @@ export class SasTagsCustomService {
                 throw new Error(`Modelo de script com ID ${scriptSettingId} não encontrado`);
             }
 
+            // Proteger contra uso incorreto em modelos personalizados
+            if (setting.startCode === "__CUSTOM__") {
+                throw new Error(`O modelo de script ${scriptSettingId} é personalizado e não suporta geração sequencial de código.`);
+            }
+
             // Gerar o próximo código sequencial
             const generatedCode = await this.scriptSettingsService.generateNextCode(scriptSettingId);
 

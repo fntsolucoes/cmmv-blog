@@ -37,7 +37,7 @@
                             {{ item.defaultRoute }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-300 font-mono">
-                            {{ item.startCode }}
+                            {{ item.startCode === CUSTOM_START_CODE_SENTINEL ? 'Personalizado' : item.startCode }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-300">
                             {{ item.currentSequence || 0 }}
@@ -138,8 +138,35 @@
                         <p v-if="formErrors.defaultRoute" class="mt-1 text-sm text-red-400">{{ formErrors.defaultRoute }}</p>
                     </div>
 
-                    <!-- Código de Partida -->
+                    <!-- Modo de Código -->
                     <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            Modo do Código <span class="text-red-500">*</span>
+                        </label>
+                        <div class="flex flex-col gap-1 text-sm text-neutral-300">
+                            <label class="inline-flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    value="sequencial"
+                                    v-model="form.codeMode"
+                                    class="w-4 h-4 text-blue-600 bg-neutral-700 border-neutral-600 rounded focus:ring-blue-500"
+                                />
+                                <span>Sequencial (gera código automaticamente a partir do código de partida)</span>
+                            </label>
+                            <label class="inline-flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    value="personalizado"
+                                    v-model="form.codeMode"
+                                    class="w-4 h-4 text-blue-600 bg-neutral-700 border-neutral-600 rounded focus:ring-blue-500"
+                                />
+                                <span>Personalizado (código definido na criação da Tag)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Código de Partida (apenas para modo sequencial) -->
+                    <div v-if="form.codeMode === 'sequencial'">
                         <label class="block text-sm font-medium text-neutral-300 mb-2">
                             Código de Partida <span class="text-red-500">*</span>
                         </label>
@@ -149,10 +176,13 @@
                             placeholder="adp15a98123453500"
                             class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             :class="{ 'border-red-500': formErrors.startCode }"
-                            required
                         />
                         <p v-if="formErrors.startCode" class="mt-1 text-sm text-red-400">{{ formErrors.startCode }}</p>
                         <p class="mt-1 text-xs text-neutral-400">Código base que será usado para gerar sequenciais</p>
+                    </div>
+
+                    <div v-else class="p-3 bg-blue-900/30 border border-blue-700 rounded-md text-xs text-blue-300">
+                        Neste modo o código do script será informado manualmente ao criar a Tag. Nenhum código sequencial será gerado automaticamente.
                     </div>
 
                     <!-- Descrição -->
@@ -211,6 +241,8 @@ import { useSasClient } from '../client';
 
 const client = useSasClient();
 
+const CUSTOM_START_CODE_SENTINEL = '__CUSTOM__';
+
 const items = ref<any[]>([]);
 const availablePartners = ref<any[]>([]);
 const showDialog = ref(false);
@@ -219,12 +251,14 @@ const editingItem = ref<any>(null);
 const saving = ref(false);
 
 const form = ref({
+    modelType: '',
     commercialPartnerId: '',
     defaultRoute: '',
     startCode: '',
     description: '',
     active: true,
-    currentSequence: 0
+    currentSequence: 0,
+    codeMode: 'sequencial' // 'sequencial' | 'personalizado'
 });
 
 const formErrors = ref<Record<string, string>>({});
@@ -286,7 +320,8 @@ const openAddDialog = () => {
         startCode: '',
         description: '',
         active: true,
-        currentSequence: 0
+        currentSequence: 0,
+        codeMode: 'sequencial'
     };
     formErrors.value = {};
     showDialog.value = true;
@@ -298,15 +333,19 @@ const editItem = (item: any) => {
     editingItem.value = item;
     // Determinar o tipo de modelo baseado no commercialPartnerId
     const modelType = item.commercialPartnerId ? 'Rede de Afiliação' : 'Direto';
-    
+
+    const isCustom = item.startCode === CUSTOM_START_CODE_SENTINEL;
+
     form.value = {
-        modelType: modelType,
+        modelType,
         commercialPartnerId: item.commercialPartnerId || '',
         defaultRoute: item.defaultRoute || '',
-        startCode: item.startCode || '',
+        // Para modelo personalizado, não exibimos o sentinela para o usuário
+        startCode: isCustom ? '' : (item.startCode || ''),
         description: item.description || '',
         active: item.active !== undefined ? item.active : true,
-        currentSequence: item.currentSequence || 0
+        currentSequence: item.currentSequence || 0,
+        codeMode: isCustom ? 'personalizado' : 'sequencial'
     };
     formErrors.value = {};
     showDialog.value = true;
@@ -324,7 +363,8 @@ const closeDialog = () => {
         startCode: '',
         description: '',
         active: true,
-        currentSequence: 0
+        currentSequence: 0,
+        codeMode: 'sequencial'
     };
     formErrors.value = {};
 };
@@ -361,18 +401,26 @@ const saveScriptSetting = async () => {
         return;
     }
 
-    if (!form.value.startCode || form.value.startCode.trim() === '') {
-        formErrors.value.startCode = 'Código de partida é obrigatório';
-        return;
+    // Para modo sequencial, exigir código de partida
+    if (form.value.codeMode !== 'personalizado') {
+        if (!form.value.startCode || form.value.startCode.trim() === '') {
+            formErrors.value.startCode = 'Código de partida é obrigatório para modo sequencial';
+            return;
+        }
     }
 
     saving.value = true;
 
     try {
+        const startCode =
+            form.value.codeMode === 'personalizado'
+                ? CUSTOM_START_CODE_SENTINEL
+                : (form.value.startCode || '').trim();
+
         const data = {
             commercialPartnerId: form.value.modelType === 'Direto' ? null : form.value.commercialPartnerId,
             defaultRoute: form.value.defaultRoute.trim(),
-            startCode: form.value.startCode.trim(),
+            startCode,
             description: form.value.description?.trim() || null,
             active: form.value.active,
             currentSequence: form.value.currentSequence || 0

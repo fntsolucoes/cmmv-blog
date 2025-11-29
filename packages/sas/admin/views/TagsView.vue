@@ -229,6 +229,24 @@
                         <p class="mt-1 text-xs text-neutral-400">Selecione as campanhas que usarão este script</p>
                     </div>
 
+                    <!-- Nome do arquivo JS (apenas para modelos personalizados) -->
+                    <div v-if="form.scriptSettingId && isCustomScriptSettingSelected">
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            Nome do arquivo JS <span class="text-red-500">*</span>
+                        </label>
+                        <input
+                            v-model="form.customJsFileName"
+                            type="text"
+                            placeholder="ex: dio31ds4h6as25520.js ou apenas dio31ds4h6as25520"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                            :class="{ 'border-red-500': formErrors.customJsFileName }"
+                        />
+                        <p v-if="formErrors.customJsFileName" class="mt-1 text-sm text-red-400">{{ formErrors.customJsFileName }}</p>
+                        <p class="mt-1 text-xs text-neutral-400">
+                            Informe exatamente o nome do arquivo JavaScript que você subiu no servidor para este modelo.
+                        </p>
+                    </div>
+
                     <!-- Script Gerado (apenas quando houver script) -->
                     <div v-if="form.generatedScript" class="p-3 bg-neutral-900 rounded-md border border-neutral-700">
                         <label class="block text-sm font-medium text-neutral-300 mb-2">
@@ -330,6 +348,8 @@ import ToastNotification from '@cmmv/blog/admin/components/ToastNotification.vue
 
 const client = useSasClient();
 
+const CUSTOM_START_CODE_SENTINEL = '__CUSTOM__';
+
 const items = ref<any[]>([]);
 const scriptSettings = ref<any[]>([]);
 const commercialPartners = ref<any[]>([]);
@@ -376,10 +396,20 @@ const form = ref({
     campaignId: '',
     generatedScript: '',
     generatedCode: '',
-    active: true
+    active: true,
+    customJsFileName: ''
 });
 
 const formErrors = ref<Record<string, string>>({});
+
+const selectedScriptSetting = computed(() => {
+    return scriptSettings.value.find(s => s.id === form.value.scriptSettingId) || null;
+});
+
+const isCustomScriptSettingSelected = computed(() => {
+    const setting = selectedScriptSetting.value;
+    return !!setting && setting.startCode === CUSTOM_START_CODE_SENTINEL;
+});
 
 // Filtrar campanhas baseado na busca (seleção no modal)
 const filteredCampaigns = computed(() => {
@@ -546,6 +576,7 @@ const onScriptSettingChange = async () => {
         form.value.campaignId = '';
         form.value.generatedScript = '';
         form.value.generatedCode = '';
+        form.value.customJsFileName = '';
         availableCampaigns.value = [];
         campaignSearch.value = '';
         return;
@@ -554,12 +585,19 @@ const onScriptSettingChange = async () => {
     // Limpar seleção de campanhas e busca
     form.value.campaignId = '';
     campaignSearch.value = '';
+    form.value.customJsFileName = '';
     
     // Carregar campanhas disponíveis baseado no modelo
     await loadAvailableCampaigns();
     
-    // Gerar o script automaticamente
-    await generateScript();
+    // Para modelos sequenciais, gerar script automaticamente
+    if (!isCustomScriptSettingSelected.value) {
+        await generateScript();
+    } else {
+        // Para modelos personalizados, limpar script gerado
+        form.value.generatedScript = '';
+        form.value.generatedCode = '';
+    }
 };
 
 // Carregar campanhas disponíveis
@@ -658,7 +696,8 @@ const openAddDialog = () => {
         campaignId: '',
         generatedScript: '',
         generatedCode: '',
-        active: true
+        active: true,
+        customJsFileName: ''
     };
     formErrors.value = {};
     availableCampaigns.value = [];
@@ -686,7 +725,8 @@ const editItem = (item: any) => {
         })(),
         generatedScript: item.generatedScript || '',
         generatedCode: item.generatedCode || '',
-        active: item.active !== undefined ? item.active : true
+        active: item.active !== undefined ? item.active : true,
+        customJsFileName: ''
     };
     formErrors.value = {};
     campaignSearch.value = '';
@@ -710,7 +750,8 @@ const closeDialog = () => {
         campaignId: '',
         generatedScript: '',
         generatedCode: '',
-        active: true
+        active: true,
+        customJsFileName: ''
     };
     formErrors.value = {};
     availableCampaigns.value = [];
@@ -733,12 +774,58 @@ const saveTag = async () => {
         return;
     }
 
-    // Se modelo foi selecionado mas script não foi gerado, gerar agora
-    if (form.value.scriptSettingId && !form.value.generatedScript) {
-        await generateScript();
-        if (!form.value.generatedScript) {
-            formErrors.value.scriptSettingId = 'Erro ao gerar script. Tente novamente.';
+    // Descobrir configuração selecionada
+    const setting = selectedScriptSetting.value;
+    const isCustom = !!setting && setting.startCode === CUSTOM_START_CODE_SENTINEL;
+
+    if (isCustom) {
+        // Para modelos personalizados, exigir nome do arquivo JS
+        if (!form.value.customJsFileName || form.value.customJsFileName.trim() === '') {
+            formErrors.value.customJsFileName = 'Informe o nome do arquivo JS que foi criado';
             return;
+        }
+
+        const rawName = form.value.customJsFileName.trim();
+
+        // Normalizar: aceitar com ou sem .js
+        let fileName = rawName;
+        if (!fileName.toLowerCase().endsWith('.js')) {
+            fileName = `${fileName}.js`;
+        }
+
+        // Extrair "código" a partir do nome do arquivo (sem caminho e sem extensão)
+        const baseFileName = fileName.split(/[\\/]/).pop() || fileName;
+        const code = baseFileName.replace(/\.js$/i, '');
+
+        const baseRoute = (setting?.defaultRoute || '').trim();
+        const scriptUrl = `${baseRoute}${fileName}`;
+
+        // Gerar script evitando conflito com parser Vue (usar concatenação ao invés de template literal com tags script)
+        const scriptStart = '<' + 'script' + '>';
+        const scriptEnd = '<' + '/' + 'script' + '>';
+        const generatedScript = scriptStart + `
+(function () {
+      var script = document.createElement('script'),
+          head   = document.getElementsByTagName('head')[0];
+
+      script.async = 1;
+      script.type  = 'text/javascript';
+      script.src   = '${scriptUrl}';
+
+      head.appendChild(script);
+})();
+` + scriptEnd;
+
+        form.value.generatedScript = generatedScript;
+        form.value.generatedCode = code;
+    } else {
+        // Se modelo sequencial foi selecionado mas script não foi gerado, gerar agora
+        if (form.value.scriptSettingId && !form.value.generatedScript) {
+            await generateScript();
+            if (!form.value.generatedScript) {
+                formErrors.value.scriptSettingId = 'Erro ao gerar script. Tente novamente.';
+                return;
+            }
         }
     }
 
