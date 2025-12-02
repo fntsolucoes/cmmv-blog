@@ -245,26 +245,6 @@
                         <p v-if="formErrors.commercialPartnerId" class="mt-1 text-sm text-red-400">{{ formErrors.commercialPartnerId }}</p>
                     </div>
 
-                    <!-- Domínio Seller -->
-                    <div>
-                        <label class="block text-sm font-medium text-neutral-300 mb-2">
-                            Domínio seller <span class="text-red-500">*</span>
-                        </label>
-                        <input
-                            v-model="campaignForm.sellerDomain"
-                            type="text"
-                            placeholder="ex: ofertas.minhaloja.com.br"
-                            maxlength="255"
-                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            :class="{ 'border-red-500': formErrors.sellerDomain }"
-                            @input="validateSellerDomain"
-                            required
-                        />
-                        <p v-if="formErrors.sellerDomain" class="mt-1 text-sm text-red-400">
-                            {{ formErrors.sellerDomain }}
-                        </p>
-                    </div>
-
                     <!-- Data de Início -->
                     <div>
                         <label class="block text-sm font-medium text-neutral-300 mb-2">
@@ -565,7 +545,6 @@ const validatingLinks = ref<Record<string, boolean>>({});
 const campaignForm = ref({
     commercialPartnerId: '',
     name: '',
-    sellerDomain: '',
     startDate: '',
     endDate: '',
     script: '',
@@ -982,27 +961,6 @@ const validateWeighting = () => {
     return true;
 };
 
-const validateSellerDomain = () => {
-    formErrors.value.sellerDomain = '';
-    const domain = (campaignForm.value.sellerDomain || '').trim();
-
-    if (!domain) {
-        formErrors.value.sellerDomain = 'Domínio seller é obrigatório';
-        return false;
-    }
-
-    if (domain.length > 255) {
-        formErrors.value.sellerDomain = 'Domínio seller deve ter no máximo 255 caracteres';
-        return false;
-    }
-
-    if (hasOrientalCharacters(domain)) {
-        formErrors.value.sellerDomain = 'Domínio seller não pode conter caracteres orientais';
-        return false;
-    }
-
-    return true;
-};
 
 // Carregar dados
 const loadData = async () => {
@@ -1055,7 +1013,6 @@ const openAddDialog = async () => {
     campaignForm.value = {
         commercialPartnerId: '',
         name: '',
-        sellerDomain: '',
         startDate: '',
         endDate: '',
         script: '',
@@ -1076,7 +1033,6 @@ const closeCampaignDialog = () => {
     campaignForm.value = {
         commercialPartnerId: '',
         name: '',
-        sellerDomain: '',
         startDate: '',
         endDate: '',
         script: '',
@@ -1122,7 +1078,6 @@ const editItem = (item: any) => {
         campaignForm.value = {
             commercialPartnerId: item.commercialPartnerId || '',
             name: item.name || '',
-            sellerDomain: item.sellerDomain || '',
             startDate: startDate,
             endDate: endDate || '',
             script: item.script || '',
@@ -1138,7 +1093,7 @@ const editItem = (item: any) => {
 };
 
 const saveCampaign = async () => {
-    if (!validateCampaignName() || !validateCampaignDates() || !validateWeighting() || !validateSellerDomain()) {
+    if (!validateCampaignName() || !validateCampaignDates() || !validateWeighting()) {
         return;
     }
     
@@ -1154,7 +1109,6 @@ const saveCampaign = async () => {
         const dataToSave: any = {
             commercialPartnerId: campaignForm.value.commercialPartnerId,
             name: campaignForm.value.name.trim(),
-            sellerDomain: campaignForm.value.sellerDomain.trim(),
             startDate: campaignForm.value.startDate,
             active: campaignForm.value.active !== undefined ? campaignForm.value.active : true
         };

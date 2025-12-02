@@ -19,3 +19,4 @@ ALTER TABLE sas_tags ADD COLUMN sellerDomain TEXT NOT NULL DEFAULT '';
 -- Criar índice para melhor performance em buscas
 CREATE INDEX IF NOT EXISTS idx_sas_tags_sellerDomain ON sas_tags(sellerDomain);
 
+

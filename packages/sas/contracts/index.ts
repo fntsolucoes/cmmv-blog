@@ -1,3 +1,5 @@
+import "reflect-metadata";
+
 export * from "./sas-cost-centers.contract";
 export * from "./sas-commercial-partners.contract";
 export * from "./sas-campaigns.contract";

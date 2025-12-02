@@ -14,3 +14,4 @@ ALTER TABLE sas_tags ADD COLUMN sellerUrl TEXT;
 -- Criar índice se necessário (opcional, para buscas por URL)
 -- CREATE INDEX IF NOT EXISTS idx_sas_tags_sellerUrl ON sas_tags(sellerUrl);
 
+

@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import {
     Contract, AbstractContract,
     ContractField

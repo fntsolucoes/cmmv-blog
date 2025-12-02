@@ -143,3 +143,4 @@ Após confirmar que a coluna foi criada e tudo está funcionando, você pode:
 3. ✅ Teste atualizar uma tag no frontend
 4. ✅ Se funcionar, o erro 500 deve estar resolvido!
 
+

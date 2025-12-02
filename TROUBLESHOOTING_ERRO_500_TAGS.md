@@ -110,3 +110,4 @@ Quando reportar o problema, inclua:
 4. **Versão do Node.js** (`node --version`)
 5. **Sistema operacional**
 
+

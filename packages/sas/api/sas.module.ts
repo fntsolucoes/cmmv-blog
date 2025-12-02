@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import { Module } from '@cmmv/core';
 
 import {

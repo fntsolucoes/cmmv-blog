@@ -58,15 +58,16 @@ export class TicketsService {
      * - 'geral' → TKT-000001 (tickets gerais)
      */
     private async generateTicketNumber(ticketType: 'activation' | 'script-creation' | 'geral' | string = 'geral'): Promise<string> {
+        // Normalizar ticketType: garantir que seja um dos valores válidos
+        let normalizedType: 'activation' | 'script-creation' | 'geral' = 'geral';
+        if (ticketType === 'activation' || ticketType === 'script-creation' || ticketType === 'geral') {
+            normalizedType = ticketType;
+        } else if (ticketType === null || ticketType === undefined || ticketType === '' || ticketType === 'null') {
+            // Valores antigos ou inválidos → tratar como 'geral'
+            normalizedType = 'geral';
+        }
+
         try {
-            // Normalizar ticketType: garantir que seja um dos valores válidos
-            let normalizedType: 'activation' | 'script-creation' | 'geral' = 'geral';
-            if (ticketType === 'activation' || ticketType === 'script-creation' || ticketType === 'geral') {
-                normalizedType = ticketType;
-            } else if (ticketType === null || ticketType === undefined || ticketType === '' || ticketType === 'null') {
-                // Valores antigos ou inválidos → tratar como 'geral'
-                normalizedType = 'geral';
-            }
             
             // Definir prefixo baseado no tipo de ticket
             let prefix: string;
@@ -95,7 +96,7 @@ export class TicketsService {
                 order: {
                     createdAt: 'DESC'
                 },
-                limit: 1  // Apenas o mais recente do mesmo tipo
+                take: 1  // Apenas o mais recente do mesmo tipo
             });
 
             // Pegar o primeiro ticket (mais recente do mesmo tipo)

@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import {
     Contract, AbstractContract,
     ContractField
@@ -28,11 +29,10 @@ export class SasCampaignsContract extends AbstractContract {
 
     @ContractField({
         protoType: 'string',
-        nullable: false,
-        index: true,
-        defaultValue: '',
+        nullable: true,
+        index: false,
     })
-    sellerDomain!: string; // Domínio do seller (obrigatório, sem caracteres orientais)
+    sellerDomain?: string; // Domínio do seller (deprecated - não utilizado mais)
 
     @ContractField({
         protoType: 'string',

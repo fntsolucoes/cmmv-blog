@@ -40,7 +40,6 @@
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Nome</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Tipo</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Rede de Afiliação</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Empresa de Recebimento</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Moeda Padrão</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Status</th>
@@ -51,16 +50,13 @@
                 </thead>
                 <tbody class="bg-neutral-800 divide-y divide-neutral-700">
                     <tr v-if="paginatedItems.length === 0">
-                        <td colspan="9" class="px-6 py-4 text-center text-sm text-neutral-400">
+                        <td colspan="8" class="px-6 py-4 text-center text-sm text-neutral-400">
                             Nenhum parceiro comercial cadastrado
                         </td>
                     </tr>
                     <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-neutral-700">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.name }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.partnerType }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-300">
-                            {{ item.affiliateNetworkId ? getAffiliateNetworkName(item.affiliateNetworkId) : '-' }}
-                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ getCostCenterName(item.costCenterId) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.defaultCurrency }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -189,34 +185,6 @@
                             <option value="Direto">Direto</option>
                         </select>
                         <p v-if="formErrors.partnerType" class="mt-1 text-sm text-red-400">{{ formErrors.partnerType }}</p>
-                    </div>
-
-                    <!-- Rede de Afiliação (apenas quando tipo = "Rede de Afiliação") -->
-                    <div v-if="form.partnerType === 'Rede de Afiliação'">
-                        <label class="block text-sm font-medium text-neutral-300 mb-2">
-                            Rede de Afiliação
-                        </label>
-                        <div v-if="loadingAffiliateNetworks" class="flex items-center py-2">
-                            <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-500"></div>
-                            <span class="ml-2 text-neutral-400 text-sm">Carregando redes de afiliação...</span>
-                        </div>
-                        <select
-                            v-else
-                            v-model="form.affiliateNetworkId"
-                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            :class="{ 'border-red-500': formErrors.affiliateNetworkId }"
-                        >
-                            <option value="">Selecione uma rede de afiliação (opcional)</option>
-                            <option
-                                v-for="network in affiliateNetworks"
-                                :key="network.id"
-                                :value="network.id"
-                            >
-                                {{ network.name }}
-                            </option>
-                        </select>
-                        <p v-if="formErrors.affiliateNetworkId" class="mt-1 text-sm text-red-400">{{ formErrors.affiliateNetworkId }}</p>
-                        <p class="mt-1 text-xs text-neutral-400">Selecione a rede de afiliação vinculada a este parceiro</p>
                     </div>
 
                     <!-- Empresa de Recebimento -->
@@ -455,26 +423,6 @@
                         <p class="mt-1 text-xs text-neutral-400">Deixe em branco se a campanha estiver em andamento indefinidamente</p>
                     </div>
 
-                    <!-- Domínio seller -->
-                    <div>
-                        <label class="block text-sm font-medium text-neutral-300 mb-2">
-                            Domínio seller <span class="text-red-500">*</span>
-                        </label>
-                        <input
-                            v-model="campaignForm.sellerDomain"
-                            type="text"
-                            placeholder="ex: ofertas.minhaloja.com.br"
-                            maxlength="255"
-                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            :class="{ 'border-red-500': campaignErrors.sellerDomain }"
-                            @input="validateCampaignSellerDomain"
-                            required
-                        />
-                        <p v-if="campaignErrors.sellerDomain" class="mt-1 text-sm text-red-400">
-                            {{ campaignErrors.sellerDomain }}
-                        </p>
-                    </div>
-
                     <!-- Script -->
                     <div>
                         <label class="block text-sm font-medium text-neutral-300 mb-2">
@@ -569,21 +517,16 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useSasClient } from '../client';
-// @ts-ignore
-import { useAffiliateClient } from '@cmmv/affiliate/admin/client';
 
 const router = useRouter();
 const client = useSasClient();
-const affiliateClient = useAffiliateClient();
 const items = ref<any[]>([]);
 const costCenters = ref<any[]>([]);
-const affiliateNetworks = ref<any[]>([]);
 const campaignsByPartner = ref<Record<string, any[]>>({});
 const showDialog = ref(false);
 const isEditing = ref(false);
 const saving = ref(false);
 const loadingCostCenters = ref(false);
-const loadingAffiliateNetworks = ref(false);
 const editingItem = ref<any>(null);
 const formErrors = ref<Record<string, string>>({});
 
@@ -640,7 +583,6 @@ const campaignForm = ref({
     name: '',
     startDate: '',
     endDate: '',
-    sellerDomain: '',
     script: '',
     scriptStatus: '',
     weighting: '',
@@ -650,7 +592,6 @@ const campaignForm = ref({
 const form = ref({
     name: '',
     partnerType: '',
-    affiliateNetworkId: '',
     costCenterId: '',
     defaultCurrency: '',
     active: true,
@@ -660,7 +601,6 @@ const form = ref({
         name: string;
         startDate: string;
         endDate?: string;
-        sellerDomain?: string;
         script?: string;
         scriptStatus?: string;
         weighting?: number;
@@ -771,28 +711,6 @@ const validateWeighting = () => {
     return true;
 };
 
-// Função para validar domínio seller da campanha
-const validateCampaignSellerDomain = () => {
-    campaignErrors.value.sellerDomain = '';
-    const domain = (campaignForm.value.sellerDomain || '').trim();
-
-    if (!domain) {
-        campaignErrors.value.sellerDomain = 'Domínio seller é obrigatório';
-        return false;
-    }
-
-    if (domain.length > 255) {
-        campaignErrors.value.sellerDomain = 'Domínio seller deve ter no máximo 255 caracteres';
-        return false;
-    }
-
-    if (hasOrientalCharacters(domain)) {
-        campaignErrors.value.sellerDomain = 'Domínio seller não pode conter caracteres orientais';
-        return false;
-    }
-
-    return true;
-};
 
 // Função para obter status da campanha
 const getCampaignStatus = (campaign: any): string => {
@@ -838,25 +756,6 @@ const getScriptStatusClass = (status: string): string => {
 const getCostCenterName = (costCenterId: string): string => {
     const costCenter = costCenters.value.find(cc => cc.id === costCenterId);
     return costCenter ? costCenter.name : 'N/A';
-};
-
-// Obter nome da rede de afiliação
-const getAffiliateNetworkName = (networkId: string): string => {
-    const network = affiliateNetworks.value.find(n => n.id === networkId);
-    return network ? network.name : 'N/A';
-};
-
-// Carregar redes de afiliação
-const loadAffiliateNetworks = async () => {
-    loadingAffiliateNetworks.value = true;
-    try {
-        const response = await affiliateClient.networks.get({});
-        affiliateNetworks.value = response.data || [];
-    } catch (error) {
-        console.error('Erro ao carregar redes de afiliação:', error);
-    } finally {
-        loadingAffiliateNetworks.value = false;
-    }
 };
 
 // Obter contagem de campanhas ativas
@@ -985,7 +884,6 @@ const openAddDialog = async () => {
     form.value = {
         name: '',
         partnerType: '',
-        affiliateNetworkId: '',
         costCenterId: '',
         defaultCurrency: '',
         active: true,
@@ -994,7 +892,6 @@ const openAddDialog = async () => {
     };
     formErrors.value = {};
     await loadCostCenters();
-    await loadAffiliateNetworks();
     showDialog.value = true;
 };
 
@@ -1018,7 +915,6 @@ const editItem = async (item: any) => {
             name: c.name,
             startDate: c.startDate ? (typeof c.startDate === 'string' ? c.startDate : c.startDate.split('T')[0]) : '',
             endDate: c.endDate ? (typeof c.endDate === 'string' ? c.endDate : c.endDate.split('T')[0]) : undefined,
-            sellerDomain: c.sellerDomain || '',
             script: c.script || '',
             scriptStatus: c.scriptStatus || '',
             weighting: c.weighting || undefined,
@@ -1037,7 +933,6 @@ const editItem = async (item: any) => {
     form.value = {
         name: item.name || '',
         partnerType: item.partnerType || '',
-        affiliateNetworkId: item.affiliateNetworkId || '',
         costCenterId: item.costCenterId || '',
         defaultCurrency: item.defaultCurrency || '',
         active: item.active !== undefined ? item.active : true,
@@ -1045,7 +940,6 @@ const editItem = async (item: any) => {
         campaigns: mappedCampaigns
     };
     formErrors.value = {};
-    await loadAffiliateNetworks();
     showDialog.value = true;
 };
 
@@ -1057,7 +951,6 @@ const closeDialog = () => {
     form.value = {
         name: '',
         partnerType: '',
-        affiliateNetworkId: '',
         costCenterId: '',
         defaultCurrency: '',
         active: true,
@@ -1078,7 +971,6 @@ const openCampaignDialog = (index: number | null = null) => {
             name: campaign.name || '',
             startDate: campaign.startDate || '',
             endDate: campaign.endDate || '',
-            sellerDomain: campaign.sellerDomain || '',
             script: campaign.script || '',
             scriptStatus: campaign.scriptStatus || '',
             weighting: campaign.weighting?.toString() || '',
@@ -1089,7 +981,6 @@ const openCampaignDialog = (index: number | null = null) => {
             name: '',
             startDate: '',
             endDate: '',
-            sellerDomain: '',
             script: '',
             scriptStatus: '',
             weighting: '',
@@ -1108,7 +999,6 @@ const closeCampaignDialog = () => {
         name: '',
         startDate: '',
         endDate: '',
-        sellerDomain: '',
         script: '',
         scriptStatus: '',
         weighting: '',
@@ -1132,10 +1022,6 @@ const saveCampaign = () => {
     if (campaignForm.value.weighting && !validateWeighting()) {
         return;
     }
-
-    if (!validateCampaignSellerDomain()) {
-        return;
-    }
     
     // Validar link
     if (campaignForm.value.link && campaignForm.value.link.length > 500) {
@@ -1143,18 +1029,10 @@ const saveCampaign = () => {
         return;
     }
     
-    // Garantir que sellerDomain não está vazio
-    const sellerDomain = (campaignForm.value.sellerDomain || '').trim();
-    if (!sellerDomain) {
-        campaignErrors.value.sellerDomain = 'Domínio seller é obrigatório';
-        return;
-    }
-    
     const campaign: any = {
         name: campaignForm.value.name.trim(),
         startDate: campaignForm.value.startDate,
         endDate: campaignForm.value.endDate.trim() || undefined,
-        sellerDomain: sellerDomain,
         script: campaignForm.value.script.trim() || null,
         scriptStatus: campaignForm.value.scriptStatus || null,
         weighting: campaignForm.value.weighting ? parseFloat(campaignForm.value.weighting) : null,
@@ -1215,7 +1093,6 @@ const savePartner = async () => {
         const data = {
             name: form.value.name.trim(),
             partnerType: form.value.partnerType,
-            affiliateNetworkId: form.value.affiliateNetworkId || null,
             costCenterId: form.value.costCenterId,
             notes: form.value.notes || null,
             defaultCurrency: form.value.defaultCurrency,
@@ -1249,18 +1126,8 @@ const savePartner = async () => {
 
             // Salvar/atualizar campanhas
             for (const campaign of form.value.campaigns) {
-                // Validar sellerDomain antes de salvar
-                const sellerDomain = (campaign.sellerDomain || '').trim();
-                if (!sellerDomain) {
-                    console.error('[CommercialPartnersView] Erro: sellerDomain é obrigatório para a campanha:', campaign.name);
-                    alert(`Erro: O campo "Domínio seller" é obrigatório para a campanha "${campaign.name}". Por favor, preencha este campo antes de salvar.`);
-                    saving.value = false;
-                    return;
-                }
-
                 const campaignData: any = {
                     commercialPartnerId: partnerId,
-                    sellerDomain: sellerDomain,
                     name: campaign.name,
                     startDate: new Date(campaign.startDate),
                     endDate: campaign.endDate ? new Date(campaign.endDate) : null,
@@ -1334,6 +1201,5 @@ watch(searchName, () => {
 onMounted(() => {
     loadData();
     loadCostCenters();
-    loadAffiliateNetworks();
 });
 </script>

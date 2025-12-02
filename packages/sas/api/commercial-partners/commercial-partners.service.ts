@@ -31,7 +31,7 @@ export class CommercialPartnersService {
      */
     async getPartnerById(id: string) {
         const CommercialPartnersEntity = Repository.getEntity("SasCommercialPartnersEntity");
-        return await Repository.findOne(CommercialPartnersEntity, { id }, []);
+        return await Repository.findOne(CommercialPartnersEntity, { id });
     }
 
     /**
@@ -48,33 +48,20 @@ export class CommercialPartnersService {
         
         console.log(`[getAllPartners] Total de parceiros no banco: ${totalCount}`);
         
-        // Buscar todos os parceiros usando limite alto
+        // Buscar todos os parceiros usando limite máximo permitido
         const result = await Repository.findAll(CommercialPartnersEntity, {
-            limit: 10000  // Limite alto para pegar todos os parceiros
+            limit: 1000  // Limite máximo permitido pelo repositório
         }, []);
         
         const returnedCount = result?.data?.length || 0;
         console.log(`[getAllPartners] Parceiros retornados: ${returnedCount} de ${totalCount} esperados`);
         
-        // Se retornou menos que o total e exatamente 10, pode haver limite padrão
-        if (returnedCount < totalCount && returnedCount === 10) {
-            console.log(`[getAllPartners] ⚠️ Limite padrão detectado! Tentando buscar sem filtros...`);
-            
-            // Tentar buscar sem nenhum filtro
-            const resultUnfiltered = await Repository.findAll(CommercialPartnersEntity, {
-                limit: 10000
-            }, []);
-            
-            const unfilteredCount = resultUnfiltered?.data?.length || 0;
-            console.log(`[getAllPartners] Parceiros retornados sem filtros: ${unfilteredCount}`);
-            
-            if (unfilteredCount >= totalCount) {
-                console.log(`[getAllPartners] ✅ Retornando ${unfilteredCount} parceiros`);
-                return resultUnfiltered;
-            }
+        // Se houver mais parceiros que o limite, avisar
+        if (totalCount > 1000) {
+            console.log(`[getAllPartners] ATENCAO: Existem ${totalCount} parceiros no banco, mas apenas 1000 podem ser retornados por query. Considere implementar paginacao.`);
         }
         
-        console.log(`[getAllPartners] ✅ Retornando ${returnedCount} parceiros`);
+        console.log(`[getAllPartners] Retornando ${returnedCount} parceiros`);
         return result;
     }
 
@@ -83,8 +70,7 @@ export class CommercialPartnersService {
      * Inclui na rotina de validação a cada 2 horas
      */
     @Cron('5 */2 * * *') // A cada 2 horas, com pequeno offset
-    validateDirectPartnersLinks = async () => {
-        // Arrow function preserva automaticamente o contexto 'this'
+    async validateDirectPartnersLinks() {
         try {
             return await this.validateDirectPartnersLinksInternal();
         } catch (error: any) {
@@ -110,7 +96,7 @@ export class CommercialPartnersService {
             const result = await Repository.findAll(CommercialPartnersEntity, {
                 partnerType: 'Direto'
             }, [], {
-                limit: 10000
+                take: 10000
             });
 
             const partners = result?.data || [];
@@ -146,7 +132,7 @@ export class CommercialPartnersService {
                 }
             }
 
-            this.logger.log(`✅ Validação de parceiros diretos concluída: ${validated} links validados (${okCount} OK, ${brokenCount} Quebrados)`);
+            this.logger.log(`Validacao de parceiros diretos concluida: ${validated} links validados (${okCount} OK, ${brokenCount} Quebrados)`);
 
             return {
                 total: partnersWithLinks.length,
@@ -169,7 +155,7 @@ export class CommercialPartnersService {
 
         const partner = await Repository.findOne(CommercialPartnersEntity, {
             id: partnerId
-        }, []);
+        });
 
         if (!partner) {
             throw new Error(`Parceiro comercial com ID ${partnerId} não encontrado`);

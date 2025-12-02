@@ -18,7 +18,7 @@ export class TicketPartnersService {
                 isDefault: 'DESC',
                 name: 'ASC'
             },
-            limit: 1000
+            take: 1000
         });
         
         // Ordenar manualmente se necessário (fallback)
@@ -46,7 +46,7 @@ export class TicketPartnersService {
                 isDefault: 'DESC',
                 name: 'ASC'
             },
-            limit: 1000
+            take: 1000
         });
         
         // Ordenar manualmente se necessário (fallback)

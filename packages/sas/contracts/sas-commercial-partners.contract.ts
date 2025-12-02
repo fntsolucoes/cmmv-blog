@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import {
     Contract, AbstractContract,
     ContractField
@@ -36,9 +37,9 @@ export class SasCommercialPartnersContract extends AbstractContract {
     @ContractField({
         protoType: 'string',
         nullable: true,
-        index: true,
+        index: false,
     })
-    affiliateNetworkId?: string; // ID da Rede de Afiliação (quando partnerType = "Rede")
+    affiliateNetworkId?: string; // ID da Rede de Afiliação (deprecated - não utilizado mais)
 
     @ContractField({
         protoType: 'string',

@@ -13,7 +13,7 @@ async function checkAndFixSellerDomain() {
         // Tentar buscar uma tag para verificar se a coluna existe
         // Se a coluna não existir, isso vai falhar
         try {
-            const testQuery = await Repository.findAll(TagsEntity, {}, [], { limit: 1 });
+            const testQuery = await Repository.findAll(TagsEntity, {}, [], { take: 1 });
             console.log('✅ Conexão com banco de dados OK');
         } catch (error: any) {
             console.error('❌ Erro ao conectar ao banco:', error.message);

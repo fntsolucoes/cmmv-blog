@@ -31,63 +31,38 @@ export class CampaignsService {
 
     /**
      * Buscar todas as campanhas de um parceiro (ativas e inativas)
-     * Sem limite para garantir que todas sejam retornadas
+     * Limitado a 1000 registros por query (limite máximo do repositório)
      */
     async getAllCampaignsByPartner(partnerId: string) {
         const CampaignsEntity = Repository.getEntity("SasCampaignsEntity");
-        
+
         console.log(`[getAllCampaignsByPartner] Buscando campanhas para parceiro ${partnerId}`);
-        
+
         // Primeiro, contar quantas campanhas existem
         const totalCount = await Repository.count(CampaignsEntity, {
             commercialPartnerId: partnerId
         });
-        
+
         console.log(`[getAllCampaignsByPartner] Total de campanhas no banco: ${totalCount}`);
-        
-        // Buscar todas as campanhas usando limite alto
+
+        // Buscar campanhas com limite máximo permitido
         const result = await Repository.findAll(CampaignsEntity, {
             commercialPartnerId: partnerId,
-            limit: 10000  // Limite alto para pegar todas as campanhas
+            limit: 1000 // Limite máximo permitido pelo repositório
         }, [], {
             order: {
                 startDate: 'DESC'
             }
         });
-        
+
         const returnedCount = result?.data?.length || 0;
         console.log(`[getAllCampaignsByPartner] Campanhas retornadas: ${returnedCount} de ${totalCount} esperadas`);
-        
-        // Se retornou menos que o total e exatamente 10, pode haver limite padrão
-        if (returnedCount < totalCount && returnedCount === 10) {
-            console.log(`[getAllCampaignsByPartner] ⚠️ Limite padrão detectado! Buscando todas as campanhas sem ordenação...`);
-            
-            // Tentar buscar sem ordenação (pode retornar mais registros)
-            const resultUnordered = await Repository.findAll(CampaignsEntity, {
-                commercialPartnerId: partnerId,
-                limit: 10000
-            }, []);
-            
-            const unorderedCount = resultUnordered?.data?.length || 0;
-            console.log(`[getAllCampaignsByPartner] Campanhas retornadas sem ordenação: ${unorderedCount}`);
-            
-            if (unorderedCount >= totalCount) {
-                // Ordenar manualmente
-                const sortedData = (resultUnordered?.data || []).sort((a: any, b: any) => {
-                    const dateA = new Date(a.startDate).getTime();
-                    const dateB = new Date(b.startDate).getTime();
-                    return dateB - dateA; // DESC
-                });
-                
-                console.log(`[getAllCampaignsByPartner] ✅ Retornando ${sortedData.length} campanhas ordenadas manualmente`);
-                return {
-                    ...resultUnordered,
-                    data: sortedData
-                };
-            }
+
+        if (totalCount > 1000) {
+            console.log(`[getAllCampaignsByPartner] ATENCAO: Existem ${totalCount} campanhas no banco, mas apenas 1000 podem ser retornadas por query. Considere implementar paginacao.`);
         }
-        
-        console.log(`[getAllCampaignsByPartner] ✅ Retornando ${returnedCount} campanhas`);
+
+        console.log(`[getAllCampaignsByPartner] Retornando ${returnedCount} campanhas`);
         return result;
     }
 
@@ -105,9 +80,9 @@ export class CampaignsService {
         
         console.log(`[getAllCampaigns] Total de campanhas no banco: ${totalCount}`);
         
-        // Buscar todas as campanhas usando limite alto
+        // Buscar todas as campanhas usando limite máximo permitido
         const result = await Repository.findAll(CampaignsEntity, {
-            limit: 10000  // Limite alto para pegar todas as campanhas
+            limit: 1000  // Limite máximo permitido pelo repositório
         }, [], {
             order: {
                 startDate: 'DESC'
@@ -117,35 +92,12 @@ export class CampaignsService {
         const returnedCount = result?.data?.length || 0;
         console.log(`[getAllCampaigns] Campanhas retornadas: ${returnedCount} de ${totalCount} esperadas`);
         
-        // Se retornou menos que o total e exatamente 10, pode haver limite padrão
-        if (returnedCount < totalCount && returnedCount === 10) {
-            console.log(`[getAllCampaigns] ⚠️ Limite padrão detectado! Buscando todas as campanhas sem ordenação...`);
-            
-            // Tentar buscar sem ordenação (pode retornar mais registros)
-            const resultUnordered = await Repository.findAll(CampaignsEntity, {
-                limit: 10000
-            }, []);
-            
-            const unorderedCount = resultUnordered?.data?.length || 0;
-            console.log(`[getAllCampaigns] Campanhas retornadas sem ordenação: ${unorderedCount}`);
-            
-            if (unorderedCount >= totalCount) {
-                // Ordenar manualmente
-                const sortedData = (resultUnordered?.data || []).sort((a: any, b: any) => {
-                    const dateA = new Date(a.startDate).getTime();
-                    const dateB = new Date(b.startDate).getTime();
-                    return dateB - dateA; // DESC
-                });
-                
-                console.log(`[getAllCampaigns] ✅ Retornando ${sortedData.length} campanhas ordenadas manualmente`);
-                return {
-                    ...resultUnordered,
-                    data: sortedData
-                };
-            }
+        // Se houver mais campanhas que o limite, avisar
+        if (totalCount > 1000) {
+            console.log(`[getAllCampaigns] ATENCAO: Existem ${totalCount} campanhas no banco, mas apenas 1000 podem ser retornadas por query. Considere implementar paginacao.`);
         }
         
-        console.log(`[getAllCampaigns] ✅ Retornando ${returnedCount} campanhas`);
+        console.log(`[getAllCampaigns] Retornando ${returnedCount} campanhas`);
         return result;
     }
 
@@ -154,8 +106,7 @@ export class CampaignsService {
      * Roda automaticamente a cada 2 horas via cron job
      */
     @Cron('0 */2 * * *') // A cada 2 horas
-    validateActiveCampaignsLinks = async () => {
-        // Arrow function preserva automaticamente o contexto 'this'
+    async validateActiveCampaignsLinks() {
         try {
             return await this.validateActiveCampaignsLinksInternal();
         } catch (error: any) {
@@ -181,7 +132,7 @@ export class CampaignsService {
             const result = await Repository.findAll(CampaignsEntity, {
                 // Sem filtro de active para buscar TODAS as campanhas
             }, [], {
-                limit: 10000
+                take: 10000
             });
 
             const campaigns = result?.data || [];
@@ -219,7 +170,7 @@ export class CampaignsService {
                 }
             }
 
-            this.logger.log(`✅ Validação concluída: ${validated} links validados (${okCount} OK, ${brokenCount} Quebrados)`);
+            this.logger.log(`Validacao concluida: ${validated} links validados (${okCount} OK, ${brokenCount} Quebrados)`);
             
             return {
                 total: campaignsWithLinks.length,

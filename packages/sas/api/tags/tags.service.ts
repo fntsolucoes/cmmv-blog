@@ -13,8 +13,6 @@ import {
     ScriptSettingsService
 } from "../script-settings/script-settings.service";
 
-import puppeteer from "puppeteer";
-
 @Service()
 export class SasTagsCustomService {
     private readonly logger = new Logger("SasTagsCustomService");
@@ -32,7 +30,7 @@ export class SasTagsCustomService {
             const TagsEntity = Repository.getEntity("SasTagsEntity");
             
             // Tentar buscar uma tag vazia para verificar se o schema está OK
-            const testResult = await Repository.findAll(TagsEntity, {}, [], { limit: 1 });
+            const testResult = await Repository.findAll(TagsEntity, {}, [], { take: 1 });
             
             // Se conseguir buscar sem erro, o schema provavelmente está OK
             return true;
@@ -146,8 +144,8 @@ export class SasTagsCustomService {
                 if (insertedId) {
                     // Aguardar um pouco para garantir que a transação foi commitada
                     await new Promise(resolve => setTimeout(resolve, 100));
-                    
-                    const verify = await Repository.findOne(TagsEntity, { id: insertedId }, []);
+
+                    const verify = await Repository.findOne(TagsEntity, { id: insertedId });
                     if (!verify) {
                         this.logger.error(`[createTagAndAttachToCampaign] ⚠️ ATENÇÃO: Tag inserida mas não encontrada no banco! ID: ${insertedId}`);
                         this.logger.error(`[createTagAndAttachToCampaign] Isso pode indicar um problema com transações ou sincronização do schema.`);
@@ -197,8 +195,8 @@ export class SasTagsCustomService {
                                 
                                 // Aguardar um pouco e verificar novamente
                                 await new Promise(resolve => setTimeout(resolve, 200));
-                                
-                                const verifyAfterUpdate = await Repository.findOne(TagsEntity, { id: insertedId }, []);
+
+                                const verifyAfterUpdate = await Repository.findOne(TagsEntity, { id: insertedId });
                                 if (verifyAfterUpdate) {
                                     this.logger.log(`[createTagAndAttachToCampaign] ✅ Após atualização forçada:`, {
                                         scriptSettingId: verifyAfterUpdate.scriptSettingId,
@@ -340,9 +338,12 @@ export class SasTagsCustomService {
      */
     private async fetchPageHtml(url: string): Promise<string | null> {
         const normalizedUrl = this.normalizeUrl(url);
-        let browser: puppeteer.Browser | null = null;
+        let browser: any = null;
 
         try {
+            // Importar puppeteer apenas quando necessário (lazy import)
+            const puppeteer = await import("puppeteer");
+            
             this.logger.log(`[ScriptValidator] Iniciando navegador headless para: ${normalizedUrl}`);
 
             // Configurar proxy se disponível
@@ -386,7 +387,7 @@ export class SasTagsCustomService {
             }
 
             // Lançar navegador
-            browser = await puppeteer.launch(launchOptions);
+            browser = await puppeteer.default.launch(launchOptions);
             const page = await browser.newPage();
 
             // Configurar User-Agent e outros headers
@@ -640,7 +641,7 @@ export class SasTagsCustomService {
         }
 
         // Buscar campanha
-        const campaign = await Repository.findOne(CampaignsEntity, { id: campaignId }, []);
+        const campaign = await Repository.findOne(CampaignsEntity, { id: campaignId });
         if (!campaign) {
             return {
                 tagId: tag.id,
@@ -652,10 +653,7 @@ export class SasTagsCustomService {
 
         // Determinar URL da página do seller
         let pageUrl: string | null = null;
-        if (campaign.sellerDomain && String(campaign.sellerDomain).trim() !== "") {
-            pageUrl = String(campaign.sellerDomain).trim();
-        } else if (campaign.link && String(campaign.link).trim() !== "") {
-            // Fallback: usar link da campanha, se o domínio não estiver preenchido
+        if (campaign.link && String(campaign.link).trim() !== "") {
             pageUrl = String(campaign.link).trim();
         }
 
@@ -664,7 +662,7 @@ export class SasTagsCustomService {
                 tagId: tag.id,
                 campaignId,
                 status: "erro",
-                reason: "Campanha sem domínio seller ou link configurado"
+                reason: "Campanha sem link configurado"
             };
         }
 
@@ -853,7 +851,9 @@ export class SasTagsCustomService {
 
         this.logger.log("[ScriptValidator] Iniciando validação de scripts de todas as tags...");
 
-        const result = await Repository.findAll(TagsEntity, {}, [], { limit: 10000 });
+        const result = await Repository.findAll(TagsEntity, {
+            limit: 1000  // Limite máximo permitido pelo repositório
+        }, []);
         const tags = result?.data || [];
 
         let total = tags.length;
@@ -965,9 +965,11 @@ export class SasTagsCustomService {
             // Primeiro, contar quantas tags existem
             const totalCount = await Repository.count(TagsEntity, {});
             this.logger.log(`[getAllTags] Total de tags no banco: ${totalCount}`);
-            
-            // Buscar todas as tags usando limite alto
-            const result = await Repository.findAll(TagsEntity, {}, [], { limit: 10000 });
+
+            // Buscar todas as tags usando limite máximo permitido
+            const result = await Repository.findAll(TagsEntity, {
+                limit: 1000  // Limite máximo permitido pelo repositório
+            }, []);
             const data = result?.data || [];
             const returnedCount = data.length;
             
@@ -979,28 +981,12 @@ export class SasTagsCustomService {
                 this.logger.error(`[getAllTags] ⚠️ ATENÇÃO: Existem ${totalCount} tags no banco, mas nenhuma foi retornada!`);
             }
             
-            // Se retornou menos que o total e exatamente 10, pode haver limite padrão
-            if (returnedCount < totalCount && returnedCount === 10) {
-                this.logger.log(`[getAllTags] ⚠️ Limite padrão detectado! Tentando buscar sem filtros...`);
-                
-                // Tentar buscar sem nenhum filtro
-                const resultUnfiltered = await Repository.findAll(TagsEntity, {
-                    limit: 10000
-                }, []);
-                
-                const unfilteredCount = resultUnfiltered?.data?.length || 0;
-                this.logger.log(`[getAllTags] Tags retornadas sem filtros: ${unfilteredCount}`);
-                
-                if (unfilteredCount >= totalCount) {
-                    this.logger.log(`[getAllTags] ✅ Retornando ${unfilteredCount} tags`);
-                    return {
-                        data: resultUnfiltered?.data || [],
-                        total: unfilteredCount
-                    };
-                }
+            // Se houver mais tags que o limite, avisar
+            if (totalCount > 1000) {
+                this.logger.warn(`[getAllTags] ⚠️ ATENÇÃO: Existem ${totalCount} tags no banco, mas apenas 1000 podem ser retornadas por query. Considere implementar paginação.`);
             }
             
-            this.logger.log(`[getAllTags] ✅ Retornando ${returnedCount} tags`);
+            this.logger.log(`[getAllTags] Retornando ${returnedCount} tags`);
             return {
                 data,
                 total: returnedCount > 0 ? returnedCount : totalCount // Usar returnedCount se houver dados, senão usar totalCount
@@ -1019,7 +1005,7 @@ export class SasTagsCustomService {
     async generateScript(scriptSettingId: string): Promise<{ script: string; code: string }> {
         try {
             const ScriptSettingsEntity = Repository.getEntity("SasScriptSettingsEntity");
-            const setting = await Repository.findOne(ScriptSettingsEntity, { id: scriptSettingId }, []);
+            const setting = await Repository.findOne(ScriptSettingsEntity, { id: scriptSettingId });
 
             if (!setting) {
                 throw new Error(`Modelo de script com ID ${scriptSettingId} não encontrado`);

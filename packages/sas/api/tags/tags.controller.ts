@@ -48,9 +48,9 @@ export class SasTagsCustomController {
     async update(@Param("id") id: string, @Body() body: any) {
         try {
             const TagsEntity = Repository.getEntity("SasTagsEntity");
-            
+
             // Verificar se a tag existe
-            const existingTag = await Repository.findOne(TagsEntity, { id }, []);
+            const existingTag = await Repository.findOne(TagsEntity, { id });
             if (!existingTag) {
                 throw new Error(`Tag com ID ${id} não encontrada`);
             }
@@ -75,9 +75,9 @@ export class SasTagsCustomController {
 
             // Atualizar a tag
             await Repository.update(TagsEntity, id, updateData);
-            
+
             // Buscar a tag atualizada para retornar
-            const updatedTag = await Repository.findOne(TagsEntity, { id }, []);
+            const updatedTag = await Repository.findOne(TagsEntity, { id });
             
             if (!updatedTag) {
                 throw new Error(`Erro ao buscar tag atualizada com ID ${id}`);

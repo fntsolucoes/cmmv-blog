@@ -10,19 +10,9 @@ import {
 export class CommercialPartnersController {
     constructor(private readonly commercialPartnersService: CommercialPartnersService){}
 
-    @Get(":id/payment-orders")
-    async getPaymentOrdersHistory(@Param("id") id: string) {
-        return await this.commercialPartnersService.getPaymentOrdersHistory(id);
-    }
-
     @Get("all")
     async getAllPartners() {
         return await this.commercialPartnersService.getAllPartners();
-    }
-
-    @Get(":id")
-    async getPartnerById(@Param("id") id: string) {
-        return await this.commercialPartnersService.getPartnerById(id);
     }
 
     @Post("validate-links")
@@ -30,9 +20,19 @@ export class CommercialPartnersController {
         return await this.commercialPartnersService.validateDirectPartnersLinks();
     }
 
+    @Get(":id/payment-orders")
+    async getPaymentOrdersHistory(@Param("id") id: string) {
+        return await this.commercialPartnersService.getPaymentOrdersHistory(id);
+    }
+
     @Post(":id/validate-link")
     async validateDirectPartnerLink(@Param("id") id: string) {
         return await this.commercialPartnersService.validateDirectPartnerLink(id);
+    }
+
+    @Get(":id")
+    async getPartnerById(@Param("id") id: string) {
+        return await this.commercialPartnersService.getPartnerById(id);
     }
 }
 

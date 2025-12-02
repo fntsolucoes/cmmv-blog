@@ -13,7 +13,9 @@ export class ScriptSettingsService {
     async getAllScriptSettings() {
         try {
             const ScriptSettingsEntity = Repository.getEntity("SasScriptSettingsEntity");
-            const result = await Repository.findAll(ScriptSettingsEntity, {}, [], { limit: 10000 });
+            const result = await Repository.findAll(ScriptSettingsEntity, {
+                limit: 1000  // Limite máximo permitido pelo repositório
+            }, []);
             return {
                 data: result?.data || [],
                 total: result?.total || 0
@@ -32,7 +34,7 @@ export class ScriptSettingsService {
     async generateNextCode(scriptSettingId: string): Promise<string> {
         try {
             const ScriptSettingsEntity = Repository.getEntity("SasScriptSettingsEntity");
-            const setting = await Repository.findOne(ScriptSettingsEntity, { id: scriptSettingId }, []);
+            const setting = await Repository.findOne(ScriptSettingsEntity, { id: scriptSettingId });
 
             if (!setting) {
                 throw new Error(`Configuração de script com ID ${scriptSettingId} não encontrada`);

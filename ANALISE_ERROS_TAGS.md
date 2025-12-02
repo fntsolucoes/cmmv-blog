@@ -297,3 +297,4 @@ sqlite3 apps/api/database.sqlite "CREATE INDEX IF NOT EXISTS idx_sas_tags_seller
 2. **A coluna `sellerDomain` precisa existir** - o framework CMMV pode criar automaticamente, mas pode ser necessário executar a migration manualmente
 3. **Verificar logs é essencial** - o erro 500 pode ter causas diferentes
 
+

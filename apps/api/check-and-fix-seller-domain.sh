@@ -42,3 +42,4 @@ echo ""
 echo "📋 Estrutura atual da tabela $TABLE_NAME:"
 sqlite3 "$DB_FILE" "PRAGMA table_info($TABLE_NAME);" | column -t -s '|'
 
+

@@ -46,14 +46,14 @@ function executeMigration(dbPath: string, migrationFile: string): boolean {
         }
 
         console.log(`📝 Executando migração: ${migrationFile}`);
-        
+
         // Ler o conteúdo do arquivo SQL e executar
         const sqlContent = fs.readFileSync(migrationPath, 'utf-8');
         execSync(`sqlite3 "${dbPath}"`, {
             input: sqlContent,
-            stdio: 'inherit'
+            stdio: ['pipe', 'inherit', 'inherit']
         });
-        
+
         console.log(`✅ Migração executada com sucesso: ${migrationFile}`);
         return true;
     } catch (error) {

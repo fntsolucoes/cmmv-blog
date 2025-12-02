@@ -16,7 +16,7 @@ async function showLast10Rates() {
             order: {
                 date: 'DESC'
             },
-            limit: 10  // Limitar a 10 registros
+            take: 10  // Limitar a 10 registros
         });
         
         if (!rates?.data || rates.data.length === 0) {

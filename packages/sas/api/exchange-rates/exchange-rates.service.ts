@@ -335,11 +335,11 @@ export class ExchangeRatesService {
             queryFilters.currencyPair = currencyPair;
         }
         
-        // Buscar TODOS os registros usando limit alto
+        // Buscar registros usando limite máximo permitido
         // Ordenar por data decrescente
         const allRates = await Repository.findAll(ExchangeRatesEntity, {
             ...queryFilters,
-            limit: 10000  // Limite alto para pegar todos os registros
+            limit: 1000  // Limite máximo permitido pelo repositório
         }, [], {
             order: {
                 date: orderBy  // 'DESC' por padrão
@@ -943,32 +943,8 @@ export class ExchangeRatesService {
         try {
             console.log('[clearAllRates] Iniciando limpeza completa da tabela de moedas...');
             
-            // Buscar TODOS os registros com limite muito alto
-            // Usar 100000 para garantir que pegamos todos
-            const allRates = await Repository.findAll(ExchangeRatesEntity, {
-                limit: 100000  // Limite muito alto para pegar todos
-            }, [], {
-                select: ['id'], // Apenas IDs para economizar memória
-                order: {
-                    date: 'DESC'
-                }
-            });
-            
-            const totalRecords = allRates?.data?.length || 0;
-            
-            console.log(`[clearAllRates] Total de registros encontrados: ${totalRecords}`);
-            
-            if (totalRecords === 0) {
-                return {
-                    success: true,
-                    message: 'A tabela já está vazia.',
-                    deleted: 0,
-                    totalBefore: 0
-                };
-            }
-            
             // Deletar em loop até não encontrar mais registros
-            // Isso garante que deletamos TODOS, mesmo que haja mais de 100000
+            // Isso garante que deletamos TODOS, mesmo que haja muitos registros
             let totalDeleted = 0;
             let iterations = 0;
             const maxIterations = 1000; // Proteção contra loop infinito
@@ -976,9 +952,9 @@ export class ExchangeRatesService {
             while (iterations < maxIterations) {
                 iterations++;
                 
-                // Buscar todos os registros disponíveis
+                // Buscar registros disponíveis usando limite máximo permitido
                 const currentBatch = await Repository.findAll(ExchangeRatesEntity, {
-                    limit: 10000  // Buscar 10000 por vez
+                    limit: 1000  // Limite máximo permitido pelo repositório
                 }, [], {
                     select: ['id'],
                     order: {
@@ -1016,7 +992,7 @@ export class ExchangeRatesService {
                 }
                 
                 // Se encontrou menos que o limite, provavelmente chegamos ao fim
-                if (currentCount < 10000) {
+                if (currentCount < 1000) {
                     // Verificar uma última vez se há mais registros
                     const finalCheck = await Repository.findAll(ExchangeRatesEntity, {
                         limit: 1

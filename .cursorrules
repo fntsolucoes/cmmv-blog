@@ -1,0 +1,92 @@
+# Regras do Projeto SAS (Sistema de Administração de Saques)
+
+## Regras Críticas de Banco de Dados
+
+1. **SQLite3**: 
+   - SEMPRE usar `sqlite3` simples quando o sistema possuir compatibilidade com PM2
+   - NUNCA usar `better-sqlite3` quando o sistema possui compatibilidade com PM2
+   - Usar apenas `sqlite3` nativo para scripts e migrações
+
+## Regras de Código
+
+1. **Caracteres Orientais**: 
+   - NUNCA colocar caracteres orientais no código
+   - Usar apenas caracteres ASCII em strings, comentários e mensagens de log
+   - Substituir emojis por texto simples (ex: ✅ por "OK", ⚠️ por "ATENCAO")
+
+2. **Limites de Query**:
+   - O repositório tem limite máximo de 1000 registros por query
+   - SEMPRE usar `limit: 1000` no segundo parâmetro do `Repository.findAll()`
+   - NUNCA usar `limit: 10000` ou valores maiores
+   - Se precisar de mais registros, implementar paginação com `offset`
+
+3. **Ordem de Rotas**:
+   - Rotas específicas (ex: `/all`, `/validate-links`) devem vir ANTES de rotas com parâmetros (ex: `/:id`)
+   - Isso evita conflitos de roteamento onde rotas específicas podem ser interpretadas como parâmetros
+
+## Regras de Testes
+
+1. **Testes Obrigatórios**:
+   - NUNCA dar uma tarefa como concluída sem que ela tenha testes
+   - Todos os testes devem passar antes de considerar a tarefa completa
+   - Verificar cobertura de testes quando aplicável
+
+## Regras de Contexto e Documentação
+
+1. **Uso do MCP (Model Context Protocol)**:
+   - SEMPRE antes de sumarizar, adicionar o texto completo do histórico do chat na collection do MCP do hive-vectorizer
+   - Quando for tomar uma decisão de código, SEMPRE consultar o MCP antes
+   - Buscar por contexto do projeto dentro do MCP, preferir ele do que ler arquivos manualmente
+   - SEMPRE preferir uma leitura de projeto ou arquivos de projeto via MCP do que a leitura manual do arquivo
+
+## Regras de Comunicação
+
+1. **Idioma**:
+   - SEMPRE responder em Português
+   - Comentários no código podem ser em português ou inglês, mas manter consistência
+
+## Estrutura do Projeto
+
+1. **Arquitetura CMMV**:
+   - O projeto usa arquitetura Contract-Model-Model-View (CMMV)
+   - Contratos definem a estrutura de dados e rotas
+   - Services contêm a lógica de negócio
+   - Controllers expõem endpoints HTTP
+
+2. **Módulos**:
+   - Cada módulo tem estrutura: `api/`, `admin/`, `contracts/`, `client/`
+   - APIs ficam em `packages/{module}/api/`
+   - Contratos em `packages/{module}/contracts/`
+   - Views admin em `packages/{module}/admin/`
+
+## Padrões de Código
+
+1. **TypeScript**:
+   - Usar TypeScript estrito
+   - Tipar todas as funções e variáveis
+   - Usar interfaces para estruturas de dados
+
+2. **Logs**:
+   - Usar `Logger` do `@cmmv/core` para logs estruturados
+   - Prefixar logs com `[ServiceName]` ou `[ControllerName]`
+   - Não usar emojis em logs (causa erro no SWC)
+
+3. **Validações**:
+   - Validar dados de entrada nos controllers
+   - Retornar erros descritivos
+   - Usar try/catch para tratamento de erros
+
+## Campos Deprecated
+
+1. **sellerDomain**:
+   - Campo `sellerDomain` em campanhas está deprecated
+   - Não usar mais este campo em novos códigos
+   - Usar apenas o campo `link` da campanha
+
+## Comandos Úteis
+
+- `pnpm dev` - Inicia ambiente de desenvolvimento
+- `pnpm build` - Build do projeto
+- `pnpm lint` - Executa linter
+- `pnpm format` - Formata código com Prettier
+
