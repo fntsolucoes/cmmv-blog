@@ -332,6 +332,20 @@
                         />
                     </div>
 
+                    <!-- Campanha Não Iniciada -->
+                    <div class="flex items-center">
+                        <input
+                            v-model="campaignForm.neverStarted"
+                            type="checkbox"
+                            id="campaignNeverStarted"
+                            class="w-4 h-4 text-yellow-600 bg-neutral-700 border-neutral-600 rounded focus:ring-yellow-500"
+                        />
+                        <label for="campaignNeverStarted" class="ml-2 text-sm font-medium text-neutral-300">
+                            Campanha não iniciada (Pendência)
+                        </label>
+                        <p class="ml-2 text-xs text-neutral-400">Marque se a campanha ainda não foi iniciada mesmo após a data de início</p>
+                    </div>
+
                     <!-- Botões -->
                     <div class="flex justify-end gap-3 pt-4 border-t border-neutral-700">
                         <button
@@ -552,6 +566,7 @@ const campaignForm = ref({
     weighting: '',
     link: '',
     active: true,
+    neverStarted: false, // Por padrão, novas campanhas não são marcadas como não iniciadas
     originalActive: true // Guardar status original para restaurar
 });
 
@@ -723,6 +738,12 @@ const getStatusText = (item: any): string => {
     const startDate = new Date(item.startDate);
     startDate.setHours(0, 0, 0, 0);
     
+    // Verificar se nunca foi iniciada (pendência)
+    // Se neverStarted é true e a data de início já passou, é "Não Iniciada"
+    if (item.neverStarted && today >= startDate) {
+        return 'Não Iniciada';
+    }
+    
     if (item.endDate) {
         const endDate = new Date(item.endDate);
         endDate.setHours(0, 0, 0, 0);
@@ -740,6 +761,15 @@ const getStatusClass = (item: any): string => {
     const status = getStatusText(item);
     if (status === 'Ativo' || status === 'Ativa') {
         return 'bg-green-500 border-green-600';
+    }
+    if (status === 'Não Iniciada') {
+        return 'bg-yellow-500 border-yellow-600';
+    }
+    if (status === 'Agendada') {
+        return 'bg-blue-500 border-blue-600';
+    }
+    if (status === 'Encerrada') {
+        return 'bg-gray-500 border-gray-600';
     }
     return 'bg-red-500 border-red-600';
 };
@@ -1020,6 +1050,7 @@ const openAddDialog = async () => {
         weighting: '',
         link: '',
         active: true,
+        neverStarted: false,
         originalActive: true
     };
     formErrors.value = {};
@@ -1040,6 +1071,7 @@ const closeCampaignDialog = () => {
         weighting: '',
         link: '',
         active: true,
+        neverStarted: false,
         originalActive: true
     };
 };
@@ -1085,6 +1117,7 @@ const editItem = (item: any) => {
             weighting: item.weighting !== null && item.weighting !== undefined ? item.weighting.toString() : '',
             link: item.link || '',
             active: originalActive,
+            neverStarted: item.neverStarted !== undefined ? item.neverStarted : false,
             originalActive: originalActive // Guardar para restaurar depois
         };
         formErrors.value = {};
@@ -1110,7 +1143,8 @@ const saveCampaign = async () => {
             commercialPartnerId: campaignForm.value.commercialPartnerId,
             name: campaignForm.value.name.trim(),
             startDate: campaignForm.value.startDate,
-            active: campaignForm.value.active !== undefined ? campaignForm.value.active : true
+            active: campaignForm.value.active !== undefined ? campaignForm.value.active : true,
+            neverStarted: campaignForm.value.neverStarted !== undefined ? campaignForm.value.neverStarted : false
         };
         
         // Tratar data de fim - se estiver vazia, enviar null para limpar

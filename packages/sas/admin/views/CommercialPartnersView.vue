@@ -491,6 +491,20 @@
                         <p class="mt-1 text-xs text-neutral-400">{{ campaignForm.link?.length || 0 }}/500 caracteres</p>
                     </div>
 
+                    <!-- Campanha Não Iniciada -->
+                    <div class="flex items-center">
+                        <input
+                            v-model="campaignForm.neverStarted"
+                            type="checkbox"
+                            id="campaignNeverStarted"
+                            class="w-4 h-4 text-yellow-600 bg-neutral-700 border-neutral-600 rounded focus:ring-yellow-500"
+                        />
+                        <label for="campaignNeverStarted" class="ml-2 text-sm font-medium text-neutral-300">
+                            Campanha não iniciada (Pendência)
+                        </label>
+                        <p class="ml-2 text-xs text-neutral-400">Marque se a campanha ainda não foi iniciada mesmo após a data de início</p>
+                    </div>
+
                     <!-- Botões -->
                     <div class="flex justify-end gap-3 pt-4 border-t border-neutral-700">
                         <button
@@ -586,7 +600,8 @@ const campaignForm = ref({
     script: '',
     scriptStatus: '',
     weighting: '',
-    link: ''
+    link: '',
+    neverStarted: false
 });
 
 const form = ref({
@@ -722,6 +737,12 @@ const getCampaignStatus = (campaign: any): string => {
     const startDate = new Date(campaign.startDate);
     startDate.setHours(0, 0, 0, 0);
     
+    // Verificar se nunca foi iniciada (pendência)
+    // Se neverStarted é true e a data de início já passou, é "Não Iniciada"
+    if (campaign.neverStarted && today >= startDate) {
+        return 'Não Iniciada';
+    }
+    
     if (campaign.endDate) {
         const endDate = new Date(campaign.endDate);
         endDate.setHours(0, 0, 0, 0);
@@ -741,6 +762,7 @@ const getCampaignStatusClass = (campaign: any): string => {
     if (status === 'Ativa') return 'bg-green-600 text-white';
     if (status === 'Encerrada') return 'bg-gray-600 text-white';
     if (status === 'Agendada') return 'bg-blue-600 text-white';
+    if (status === 'Não Iniciada') return 'bg-yellow-600 text-white';
     return 'bg-red-600 text-white';
 };
 
@@ -974,7 +996,8 @@ const openCampaignDialog = (index: number | null = null) => {
             script: campaign.script || '',
             scriptStatus: campaign.scriptStatus || '',
             weighting: campaign.weighting?.toString() || '',
-            link: campaign.link || ''
+            link: campaign.link || '',
+            neverStarted: campaign.neverStarted !== undefined ? campaign.neverStarted : false
         };
     } else {
         campaignForm.value = {
@@ -1037,7 +1060,8 @@ const saveCampaign = () => {
         scriptStatus: campaignForm.value.scriptStatus || null,
         weighting: campaignForm.value.weighting ? parseFloat(campaignForm.value.weighting) : null,
         link: campaignForm.value.link.trim() || null,
-        active: true
+        active: true,
+        neverStarted: campaignForm.value.neverStarted !== undefined ? campaignForm.value.neverStarted : false
     };
 
     console.log('[CommercialPartnersView] Salvando campanha no formulário:', campaign);
@@ -1135,7 +1159,8 @@ const savePartner = async () => {
                     scriptStatus: campaign.scriptStatus || null,
                     weighting: campaign.weighting || null,
                     link: campaign.link || null,
-                    active: campaign.active !== undefined ? campaign.active : true
+                    active: campaign.active !== undefined ? campaign.active : true,
+                    neverStarted: campaign.neverStarted !== undefined ? campaign.neverStarted : false
                 };
                 
                 try {

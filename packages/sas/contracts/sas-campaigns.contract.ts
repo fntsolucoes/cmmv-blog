@@ -95,5 +95,13 @@ export class SasCampaignsContract extends AbstractContract {
         index: true
     })
     active!: boolean; // Status ativo/inativo
+
+    @ContractField({
+        protoType: 'boolean',
+        nullable: false,
+        defaultValue: false,
+        index: true
+    })
+    neverStarted!: boolean; // Flag indicando se a campanha nunca foi iniciada (true = não iniciada/pendência)
 }
 
