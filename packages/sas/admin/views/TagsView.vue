@@ -66,6 +66,7 @@
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Modelo de Script</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Campanhas</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">URL do Seller</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Código</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Status</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Ações</th>
@@ -73,7 +74,7 @@
                 </thead>
                 <tbody class="bg-neutral-800 divide-y divide-neutral-700">
                     <tr v-if="filteredItems.length === 0">
-                        <td colspan="5" class="px-6 py-4 text-center text-sm text-neutral-400">
+                        <td colspan="6" class="px-6 py-4 text-center text-sm text-neutral-400">
                             Nenhuma tag cadastrada
                         </td>
                     </tr>
@@ -85,6 +86,19 @@
                             <span v-if="getItemCampaignName(item)" class="text-xs">
                                 {{ getItemCampaignName(item) }}
                             </span>
+                            <span v-else class="text-neutral-500">-</span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-neutral-300">
+                            <a 
+                                v-if="item.sellerUrl" 
+                                :href="item.sellerUrl" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                class="text-blue-400 hover:text-blue-300 underline truncate block max-w-xs"
+                                :title="item.sellerUrl"
+                            >
+                                {{ item.sellerUrl }}
+                            </a>
                             <span v-else class="text-neutral-500">-</span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-300 font-mono">
@@ -247,6 +261,22 @@
                         </p>
                     </div>
 
+                    <!-- URL do Seller -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            URL do Seller <span class="text-red-500">*</span>
+                        </label>
+                        <input
+                            v-model="form.sellerUrl"
+                            type="url"
+                            placeholder="https://exemplo.com.br"
+                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            :class="{ 'border-red-500': formErrors.sellerUrl }"
+                        />
+                        <p v-if="formErrors.sellerUrl" class="mt-1 text-sm text-red-400">{{ formErrors.sellerUrl }}</p>
+                        <p class="mt-1 text-xs text-neutral-400">Informe a URL onde a tag será instalada</p>
+                    </div>
+
                     <!-- Script Gerado (apenas quando houver script) -->
                     <div v-if="form.generatedScript" class="p-3 bg-neutral-900 rounded-md border border-neutral-700">
                         <label class="block text-sm font-medium text-neutral-300 mb-2">
@@ -396,6 +426,7 @@ const form = ref({
     campaignId: '',
     generatedScript: '',
     generatedCode: '',
+    sellerUrl: '',
     active: true,
     customJsFileName: ''
 });
@@ -696,6 +727,7 @@ const openAddDialog = () => {
         campaignId: '',
         generatedScript: '',
         generatedCode: '',
+        sellerUrl: '',
         active: true,
         customJsFileName: ''
     };
@@ -725,8 +757,9 @@ const editItem = (item: any) => {
         })(),
         generatedScript: item.generatedScript || '',
         generatedCode: item.generatedCode || '',
+        sellerUrl: item.sellerUrl || '',
         active: item.active !== undefined ? item.active : true,
-        customJsFileName: ''
+        customJsFileName: item.customJsFileName || ''
     };
     formErrors.value = {};
     campaignSearch.value = '';
@@ -750,6 +783,7 @@ const closeDialog = () => {
         campaignId: '',
         generatedScript: '',
         generatedCode: '',
+        sellerUrl: '',
         active: true,
         customJsFileName: ''
     };
@@ -771,6 +805,29 @@ const saveTag = async () => {
     // Validar campanhas se modelo de script foi selecionado
     if (form.value.scriptSettingId && (!form.value.campaignId || form.value.campaignId === '')) {
         formErrors.value.campaignIds = 'Selecione pelo menos uma campanha';
+        return;
+    }
+
+    // Validar URL do seller
+    if (!form.value.sellerUrl || form.value.sellerUrl.trim() === '') {
+        formErrors.value.sellerUrl = 'Informe a URL do seller';
+        return;
+    }
+
+    // Validar formato de URL
+    try {
+        const url = form.value.sellerUrl.trim();
+        // Adicionar https:// se não tiver protocolo
+        const urlWithProtocol = url.startsWith('http://') || url.startsWith('https://') 
+            ? url 
+            : `https://${url}`;
+        new URL(urlWithProtocol);
+        // Atualizar o form com a URL corrigida se necessário
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            form.value.sellerUrl = urlWithProtocol;
+        }
+    } catch {
+        formErrors.value.sellerUrl = 'URL inválida. Use o formato: https://exemplo.com.br';
         return;
     }
 
@@ -840,6 +897,7 @@ const saveTag = async () => {
                 : null,
             generatedScript: form.value.generatedScript || null,
             generatedCode: form.value.generatedCode || null,
+            sellerUrl: form.value.sellerUrl?.trim() || null,
             active: form.value.active
         };
 

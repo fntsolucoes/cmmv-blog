@@ -59,6 +59,19 @@ export class SasTagsContract extends AbstractContract {
     generatedCode?: string; // Código sequencial gerado
 
     @ContractField({
+        protoType: 'text',
+        nullable: true,
+    })
+    sellerUrl?: string; // URL do seller onde a tag será instalada
+
+    @ContractField({
+        protoType: 'string',
+        nullable: true,
+        defaultValue: 'Não verificada',
+    })
+    scriptStatus?: string; // Status do script: Implementado, Caiu, Pendente de instalar, Não verificada
+
+    @ContractField({
         protoType: 'boolean',
         nullable: false,
         defaultValue: true,

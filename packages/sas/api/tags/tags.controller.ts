@@ -46,8 +46,55 @@ export class SasTagsCustomController {
      */
     @Put(":id")
     async update(@Param("id") id: string, @Body() body: any) {
-        const TagsEntity = Repository.getEntity("SasTagsEntity");
-        return await Repository.update(TagsEntity, id, body);
+        try {
+            const TagsEntity = Repository.getEntity("SasTagsEntity");
+            
+            // Verificar se a tag existe
+            const existingTag = await Repository.findOne(TagsEntity, { id }, []);
+            if (!existingTag) {
+                throw new Error(`Tag com ID ${id} não encontrada`);
+            }
+
+            // Filtrar apenas campos válidos do contrato
+            const validFields = [
+                'description',
+                'scriptSettingId',
+                'campaignIds',
+                'generatedScript',
+                'generatedCode',
+                'sellerUrl',
+                'active'
+            ];
+            
+            const updateData: any = {};
+            for (const field of validFields) {
+                if (field in body) {
+                    updateData[field] = body[field];
+                }
+            }
+
+            // Atualizar a tag
+            await Repository.update(TagsEntity, id, updateData);
+            
+            // Buscar a tag atualizada para retornar
+            const updatedTag = await Repository.findOne(TagsEntity, { id }, []);
+            
+            if (!updatedTag) {
+                throw new Error(`Erro ao buscar tag atualizada com ID ${id}`);
+            }
+            
+            return updatedTag;
+        } catch (error: any) {
+            // Verificar se o erro é relacionado a coluna não encontrada
+            if (error?.message?.includes('no such column') || 
+                error?.message?.includes('sellerUrl')) {
+                throw new Error(
+                    'A coluna sellerUrl não existe no banco de dados. ' +
+                    'Execute a migration SQL: ALTER TABLE sas_tags ADD COLUMN sellerUrl TEXT;'
+                );
+            }
+            throw error;
+        }
     }
 
     /**
