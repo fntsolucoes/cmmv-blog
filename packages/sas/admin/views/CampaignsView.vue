@@ -1172,11 +1172,14 @@ const saveCampaign = async () => {
         }
         
         // Adicionar campo neverStarted (Campanha não iniciada - Pendência)
-        // Sempre enviar explicitamente como boolean, mesmo quando false, para garantir que seja atualizado
-        // Converter para boolean explícito para evitar problemas de tipo
+        // SEMPRE enviar explicitamente como boolean, mesmo quando false
+        // Isso é crítico porque alguns sistemas ignoram campos false durante updates
         const neverStartedValue = campaignForm.value.neverStarted;
-        dataToSave.neverStarted = neverStartedValue === true || neverStartedValue === 'true' || neverStartedValue === 1 || neverStartedValue === '1';
+        // Converter explicitamente para boolean (true ou false)
+        dataToSave.neverStarted = Boolean(neverStartedValue === true || neverStartedValue === 'true' || neverStartedValue === 1 || neverStartedValue === '1');
         
+        // Garantir que o campo seja sempre incluído no objeto, mesmo quando false
+        // Não usar condicionais que possam omitir o campo
         console.log('[CampaignsView] Salvando campanha:');
         console.log('  - neverStarted no form:', neverStartedValue, 'tipo:', typeof neverStartedValue);
         console.log('  - neverStarted a ser enviado:', dataToSave.neverStarted, 'tipo:', typeof dataToSave.neverStarted);

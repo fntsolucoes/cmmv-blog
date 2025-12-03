@@ -71,7 +71,21 @@ export class CampaignsController {
         const CampaignsEntity = Repository.getEntity("SasCampaignsEntity");
         console.log('[CampaignsController.create] Dados recebidos:', JSON.stringify(body, null, 2));
         console.log('[CampaignsController.create] neverStarted recebido:', body.neverStarted, 'tipo:', typeof body.neverStarted);
-        const result = await Repository.insert(CampaignsEntity, body);
+        
+        // Garantir que neverStarted seja sempre um boolean explícito
+        const insertData: any = { ...body };
+        if ('neverStarted' in body) {
+            // Converter explicitamente para boolean
+            insertData.neverStarted = body.neverStarted === true || body.neverStarted === 'true' || body.neverStarted === 1 || body.neverStarted === '1';
+        } else {
+            // Se não foi enviado, usar o valor padrão false do contract
+            insertData.neverStarted = false;
+        }
+        
+        console.log('[CampaignsController.create] Dados após processamento:', JSON.stringify(insertData, null, 2));
+        console.log('[CampaignsController.create] neverStarted processado:', insertData.neverStarted, 'tipo:', typeof insertData.neverStarted);
+        
+        const result = await Repository.insert(CampaignsEntity, insertData);
         console.log('[CampaignsController.create] Resultado da inserção:', JSON.stringify(result, null, 2));
         return result;
     }
@@ -94,7 +108,22 @@ export class CampaignsController {
         console.log('[CampaignsController.update] ID:', id);
         console.log('[CampaignsController.update] Dados recebidos:', JSON.stringify(body, null, 2));
         console.log('[CampaignsController.update] neverStarted recebido:', body.neverStarted, 'tipo:', typeof body.neverStarted);
-        const result = await Repository.update(CampaignsEntity, { id }, body);
+        
+        // Garantir que neverStarted seja sempre um boolean explícito
+        // Mesmo quando false, o campo deve ser incluído na atualização
+        const updateData: any = { ...body };
+        if ('neverStarted' in body) {
+            // Converter explicitamente para boolean
+            updateData.neverStarted = body.neverStarted === true || body.neverStarted === 'true' || body.neverStarted === 1 || body.neverStarted === '1';
+        } else {
+            // Se não foi enviado, manter o valor padrão false
+            updateData.neverStarted = false;
+        }
+        
+        console.log('[CampaignsController.update] Dados após processamento:', JSON.stringify(updateData, null, 2));
+        console.log('[CampaignsController.update] neverStarted processado:', updateData.neverStarted, 'tipo:', typeof updateData.neverStarted);
+        
+        const result = await Repository.update(CampaignsEntity, { id }, updateData);
         console.log('[CampaignsController.update] Resultado da atualização:', JSON.stringify(result, null, 2));
         return result;
     }
