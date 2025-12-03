@@ -24,7 +24,15 @@ export class ShareholdersController {
     }
 
     /**
-     * Buscar sócio por ID
+     * Validar porcentagens (rota específica - deve vir antes da rota genérica :id)
+     */
+    @Get("validate-percentages")
+    async validatePercentages() {
+        return await this.shareholdersService.validatePercentages();
+    }
+
+    /**
+     * Buscar sócio por ID (rota genérica - deve vir depois das rotas específicas)
      */
     @Get(":id")
     async getById(@Param("id") id: string) {
@@ -47,7 +55,7 @@ export class ShareholdersController {
     @Put(":id")
     async update(@Param("id") id: string, @Body() body: any) {
         const ShareholdersEntity = Repository.getEntity("SasShareholdersEntity");
-        return await Repository.update(ShareholdersEntity, id, body);
+        return await Repository.update(ShareholdersEntity, { id }, body);
     }
 
     /**
@@ -56,15 +64,7 @@ export class ShareholdersController {
     @Delete(":id")
     async delete(@Param("id") id: string) {
         const ShareholdersEntity = Repository.getEntity("SasShareholdersEntity");
-        return await Repository.delete(ShareholdersEntity, id);
-    }
-
-    /**
-     * Validar porcentagens
-     */
-    @Get("validate-percentages")
-    async validatePercentages() {
-        return await this.shareholdersService.validatePercentages();
+        return await Repository.delete(ShareholdersEntity, { id });
     }
 }
 
