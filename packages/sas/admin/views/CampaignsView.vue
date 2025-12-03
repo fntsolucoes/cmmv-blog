@@ -720,39 +720,44 @@ const getStatusText = (item: any): string => {
             today.setHours(0, 0, 0, 0);
             const endDate = new Date(item.endDate);
             endDate.setHours(0, 0, 0, 0);
-            
+
             if (today > endDate) {
                 return 'Inativo';
             }
         }
         return item.active ? 'Ativo' : 'Inativo';
     }
-    
+
     // Para campanhas, verificar primeiro se nunca foi iniciada (Pendência)
-    if (item.neverStarted === true) {
+    // SQLite retorna 0/1 para boolean, então usar comparação truthy
+    if (item.neverStarted === true || item.neverStarted === 1 || item.neverStarted === '1') {
         return 'Pendência';
     }
-    
-    // Para campanhas, calcular baseado em datas
-    if (!item.active) return 'Inativo';
-    
+
+    // Calcular status baseado em datas (independente de active)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const startDate = new Date(item.startDate);
     startDate.setHours(0, 0, 0, 0);
-    
+
+    // Se ainda não começou
+    if (today < startDate) {
+        return item.active ? 'Agendada' : 'Inativo';
+    }
+
+    // Se tem data de fim
     if (item.endDate) {
         const endDate = new Date(item.endDate);
         endDate.setHours(0, 0, 0, 0);
-        
-        if (today < startDate) return 'Agendada';
-        if (today > endDate) return 'Encerrada';
-        return 'Ativa';
+
+        if (today > endDate) {
+            return 'Encerrada';  // Campanha encerrada (não importa active)
+        }
     }
-    
-    if (today < startDate) return 'Agendada';
-    return 'Ativa';
+
+    // Campanha em andamento - verificar se está ativa
+    return item.active ? 'Ativa' : 'Inativo';
 };
 
 const getStatusClass = (item: any): string => {

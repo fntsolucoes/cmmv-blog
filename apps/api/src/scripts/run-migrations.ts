@@ -11,8 +11,9 @@ import { DataSource } from 'typeorm';
 interface Migration {
     name: string;
     file: string;
-    tableName: string;
-    columnName: string;
+    tableName?: string;    // Opcional para migrações de dados
+    columnName?: string;   // Opcional para migrações de dados
+    type: 'schema' | 'data'; // Tipo de migração
 }
 
 const migrations: Migration[] = [
@@ -20,7 +21,13 @@ const migrations: Migration[] = [
         name: 'Adicionar coluna neverStarted em sas_campaigns',
         file: 'add-campaigns-never-started-column.sql',
         tableName: 'sas_campaigns',
-        columnName: 'neverStarted'
+        columnName: 'neverStarted',
+        type: 'schema'
+    },
+    {
+        name: 'Normalizar valores neverStarted em sas_campaigns',
+        file: 'fix-neverStarted-values.sql',
+        type: 'data'
     }
 ];
 
@@ -37,6 +44,60 @@ async function checkColumnExists(dataSource: DataSource, tableName: string, colu
     } catch (error) {
         console.error(`❌ Erro ao verificar coluna ${columnName} na tabela ${tableName}:`, error);
         return false;
+    }
+}
+
+async function checkMigrationExecuted(dataSource: DataSource, migrationName: string): Promise<boolean> {
+    try {
+        const queryRunner = dataSource.createQueryRunner();
+        try {
+            // Verificar se a tabela migrations existe
+            const tables = await queryRunner.query(`SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'`);
+            if (tables.length === 0) {
+                // Criar tabela migrations se não existir
+                await queryRunner.query(`
+                    CREATE TABLE IF NOT EXISTS migrations (
+                        id TEXT PRIMARY KEY,
+                        timestamp INTEGER NOT NULL,
+                        name TEXT NOT NULL,
+                        hash TEXT
+                    )
+                `);
+                return false;
+            }
+
+            // Verificar se a migração já foi executada
+            const result = await queryRunner.query(
+                `SELECT COUNT(*) as count FROM migrations WHERE name = ?`,
+                [migrationName]
+            );
+            return result[0].count > 0;
+        } finally {
+            await queryRunner.release();
+        }
+    } catch (error) {
+        console.error(`❌ Erro ao verificar migração ${migrationName}:`, error);
+        return false;
+    }
+}
+
+async function registerMigration(dataSource: DataSource, migrationName: string): Promise<void> {
+    try {
+        const queryRunner = dataSource.createQueryRunner();
+        try {
+            const timestamp = Date.now();
+            const id = `${timestamp}-${migrationName.replace(/\s+/g, '-')}`;
+
+            await queryRunner.query(
+                `INSERT INTO migrations (id, timestamp, name) VALUES (?, ?, ?)`,
+                [id, timestamp, migrationName]
+            );
+        } finally {
+            await queryRunner.release();
+        }
+    } catch (error) {
+        console.error(`❌ Erro ao registrar migração ${migrationName}:`, error);
+        throw error;
     }
 }
 
@@ -114,17 +175,30 @@ async function runMigrations() {
         let skipped = 0;
 
         for (const migration of migrations) {
-            // Verificar se a migração já foi aplicada
-            const columnExists = await checkColumnExists(dataSource, migration.tableName, migration.columnName);
+            let alreadyApplied = false;
 
-            if (columnExists) {
+            // Verificar se a migração já foi aplicada baseado no tipo
+            if (migration.type === 'schema' && migration.tableName && migration.columnName) {
+                // Para migrações de schema, verificar se a coluna existe
+                alreadyApplied = await checkColumnExists(dataSource, migration.tableName, migration.columnName);
+            } else if (migration.type === 'data') {
+                // Para migrações de dados, verificar na tabela migrations
+                alreadyApplied = await checkMigrationExecuted(dataSource, migration.name);
+            }
+
+            if (alreadyApplied) {
                 console.log(`⏭️  Migração já aplicada: ${migration.name}`);
                 skipped++;
                 continue;
             }
 
             // Executar migração
+            console.log(`🔄 Executando: ${migration.name}`);
             if (await executeMigration(dataSource, migration.file)) {
+                // Registrar migração de dados na tabela migrations
+                if (migration.type === 'data') {
+                    await registerMigration(dataSource, migration.name);
+                }
                 executed++;
             } else {
                 console.error(`❌ Falha ao executar: ${migration.name}`);
