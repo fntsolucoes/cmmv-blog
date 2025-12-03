@@ -109,16 +109,15 @@ export class CampaignsController {
         console.log('[CampaignsController.update] Dados recebidos:', JSON.stringify(body, null, 2));
         console.log('[CampaignsController.update] neverStarted recebido:', body.neverStarted, 'tipo:', typeof body.neverStarted);
         
-        // Garantir que neverStarted seja sempre um boolean explícito
-        // Mesmo quando false, o campo deve ser incluído na atualização
+        // Garantir que neverStarted seja sempre um boolean explícito quando presente
+        // Se não estiver no body, NÃO incluir no update (preserva valor existente no banco)
         const updateData: any = { ...body };
         if ('neverStarted' in body) {
             // Converter explicitamente para boolean
             updateData.neverStarted = body.neverStarted === true || body.neverStarted === 'true' || body.neverStarted === 1 || body.neverStarted === '1';
-        } else {
-            // Se não foi enviado, manter o valor padrão false
-            updateData.neverStarted = false;
         }
+        // IMPORTANTE: Se 'neverStarted' não está no body, NÃO incluir no updateData
+        // Isso preserva o valor existente no banco de dados
         
         console.log('[CampaignsController.update] Dados após processamento:', JSON.stringify(updateData, null, 2));
         console.log('[CampaignsController.update] neverStarted processado:', updateData.neverStarted, 'tipo:', typeof updateData.neverStarted);
