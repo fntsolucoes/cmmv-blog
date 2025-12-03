@@ -455,26 +455,6 @@
                         <p class="mt-1 text-xs text-neutral-400">Deixe em branco se a campanha estiver em andamento indefinidamente</p>
                     </div>
 
-                    <!-- Domínio seller -->
-                    <div>
-                        <label class="block text-sm font-medium text-neutral-300 mb-2">
-                            Domínio seller <span class="text-red-500">*</span>
-                        </label>
-                        <input
-                            v-model="campaignForm.sellerDomain"
-                            type="text"
-                            placeholder="ex: ofertas.minhaloja.com.br"
-                            maxlength="255"
-                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            :class="{ 'border-red-500': campaignErrors.sellerDomain }"
-                            @input="validateCampaignSellerDomain"
-                            required
-                        />
-                        <p v-if="campaignErrors.sellerDomain" class="mt-1 text-sm text-red-400">
-                            {{ campaignErrors.sellerDomain }}
-                        </p>
-                    </div>
-
                     <!-- Script -->
                     <div>
                         <label class="block text-sm font-medium text-neutral-300 mb-2">
@@ -640,11 +620,11 @@ const campaignForm = ref({
     name: '',
     startDate: '',
     endDate: '',
-    sellerDomain: '',
     script: '',
     scriptStatus: '',
     weighting: '',
-    link: ''
+    link: '',
+    neverStarted: false
 });
 
 const form = ref({
@@ -660,12 +640,12 @@ const form = ref({
         name: string;
         startDate: string;
         endDate?: string;
-        sellerDomain?: string;
         script?: string;
         scriptStatus?: string;
         weighting?: number;
         link?: string;
         active?: boolean;
+        neverStarted?: boolean;
         }>
 });
 
@@ -771,28 +751,6 @@ const validateWeighting = () => {
     return true;
 };
 
-// Função para validar domínio seller da campanha
-const validateCampaignSellerDomain = () => {
-    campaignErrors.value.sellerDomain = '';
-    const domain = (campaignForm.value.sellerDomain || '').trim();
-
-    if (!domain) {
-        campaignErrors.value.sellerDomain = 'Domínio seller é obrigatório';
-        return false;
-    }
-
-    if (domain.length > 255) {
-        campaignErrors.value.sellerDomain = 'Domínio seller deve ter no máximo 255 caracteres';
-        return false;
-    }
-
-    if (hasOrientalCharacters(domain)) {
-        campaignErrors.value.sellerDomain = 'Domínio seller não pode conter caracteres orientais';
-        return false;
-    }
-
-    return true;
-};
 
 // Função para obter status da campanha
 const getCampaignStatus = (campaign: any): string => {
@@ -1018,12 +976,12 @@ const editItem = async (item: any) => {
             name: c.name,
             startDate: c.startDate ? (typeof c.startDate === 'string' ? c.startDate : c.startDate.split('T')[0]) : '',
             endDate: c.endDate ? (typeof c.endDate === 'string' ? c.endDate : c.endDate.split('T')[0]) : undefined,
-            sellerDomain: c.sellerDomain || '',
             script: c.script || '',
             scriptStatus: c.scriptStatus || '',
             weighting: c.weighting || undefined,
             link: c.link || '',
-            active: c.active !== undefined ? c.active : true
+            active: c.active !== undefined ? c.active : true,
+            neverStarted: Boolean(c.neverStarted === true || c.neverStarted === 1 || c.neverStarted === '1')
         }))
         .sort((a, b) => {
             // Ordenar por data de início (mais recentes primeiro)
@@ -1078,22 +1036,22 @@ const openCampaignDialog = (index: number | null = null) => {
             name: campaign.name || '',
             startDate: campaign.startDate || '',
             endDate: campaign.endDate || '',
-            sellerDomain: campaign.sellerDomain || '',
             script: campaign.script || '',
             scriptStatus: campaign.scriptStatus || '',
             weighting: campaign.weighting?.toString() || '',
-            link: campaign.link || ''
+            link: campaign.link || '',
+            neverStarted: Boolean(campaign.neverStarted === true || campaign.neverStarted === 1 || campaign.neverStarted === '1')
         };
     } else {
         campaignForm.value = {
             name: '',
             startDate: '',
             endDate: '',
-            sellerDomain: '',
             script: '',
             scriptStatus: '',
             weighting: '',
-            link: ''
+            link: '',
+            neverStarted: false
         };
     }
     showCampaignDialog.value = true;
@@ -1108,11 +1066,11 @@ const closeCampaignDialog = () => {
         name: '',
         startDate: '',
         endDate: '',
-        sellerDomain: '',
         script: '',
         scriptStatus: '',
         weighting: '',
-        link: ''
+        link: '',
+        neverStarted: false
     };
 };
 
@@ -1132,10 +1090,6 @@ const saveCampaign = () => {
     if (campaignForm.value.weighting && !validateWeighting()) {
         return;
     }
-
-    if (!validateCampaignSellerDomain()) {
-        return;
-    }
     
     // Validar link
     if (campaignForm.value.link && campaignForm.value.link.length > 500) {
@@ -1143,23 +1097,16 @@ const saveCampaign = () => {
         return;
     }
     
-    // Garantir que sellerDomain não está vazio
-    const sellerDomain = (campaignForm.value.sellerDomain || '').trim();
-    if (!sellerDomain) {
-        campaignErrors.value.sellerDomain = 'Domínio seller é obrigatório';
-        return;
-    }
-    
     const campaign: any = {
         name: campaignForm.value.name.trim(),
         startDate: campaignForm.value.startDate,
         endDate: campaignForm.value.endDate.trim() || undefined,
-        sellerDomain: sellerDomain,
         script: campaignForm.value.script.trim() || null,
         scriptStatus: campaignForm.value.scriptStatus || null,
         weighting: campaignForm.value.weighting ? parseFloat(campaignForm.value.weighting) : null,
         link: campaignForm.value.link.trim() || null,
-        active: true
+        active: true,
+        neverStarted: campaignForm.value.neverStarted !== undefined ? Boolean(campaignForm.value.neverStarted) : false
     };
 
     console.log('[CommercialPartnersView] Salvando campanha no formulário:', campaign);
@@ -1249,18 +1196,8 @@ const savePartner = async () => {
 
             // Salvar/atualizar campanhas
             for (const campaign of form.value.campaigns) {
-                // Validar sellerDomain antes de salvar
-                const sellerDomain = (campaign.sellerDomain || '').trim();
-                if (!sellerDomain) {
-                    console.error('[CommercialPartnersView] Erro: sellerDomain é obrigatório para a campanha:', campaign.name);
-                    alert(`Erro: O campo "Domínio seller" é obrigatório para a campanha "${campaign.name}". Por favor, preencha este campo antes de salvar.`);
-                    saving.value = false;
-                    return;
-                }
-
                 const campaignData: any = {
                     commercialPartnerId: partnerId,
-                    sellerDomain: sellerDomain,
                     name: campaign.name,
                     startDate: new Date(campaign.startDate),
                     endDate: campaign.endDate ? new Date(campaign.endDate) : null,
@@ -1268,7 +1205,8 @@ const savePartner = async () => {
                     scriptStatus: campaign.scriptStatus || null,
                     weighting: campaign.weighting || null,
                     link: campaign.link || null,
-                    active: campaign.active !== undefined ? campaign.active : true
+                    active: campaign.active !== undefined ? campaign.active : true,
+                    neverStarted: campaign.neverStarted !== undefined ? Boolean(campaign.neverStarted) : false
                 };
                 
                 try {
