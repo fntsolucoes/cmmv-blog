@@ -13,9 +13,8 @@ export class ScriptSettingsService {
     async getAllScriptSettings() {
         try {
             const ScriptSettingsEntity = Repository.getEntity("SasScriptSettingsEntity");
-            const result = await Repository.findAll(ScriptSettingsEntity, {
-                limit: 1000  // Limite máximo permitido pelo repositório
-            }, []);
+            // Usar limite máximo permitido (1000) - se houver mais registros, implementar paginação
+            const result = await Repository.findAll(ScriptSettingsEntity, {}, [], { take: 1000 });
             return {
                 data: result?.data || [],
                 total: result?.total || 0

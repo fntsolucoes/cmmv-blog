@@ -4,12 +4,7 @@
             <h1 class="text-2xl font-bold text-white">Divisão de Lucros</h1>
             <div class="flex gap-2">
                 <input v-model="selectedYear" type="number" placeholder="Ano" class="px-3 py-1 bg-neutral-700 text-white rounded-md text-sm" />
-                <select v-model="selectedMonth" class="px-3 py-1 bg-neutral-700 text-white rounded-md text-sm border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">Selecione o mês</option>
-                    <option v-for="(month, index) in months" :key="index" :value="index + 1">
-                        {{ month }}
-                    </option>
-                </select>
+                <input v-model="selectedMonth" type="number" min="1" max="12" placeholder="Mês" class="px-3 py-1 bg-neutral-700 text-white rounded-md text-sm" />
                 <button @click="calculateProfitSharing" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors flex items-center">
                     Calcular
                 </button>
@@ -22,7 +17,7 @@
 
         <div v-else-if="result" class="space-y-4">
             <div class="bg-neutral-800 rounded-lg p-6">
-                <h2 class="text-xl font-bold text-white mb-4">Resumo - {{ getMonthName(selectedMonth) }}/{{ selectedYear }}</h2>
+                <h2 class="text-xl font-bold text-white mb-4">Resumo - {{ String(selectedMonth).padStart(2, '0') }}/{{ selectedYear }}</h2>
                 
                 <div v-if="result.ordersCount === 0" class="bg-yellow-900 border border-yellow-700 rounded-lg p-4 mb-4">
                     <p class="text-yellow-200">
@@ -93,26 +88,6 @@ const selectedYear = ref(new Date().getFullYear());
 const selectedMonth = ref(new Date().getMonth() + 1);
 const result = ref<any>(null);
 const loading = ref(false);
-
-const months = [
-    'Janeiro',
-    'Fevereiro',
-    'Março',
-    'Abril',
-    'Maio',
-    'Junho',
-    'Julho',
-    'Agosto',
-    'Setembro',
-    'Outubro',
-    'Novembro',
-    'Dezembro'
-];
-
-const getMonthName = (monthNumber: number): string => {
-    if (!monthNumber || monthNumber < 1 || monthNumber > 12) return '';
-    return months[monthNumber - 1];
-};
 
 const formatCurrency = (value: number, currency: string) => {
     return new Intl.NumberFormat('pt-BR', {

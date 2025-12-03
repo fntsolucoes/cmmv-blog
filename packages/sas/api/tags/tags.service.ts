@@ -653,7 +653,10 @@ export class SasTagsCustomService {
 
         // Determinar URL da página do seller
         let pageUrl: string | null = null;
-        if (campaign.link && String(campaign.link).trim() !== "") {
+        if (campaign.sellerDomain && String(campaign.sellerDomain).trim() !== "") {
+            pageUrl = String(campaign.sellerDomain).trim();
+        } else if (campaign.link && String(campaign.link).trim() !== "") {
+            // Fallback: usar link da campanha, se o domínio não estiver preenchido
             pageUrl = String(campaign.link).trim();
         }
 
@@ -662,7 +665,7 @@ export class SasTagsCustomService {
                 tagId: tag.id,
                 campaignId,
                 status: "erro",
-                reason: "Campanha sem link configurado"
+                reason: "Campanha sem domínio seller ou link configurado"
             };
         }
 
@@ -851,9 +854,7 @@ export class SasTagsCustomService {
 
         this.logger.log("[ScriptValidator] Iniciando validação de scripts de todas as tags...");
 
-        const result = await Repository.findAll(TagsEntity, {
-            limit: 1000  // Limite máximo permitido pelo repositório
-        }, []);
+        const result = await Repository.findAll(TagsEntity, {}, [], { take: 10000 });
         const tags = result?.data || [];
 
         let total = tags.length;
@@ -944,16 +945,20 @@ export class SasTagsCustomService {
      */
     @Cron("0 */2 * * *")
     async validateAllTagsScriptsCron() {
-        const self = this as any;
-        if (!self || !self.logger) {
+        // Verificar se o contexto this está disponível
+        if (!this || !this.logger) {
             console.error("[SasTagsCustomService] Contexto this/logger indisponível no cron de validação de scripts");
             return;
         }
 
         try {
-            await self.validateAllTagsScripts();
+            await this.validateAllTagsScripts();
         } catch (error: any) {
-            console.error("[SasTagsCustomService] Erro no cron de validação de scripts:", error);
+            if (this && this.logger) {
+                this.logger.error("[SasTagsCustomService] Erro no cron de validação de scripts:", error);
+            } else {
+                console.error("[SasTagsCustomService] Erro no cron de validação de scripts:", error);
+            }
         }
     }
 
@@ -966,10 +971,9 @@ export class SasTagsCustomService {
             const totalCount = await Repository.count(TagsEntity, {});
             this.logger.log(`[getAllTags] Total de tags no banco: ${totalCount}`);
 
-            // Buscar todas as tags usando limite máximo permitido
-            const result = await Repository.findAll(TagsEntity, {
-                limit: 1000  // Limite máximo permitido pelo repositório
-            }, []);
+            // Buscar todas as tags usando limite máximo permitido (1000)
+            // Se houver mais de 1000 tags, será necessário implementar paginação
+            const result = await Repository.findAll(TagsEntity, {}, [], { take: 1000 });
             const data = result?.data || [];
             const returnedCount = data.length;
             
@@ -981,12 +985,35 @@ export class SasTagsCustomService {
                 this.logger.error(`[getAllTags] ⚠️ ATENÇÃO: Existem ${totalCount} tags no banco, mas nenhuma foi retornada!`);
             }
             
-            // Se houver mais tags que o limite, avisar
+            // Se houver mais de 1000 tags, implementar paginação
             if (totalCount > 1000) {
-                this.logger.warn(`[getAllTags] ⚠️ ATENÇÃO: Existem ${totalCount} tags no banco, mas apenas 1000 podem ser retornadas por query. Considere implementar paginação.`);
+                this.logger.log(`[getAllTags] ⚠️ Total de tags (${totalCount}) excede o limite de 1000. Implementando paginação...`);
+                
+                const allTags: any[] = [];
+                let skip = 0;
+                const pageSize = 1000;
+                
+                while (skip < totalCount) {
+                    const pageResult = await Repository.findAll(TagsEntity, {}, [], { 
+                        take: pageSize,
+                        skip: skip
+                    });
+                    
+                    const pageData = pageResult?.data || [];
+                    allTags.push(...pageData);
+                    skip += pageSize;
+                    
+                    this.logger.log(`[getAllTags] Página carregada: ${pageData.length} tags (total acumulado: ${allTags.length})`);
+                }
+                
+                this.logger.log(`[getAllTags] ✅ Retornando ${allTags.length} tags via paginação`);
+                return {
+                    data: allTags,
+                    total: allTags.length
+                };
             }
             
-            this.logger.log(`[getAllTags] Retornando ${returnedCount} tags`);
+            this.logger.log(`[getAllTags] ✅ Retornando ${returnedCount} tags`);
             return {
                 data,
                 total: returnedCount > 0 ? returnedCount : totalCount // Usar returnedCount se houver dados, senão usar totalCount

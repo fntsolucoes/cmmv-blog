@@ -332,18 +332,17 @@
                         />
                     </div>
 
-                    <!-- Campanha Não Iniciada -->
+                    <!-- Campanha não iniciada (Pendência) -->
                     <div class="flex items-center">
                         <input
                             v-model="campaignForm.neverStarted"
                             type="checkbox"
-                            id="campaignNeverStarted"
-                            class="w-4 h-4 text-yellow-600 bg-neutral-700 border-neutral-600 rounded focus:ring-yellow-500"
+                            id="neverStarted"
+                            class="w-4 h-4 text-blue-600 bg-neutral-700 border-neutral-600 rounded focus:ring-blue-500"
                         />
-                        <label for="campaignNeverStarted" class="ml-2 text-sm font-medium text-neutral-300">
+                        <label for="neverStarted" class="ml-2 text-sm font-medium text-neutral-300">
                             Campanha não iniciada (Pendência)
                         </label>
-                        <p class="ml-2 text-xs text-neutral-400">Marque se a campanha ainda não foi iniciada mesmo após a data de início</p>
                     </div>
 
                     <!-- Botões -->
@@ -566,8 +565,8 @@ const campaignForm = ref({
     weighting: '',
     link: '',
     active: true,
-    neverStarted: false, // Por padrão, novas campanhas não são marcadas como não iniciadas
-    originalActive: true // Guardar status original para restaurar
+    originalActive: true, // Guardar status original para restaurar
+    neverStarted: false // Campanha não iniciada (Pendência) - padrão: false
 });
 
 const partnerForm = ref({
@@ -729,6 +728,11 @@ const getStatusText = (item: any): string => {
         return item.active ? 'Ativo' : 'Inativo';
     }
     
+    // Para campanhas, verificar primeiro se nunca foi iniciada (Pendência)
+    if (item.neverStarted === true) {
+        return 'Pendência';
+    }
+    
     // Para campanhas, calcular baseado em datas
     if (!item.active) return 'Inativo';
     
@@ -737,12 +741,6 @@ const getStatusText = (item: any): string => {
     
     const startDate = new Date(item.startDate);
     startDate.setHours(0, 0, 0, 0);
-    
-    // Verificar se nunca foi iniciada (pendência)
-    // Se neverStarted é true e a data de início já passou, é "Não Iniciada"
-    if (item.neverStarted && today >= startDate) {
-        return 'Não Iniciada';
-    }
     
     if (item.endDate) {
         const endDate = new Date(item.endDate);
@@ -762,7 +760,7 @@ const getStatusClass = (item: any): string => {
     if (status === 'Ativo' || status === 'Ativa') {
         return 'bg-green-500 border-green-600';
     }
-    if (status === 'Não Iniciada') {
+    if (status === 'Pendência') {
         return 'bg-yellow-500 border-yellow-600';
     }
     if (status === 'Agendada') {
@@ -991,7 +989,6 @@ const validateWeighting = () => {
     return true;
 };
 
-
 // Carregar dados
 const loadData = async () => {
     try {
@@ -1050,8 +1047,8 @@ const openAddDialog = async () => {
         weighting: '',
         link: '',
         active: true,
-        neverStarted: false,
-        originalActive: true
+        originalActive: true,
+        neverStarted: false
     };
     formErrors.value = {};
     showCampaignDialog.value = true;
@@ -1071,8 +1068,8 @@ const closeCampaignDialog = () => {
         weighting: '',
         link: '',
         active: true,
-        neverStarted: false,
-        originalActive: true
+        originalActive: true,
+        neverStarted: false
     };
 };
 
@@ -1117,8 +1114,8 @@ const editItem = (item: any) => {
             weighting: item.weighting !== null && item.weighting !== undefined ? item.weighting.toString() : '',
             link: item.link || '',
             active: originalActive,
-            neverStarted: item.neverStarted !== undefined ? item.neverStarted : false,
-            originalActive: originalActive // Guardar para restaurar depois
+            originalActive: originalActive, // Guardar para restaurar depois
+            neverStarted: item.neverStarted !== undefined ? item.neverStarted : false
         };
         formErrors.value = {};
         showCampaignDialog.value = true;
@@ -1143,9 +1140,10 @@ const saveCampaign = async () => {
             commercialPartnerId: campaignForm.value.commercialPartnerId,
             name: campaignForm.value.name.trim(),
             startDate: campaignForm.value.startDate,
-            active: campaignForm.value.active !== undefined ? campaignForm.value.active : true,
-            neverStarted: campaignForm.value.neverStarted !== undefined ? campaignForm.value.neverStarted : false
+            active: campaignForm.value.active !== undefined ? campaignForm.value.active : true
         };
+        
+        // sellerDomain foi removido da interface, não enviar o campo (será mantido o valor existente no banco)
         
         // Tratar data de fim - se estiver vazia, enviar null para limpar
         if (campaignForm.value.endDate && campaignForm.value.endDate.trim() !== '') {
@@ -1172,6 +1170,9 @@ const saveCampaign = async () => {
         if (campaignForm.value.link && campaignForm.value.link.trim()) {
             dataToSave.link = campaignForm.value.link.trim();
         }
+        
+        // Adicionar campo neverStarted (Campanha não iniciada - Pendência)
+        dataToSave.neverStarted = campaignForm.value.neverStarted !== undefined ? campaignForm.value.neverStarted : false;
         
         if (isEditing.value && editingItem.value) {
             await client.campaigns.update(editingItem.value.id, dataToSave);

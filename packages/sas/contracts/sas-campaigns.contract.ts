@@ -30,9 +30,10 @@ export class SasCampaignsContract extends AbstractContract {
     @ContractField({
         protoType: 'string',
         nullable: true,
-        index: false,
+        index: true,
+        defaultValue: '',
     })
-    sellerDomain?: string; // Domínio do seller (deprecated - não utilizado mais)
+    sellerDomain?: string; // Domínio do seller (opcional, sem caracteres orientais)
 
     @ContractField({
         protoType: 'string',
@@ -102,6 +103,6 @@ export class SasCampaignsContract extends AbstractContract {
         defaultValue: false,
         index: true
     })
-    neverStarted!: boolean; // Flag indicando se a campanha nunca foi iniciada (true = não iniciada/pendência)
+    neverStarted!: boolean; // Flag para identificar campanhas que nunca foram iniciadas (Pendência)
 }
 

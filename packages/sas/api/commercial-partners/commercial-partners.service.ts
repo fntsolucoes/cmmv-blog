@@ -48,20 +48,33 @@ export class CommercialPartnersService {
         
         console.log(`[getAllPartners] Total de parceiros no banco: ${totalCount}`);
         
-        // Buscar todos os parceiros usando limite máximo permitido
+        // Buscar todos os parceiros usando limite alto
         const result = await Repository.findAll(CommercialPartnersEntity, {
-            limit: 1000  // Limite máximo permitido pelo repositório
+            limit: 10000  // Limite alto para pegar todos os parceiros
         }, []);
         
         const returnedCount = result?.data?.length || 0;
         console.log(`[getAllPartners] Parceiros retornados: ${returnedCount} de ${totalCount} esperados`);
         
-        // Se houver mais parceiros que o limite, avisar
-        if (totalCount > 1000) {
-            console.log(`[getAllPartners] ATENCAO: Existem ${totalCount} parceiros no banco, mas apenas 1000 podem ser retornados por query. Considere implementar paginacao.`);
+        // Se retornou menos que o total e exatamente 10, pode haver limite padrão
+        if (returnedCount < totalCount && returnedCount === 10) {
+            console.log(`[getAllPartners] ⚠️ Limite padrão detectado! Tentando buscar sem filtros...`);
+            
+            // Tentar buscar sem nenhum filtro
+            const resultUnfiltered = await Repository.findAll(CommercialPartnersEntity, {
+                limit: 10000
+            }, []);
+            
+            const unfilteredCount = resultUnfiltered?.data?.length || 0;
+            console.log(`[getAllPartners] Parceiros retornados sem filtros: ${unfilteredCount}`);
+            
+            if (unfilteredCount >= totalCount) {
+                console.log(`[getAllPartners] ✅ Retornando ${unfilteredCount} parceiros`);
+                return resultUnfiltered;
+            }
         }
         
-        console.log(`[getAllPartners] Retornando ${returnedCount} parceiros`);
+        console.log(`[getAllPartners] ✅ Retornando ${returnedCount} parceiros`);
         return result;
     }
 
@@ -71,11 +84,17 @@ export class CommercialPartnersService {
      */
     @Cron('5 */2 * * *') // A cada 2 horas, com pequeno offset
     async validateDirectPartnersLinks() {
+        // Verificar se o contexto this está disponível
+        if (!this || !this.logger) {
+            console.error('[CommercialPartnersService] Contexto this/logger indisponível no cron job de validação de links');
+            return;
+        }
+
         try {
             return await this.validateDirectPartnersLinksInternal();
         } catch (error: any) {
             // Fallback: usar console.error se logger não estiver disponível
-            if (this.logger) {
+            if (this && this.logger) {
                 this.logger.error('[CommercialPartnersService] Erro no cron job de validação de links:', error);
             } else {
                 console.error('[CommercialPartnersService] Erro no cron job de validação de links:', error);
@@ -87,6 +106,11 @@ export class CommercialPartnersService {
      * Implementação interna da validação de links de parceiros diretos
      */
     private async validateDirectPartnersLinksInternal() {
+        if (!this || !this.logger) {
+            console.error('[CommercialPartnersService] Contexto this/logger indisponível em validateDirectPartnersLinksInternal');
+            return;
+        }
+
         this.logger.log('🔄 Iniciando validação de links de parceiros diretos ativos...');
 
         try {
@@ -132,7 +156,7 @@ export class CommercialPartnersService {
                 }
             }
 
-            this.logger.log(`Validacao de parceiros diretos concluida: ${validated} links validados (${okCount} OK, ${brokenCount} Quebrados)`);
+            this.logger.log(`✅ Validação de parceiros diretos concluída: ${validated} links validados (${okCount} OK, ${brokenCount} Quebrados)`);
 
             return {
                 total: partnersWithLinks.length,
