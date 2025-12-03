@@ -1,42 +1,46 @@
 /**
  * Script para executar migrações SQL automaticamente
  * Este script verifica e executa migrações pendentes de forma idempotente
+ * Usa TypeORM DataSource diretamente, sem depender do CLI sqlite3
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
+import { DataSource } from 'typeorm';
 
 interface Migration {
     name: string;
     file: string;
-    checkQuery: string;
+    tableName: string;
+    columnName: string;
 }
 
 const migrations: Migration[] = [
     {
         name: 'Adicionar coluna neverStarted em sas_campaigns',
         file: 'add-campaigns-never-started-column.sql',
-        checkQuery: "SELECT COUNT(*) FROM pragma_table_info('sas_campaigns') WHERE name = 'neverStarted';"
+        tableName: 'sas_campaigns',
+        columnName: 'neverStarted'
     }
 ];
 
-function checkColumnExists(dbPath: string, tableName: string, columnName: string): boolean {
+async function checkColumnExists(dataSource: DataSource, tableName: string, columnName: string): Promise<boolean> {
     try {
-        // Usar execSync com opções seguras
-        const query = `SELECT COUNT(*) FROM pragma_table_info('${tableName}') WHERE name = '${columnName}';`;
-        const result = execSync(
-            `sqlite3 "${dbPath}" "${query}"`,
-            { encoding: 'utf-8', stdio: 'pipe' }
-        ).trim();
-        return result === '1';
+        const queryRunner = dataSource.createQueryRunner();
+        try {
+            const tableInfo = await queryRunner.query(`PRAGMA table_info(${tableName})`);
+            const columnExists = tableInfo.some((col: any) => col.name === columnName);
+            return columnExists;
+        } finally {
+            await queryRunner.release();
+        }
     } catch (error) {
-        // Se sqlite3 não estiver disponível, retornar false (migração será tentada)
+        console.error(`❌ Erro ao verificar coluna ${columnName} na tabela ${tableName}:`, error);
         return false;
     }
 }
 
-function executeMigration(dbPath: string, migrationFile: string): boolean {
+async function executeMigration(dataSource: DataSource, migrationFile: string): Promise<boolean> {
     try {
         const migrationPath = path.join(process.cwd(), migrationFile);
         
@@ -47,17 +51,37 @@ function executeMigration(dbPath: string, migrationFile: string): boolean {
 
         console.log(`📝 Executando migração: ${migrationFile}`);
 
-        // Ler o conteúdo do arquivo SQL e executar
+        // Ler o conteúdo do arquivo SQL
         const sqlContent = fs.readFileSync(migrationPath, 'utf-8');
-        execSync(`sqlite3 "${dbPath}"`, {
-            input: sqlContent,
-            stdio: ['pipe', 'inherit', 'inherit']
-        });
+        
+        // Dividir em comandos individuais (separados por ;)
+        const commands = sqlContent
+            .split(';')
+            .map(cmd => cmd.trim())
+            .filter(cmd => cmd.length > 0 && !cmd.startsWith('--'));
 
-        console.log(`✅ Migração executada com sucesso: ${migrationFile}`);
-        return true;
-    } catch (error) {
-        console.error(`❌ Erro ao executar migração ${migrationFile}:`, error);
+        const queryRunner = dataSource.createQueryRunner();
+        
+        try {
+            for (const command of commands) {
+                if (command.trim()) {
+                    await queryRunner.query(command);
+                }
+            }
+            console.log(`✅ Migração executada com sucesso: ${migrationFile}`);
+            return true;
+        } finally {
+            await queryRunner.release();
+        }
+    } catch (error: any) {
+        // Ignorar erro se a coluna já existir
+        if (error?.message?.includes('duplicate column name') || 
+            error?.message?.includes('already exists') ||
+            error?.message?.includes('UNIQUE constraint failed')) {
+            console.log(`ℹ️  Migração ${migrationFile} já foi aplicada (erro esperado)`);
+            return true;
+        }
+        console.error(`❌ Erro ao executar migração ${migrationFile}:`, error?.message || error);
         return false;
     }
 }
@@ -72,44 +96,53 @@ async function runMigrations() {
         return;
     }
 
-    // Verificar se sqlite3 está disponível
-    try {
-        execSync('sqlite3 --version', { stdio: 'ignore' });
-    } catch (error) {
-        console.log('⚠️  sqlite3 não está disponível. Migrações serão puladas.');
-        console.log('   Instale com: apt-get install sqlite3');
-        console.log('   Ou execute manualmente: sqlite3 database.sqlite < add-campaigns-never-started-column.sql');
-        return;
-    }
-
     console.log('🔄 Verificando migrações pendentes...\n');
 
-    let executed = 0;
-    let skipped = 0;
+    // Criar DataSource do TypeORM
+    const dataSource = new DataSource({
+        type: 'sqlite',
+        database: dbPath,
+        synchronize: false,
+        logging: false,
+    });
 
-    for (const migration of migrations) {
-        // Verificar se a migração já foi aplicada
-        const tableName = migration.checkQuery.includes('sas_campaigns') ? 'sas_campaigns' : '';
-        const columnName = migration.name.includes('neverStarted') ? 'neverStarted' : '';
+    try {
+        await dataSource.initialize();
+        console.log('✅ Conexão com banco de dados estabelecida');
 
-        if (tableName && columnName) {
-            if (checkColumnExists(dbPath, tableName, columnName)) {
+        let executed = 0;
+        let skipped = 0;
+
+        for (const migration of migrations) {
+            // Verificar se a migração já foi aplicada
+            const columnExists = await checkColumnExists(dataSource, migration.tableName, migration.columnName);
+
+            if (columnExists) {
                 console.log(`⏭️  Migração já aplicada: ${migration.name}`);
                 skipped++;
                 continue;
             }
+
+            // Executar migração
+            if (await executeMigration(dataSource, migration.file)) {
+                executed++;
+            } else {
+                console.error(`❌ Falha ao executar: ${migration.name}`);
+                // Não fazer exit(1) para não bloquear a inicialização
+                console.warn('⚠️  Continuando apesar do erro na migração');
+            }
         }
 
-        // Executar migração
-        if (executeMigration(dbPath, migration.file)) {
-            executed++;
-        } else {
-            console.error(`❌ Falha ao executar: ${migration.name}`);
-            process.exit(1);
+        console.log(`\n✅ Migrações concluídas: ${executed} executadas, ${skipped} já aplicadas`);
+    } catch (error: any) {
+        console.error('❌ Erro ao executar migrações:', error?.message || error);
+        // Não bloquear a inicialização se houver erro
+        console.warn('⚠️  Continuando inicialização apesar do erro nas migrações');
+    } finally {
+        if (dataSource.isInitialized) {
+            await dataSource.destroy();
         }
     }
-
-    console.log(`\n✅ Migrações concluídas: ${executed} executadas, ${skipped} já aplicadas`);
 }
 
 // Executar apenas se chamado diretamente

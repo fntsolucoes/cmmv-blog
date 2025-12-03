@@ -1115,7 +1115,7 @@ const editItem = (item: any) => {
             link: item.link || '',
             active: originalActive,
             originalActive: originalActive, // Guardar para restaurar depois
-            neverStarted: item.neverStarted !== undefined ? item.neverStarted : false
+            neverStarted: Boolean(item.neverStarted === true || item.neverStarted === 1 || item.neverStarted === '1')
         };
         formErrors.value = {};
         showCampaignDialog.value = true;
@@ -1172,11 +1172,16 @@ const saveCampaign = async () => {
         }
         
         // Adicionar campo neverStarted (Campanha não iniciada - Pendência)
-        dataToSave.neverStarted = campaignForm.value.neverStarted !== undefined ? campaignForm.value.neverStarted : false;
+        // Sempre enviar explicitamente, mesmo quando false, para garantir que seja atualizado
+        dataToSave.neverStarted = Boolean(campaignForm.value.neverStarted === true);
+        
+        console.log('[CampaignsView] Salvando campanha com neverStarted:', dataToSave.neverStarted, 'valor do form:', campaignForm.value.neverStarted);
         
         if (isEditing.value && editingItem.value) {
+            console.log('[CampaignsView] Atualizando campanha:', editingItem.value.id, 'dados:', dataToSave);
             await client.campaigns.update(editingItem.value.id, dataToSave);
         } else {
+            console.log('[CampaignsView] Criando nova campanha com dados:', dataToSave);
             await client.campaigns.insert(dataToSave);
         }
         
