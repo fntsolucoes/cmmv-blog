@@ -1,6 +1,6 @@
 {
     "name": "cmmv-blog",
-    "version": "0.0.156",
+    "version": "0.0.157",
     "private": true,
     "description": "Blog package for CMMV",
     "type": "module",
@@ -9,6 +9,8 @@
         "build:client": "vite build --config vite.config.ts",
         "build:server": "vite build --config vite.config.server.ts",
         "build": "pnpm run build:client && pnpm run build:server",
+        "check-build": "node scripts/check-build.js",
+        "prestart": "pnpm run check-build",
         "start": "NODE_ENV=production node dist/server.js",
         "lint": "eslint \"src/**/*.ts\""
     },

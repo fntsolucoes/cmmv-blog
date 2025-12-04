@@ -712,6 +712,41 @@ const getPartnerDisplay = (item: any): string => {
     return item.partnerName || getPartnerName(item.commercialPartnerId);
 };
 
+/**
+ * Função helper para verificar se uma campanha nunca foi iniciada
+ * Evita problemas de minificação/otimização em produção
+ * Suporta todos os formatos possíveis: boolean, number (0/1), string ('0'/'1'/'true'/'false')
+ */
+const isNeverStarted = (value: any): boolean => {
+    // Verificar valores nulos/undefined primeiro
+    if (value === undefined || value === null) {
+        return false;
+    }
+    
+    // Verificar boolean true
+    if (value === true) {
+        return true;
+    }
+    
+    // Verificar número 1
+    if (value === 1) {
+        return true;
+    }
+    
+    // Verificar string '1'
+    if (value === '1') {
+        return true;
+    }
+    
+    // Verificar string 'true'
+    if (value === 'true') {
+        return true;
+    }
+    
+    // Todos os outros casos retornam false
+    return false;
+};
+
 const getStatusText = (item: any): string => {
     if (item.type === 'partner') {
         // Para parceiros diretos, verificar se a data de fim já passou
@@ -729,8 +764,8 @@ const getStatusText = (item: any): string => {
     }
 
     // Para campanhas, verificar primeiro se nunca foi iniciada (Pendência)
-    // SQLite retorna 0/1 para boolean, então usar comparação truthy
-    if (item.neverStarted === true || item.neverStarted === 1 || item.neverStarted === '1') {
+    // Usar função helper para evitar problemas de minificação em produção
+    if (isNeverStarted(item.neverStarted)) {
         return 'Pendência';
     }
 

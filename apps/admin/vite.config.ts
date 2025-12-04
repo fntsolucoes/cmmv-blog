@@ -150,6 +150,20 @@ export default defineConfig(async ({ mode }: ConfigEnv): Promise<UserConfig> => 
         plugins: [vue()],
         build: {
             chunkSizeWarningLimit: 1000000,
+            // Usar esbuild (padrão do Vite 6) que é mais seguro para preservar lógica
+            minify: 'esbuild',
+            // Se precisar usar terser, instalar: npm install -D vite-plugin-terser
+            // minify: 'terser',
+            // terserOptions: {
+            //     compress: {
+            //         drop_console: false,
+            //         pure_funcs: [],
+            //         passes: 2
+            //     },
+            //     mangle: {
+            //         reserved: ['neverStarted', 'isNeverStarted', 'getStatusText', 'getStatusClass']
+            //     }
+            // },
             rollupOptions: {
                 input: path.resolve(__dirname, 'index.html'),
                 output: {

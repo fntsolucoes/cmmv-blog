@@ -607,8 +607,10 @@ const adSettings = computed(() => {
         taboolaJsCode: rawSettings['blog.taboolaJsCode'] || '',
     };
 
-    // Log for debugging
-    console.log('adSenseSidebarLeft value in PagePost:', rawSettings['blog.adSenseSidebarLeft']);
+    // Log for debugging (apenas se não for undefined para evitar spam nos logs)
+    if (rawSettings['blog.adSenseSidebarLeft'] !== undefined && rawSettings['blog.adSenseSidebarLeft'] !== null) {
+        console.log('adSenseSidebarLeft value in PagePost:', rawSettings['blog.adSenseSidebarLeft']);
+    }
 
     return result;
 });
