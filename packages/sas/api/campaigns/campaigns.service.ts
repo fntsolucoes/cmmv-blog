@@ -20,30 +20,34 @@ export class CampaignsService {
      */
     async getActiveCampaignsByPartner(partnerId: string) {
         const CampaignsEntity = Repository.getEntity("SasCampaignsEntity");
-        return await Repository.findAll(CampaignsEntity, {
+        const result = await Repository.findAll(CampaignsEntity, {
             where: { 
                 commercialPartnerId: partnerId,
                 active: true
             },
             limit: 1000
-        }, [], {
-            select: [
-                'id',
-                'commercialPartnerId',
-                'name',
-                'startDate',
-                'endDate',
-                'script',
-                'scriptStatus',
-                'weighting',
-                'link',
-                'linkStatus',
-                'active',
-                'neverStarted', // ✅ Incluir explicitamente
-                'createdAt',
-                'updatedAt'
-            ]
         });
+        
+        // Se neverStarted não estiver presente, buscar via query raw e mesclar
+        if (result?.data && result.data.length > 0 && !('neverStarted' in result.data[0])) {
+            const queryRunner = Repository.getDataSource().createQueryRunner();
+            try {
+                const rawData = await queryRunner.query(`
+                    SELECT id, neverStarted 
+                    FROM sas_campaigns
+                    WHERE commercialPartnerId = ? AND active = 1
+                `, [partnerId]);
+                const neverStartedMap = new Map(rawData.map((r: any) => [r.id, r.neverStarted]));
+                result.data = result.data.map((campaign: any) => ({
+                    ...campaign,
+                    neverStarted: neverStartedMap.get(campaign.id) ?? 0
+                }));
+            } finally {
+                await queryRunner.release();
+            }
+        }
+        
+        return result;
     }
 
     /**
@@ -63,31 +67,35 @@ export class CampaignsService {
         console.log(`[getAllCampaignsByPartner] Total de campanhas no banco: ${totalCount}`);
         
         // Buscar todas as campanhas usando limite alto
-        // Usar select explícito para garantir que neverStarted seja retornado
         const result = await Repository.findAll(CampaignsEntity, {
             commercialPartnerId: partnerId,
             limit: 10000  // Limite alto para pegar todas as campanhas
         }, [], {
-            select: [
-                'id',
-                'commercialPartnerId',
-                'name',
-                'startDate',
-                'endDate',
-                'script',
-                'scriptStatus',
-                'weighting',
-                'link',
-                'linkStatus',
-                'active',
-                'neverStarted', // ✅ Incluir explicitamente para garantir retorno
-                'createdAt',
-                'updatedAt'
-            ],
             order: {
                 startDate: 'DESC'
             }
         });
+        
+        // Se neverStarted não estiver presente, buscar via query raw e mesclar
+        if (result?.data && result.data.length > 0 && !('neverStarted' in result.data[0])) {
+            console.log(`[getAllCampaignsByPartner] ⚠️ Campo neverStarted não presente, buscando via query raw...`);
+            const queryRunner = Repository.getDataSource().createQueryRunner();
+            try {
+                const rawData = await queryRunner.query(`
+                    SELECT id, neverStarted 
+                    FROM sas_campaigns
+                    WHERE commercialPartnerId = ?
+                `, [partnerId]);
+                const neverStartedMap = new Map(rawData.map((r: any) => [r.id, r.neverStarted]));
+                result.data = result.data.map((campaign: any) => ({
+                    ...campaign,
+                    neverStarted: neverStartedMap.get(campaign.id) ?? 0
+                }));
+                console.log(`[getAllCampaignsByPartner] ✅ Campo neverStarted adicionado via query raw`);
+            } finally {
+                await queryRunner.release();
+            }
+        }
         
         const returnedCount = result?.data?.length || 0;
         console.log(`[getAllCampaignsByPartner] Campanhas retornadas: ${returnedCount} de ${totalCount} esperadas`);
@@ -140,30 +148,33 @@ export class CampaignsService {
         console.log(`[getAllCampaigns] Total de campanhas no banco: ${totalCount}`);
         
         // Buscar todas as campanhas usando limite alto
-        // Usar select explícito para garantir que neverStarted seja retornado
         const result = await Repository.findAll(CampaignsEntity, {
             limit: 10000  // Limite alto para pegar todas as campanhas
         }, [], {
-            select: [
-                'id',
-                'commercialPartnerId',
-                'name',
-                'startDate',
-                'endDate',
-                'script',
-                'scriptStatus',
-                'weighting',
-                'link',
-                'linkStatus',
-                'active',
-                'neverStarted', // ✅ Incluir explicitamente para garantir retorno
-                'createdAt',
-                'updatedAt'
-            ],
             order: {
                 startDate: 'DESC'
             }
         });
+        
+        // Se neverStarted não estiver presente, buscar via query raw e mesclar
+        if (result?.data && result.data.length > 0 && !('neverStarted' in result.data[0])) {
+            console.log(`[getAllCampaigns] ⚠️ Campo neverStarted não presente, buscando via query raw...`);
+            const queryRunner = Repository.getDataSource().createQueryRunner();
+            try {
+                const rawData = await queryRunner.query(`
+                    SELECT id, neverStarted 
+                    FROM sas_campaigns
+                `);
+                const neverStartedMap = new Map(rawData.map((r: any) => [r.id, r.neverStarted]));
+                result.data = result.data.map((campaign: any) => ({
+                    ...campaign,
+                    neverStarted: neverStartedMap.get(campaign.id) ?? 0
+                }));
+                console.log(`[getAllCampaigns] ✅ Campo neverStarted adicionado via query raw`);
+            } finally {
+                await queryRunner.release();
+            }
+        }
         
         const returnedCount = result?.data?.length || 0;
         console.log(`[getAllCampaigns] Campanhas retornadas: ${returnedCount} de ${totalCount} esperadas`);
