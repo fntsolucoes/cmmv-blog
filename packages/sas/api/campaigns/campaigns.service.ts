@@ -117,6 +117,25 @@ export class CampaignsService {
         const returnedCount = result?.data?.length || 0;
         console.log(`[getAllCampaigns] Campanhas retornadas: ${returnedCount} de ${totalCount} esperadas`);
         
+        // Verificar se neverStarted está presente na resposta
+        if (result?.data && result.data.length > 0) {
+            const firstCampaign = result.data[0];
+            const hasNeverStarted = 'neverStarted' in firstCampaign;
+            const neverStartedValue = firstCampaign.neverStarted;
+            const neverStartedType = typeof neverStartedValue;
+            
+            console.log(`[getAllCampaigns] ✅ Verificação neverStarted na primeira campanha:`);
+            console.log(`  - Campo presente: ${hasNeverStarted}`);
+            console.log(`  - Valor: ${neverStartedValue}`);
+            console.log(`  - Tipo: ${neverStartedType}`);
+            
+            // Contar campanhas com neverStarted = 1
+            const neverStartedCount = result.data.filter((c: any) => 
+                c.neverStarted === true || c.neverStarted === 1 || c.neverStarted === '1'
+            ).length;
+            console.log(`[getAllCampaigns] Campanhas com neverStarted = true/1: ${neverStartedCount}`);
+        }
+        
         // Se retornou menos que o total e exatamente 10, pode haver limite padrão
         if (returnedCount < totalCount && returnedCount === 10) {
             console.log(`[getAllCampaigns] ⚠️ Limite padrão detectado! Buscando todas as campanhas sem ordenação...`);

@@ -20,7 +20,20 @@ export class CampaignsController {
     @Get("")
     async getAll(@Queries() queries: any) {
         const CampaignsEntity = Repository.getEntity("SasCampaignsEntity");
-        return await Repository.findAll(CampaignsEntity, queries || {}, []);
+        const result = await Repository.findAll(CampaignsEntity, queries || {}, []);
+        
+        // Verificar se neverStarted está presente na resposta
+        if (result?.data && result.data.length > 0) {
+            const firstCampaign = result.data[0];
+            const hasNeverStarted = 'neverStarted' in firstCampaign;
+            console.log(`[CampaignsController.getAll] Verificação neverStarted:`);
+            console.log(`  - Campo presente: ${hasNeverStarted}`);
+            if (hasNeverStarted) {
+                console.log(`  - Valor: ${firstCampaign.neverStarted}, Tipo: ${typeof firstCampaign.neverStarted}`);
+            }
+        }
+        
+        return result;
     }
 
     /**
