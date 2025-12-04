@@ -26,6 +26,23 @@ export class CampaignsService {
                 active: true
             },
             limit: 1000
+        }, [], {
+            select: [
+                'id',
+                'commercialPartnerId',
+                'name',
+                'startDate',
+                'endDate',
+                'script',
+                'scriptStatus',
+                'weighting',
+                'link',
+                'linkStatus',
+                'active',
+                'neverStarted', // ✅ Incluir explicitamente
+                'createdAt',
+                'updatedAt'
+            ]
         });
     }
 
@@ -46,10 +63,27 @@ export class CampaignsService {
         console.log(`[getAllCampaignsByPartner] Total de campanhas no banco: ${totalCount}`);
         
         // Buscar todas as campanhas usando limite alto
+        // Usar select explícito para garantir que neverStarted seja retornado
         const result = await Repository.findAll(CampaignsEntity, {
             commercialPartnerId: partnerId,
             limit: 10000  // Limite alto para pegar todas as campanhas
         }, [], {
+            select: [
+                'id',
+                'commercialPartnerId',
+                'name',
+                'startDate',
+                'endDate',
+                'script',
+                'scriptStatus',
+                'weighting',
+                'link',
+                'linkStatus',
+                'active',
+                'neverStarted', // ✅ Incluir explicitamente para garantir retorno
+                'createdAt',
+                'updatedAt'
+            ],
             order: {
                 startDate: 'DESC'
             }
@@ -106,9 +140,26 @@ export class CampaignsService {
         console.log(`[getAllCampaigns] Total de campanhas no banco: ${totalCount}`);
         
         // Buscar todas as campanhas usando limite alto
+        // Usar select explícito para garantir que neverStarted seja retornado
         const result = await Repository.findAll(CampaignsEntity, {
             limit: 10000  // Limite alto para pegar todas as campanhas
         }, [], {
+            select: [
+                'id',
+                'commercialPartnerId',
+                'name',
+                'startDate',
+                'endDate',
+                'script',
+                'scriptStatus',
+                'weighting',
+                'link',
+                'linkStatus',
+                'active',
+                'neverStarted', // ✅ Incluir explicitamente para garantir retorno
+                'createdAt',
+                'updatedAt'
+            ],
             order: {
                 startDate: 'DESC'
             }
