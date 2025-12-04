@@ -30,20 +30,22 @@ export class CampaignsService {
         
         // Se neverStarted não estiver presente, buscar via query raw e mesclar
         if (result?.data && result.data.length > 0 && !('neverStarted' in result.data[0])) {
-            const queryRunner = Repository.getDataSource().createQueryRunner();
             try {
-                const rawData = await queryRunner.query(`
-                    SELECT id, neverStarted 
-                    FROM sas_campaigns
-                    WHERE commercialPartnerId = ? AND active = 1
-                `, [partnerId]);
-                const neverStartedMap = new Map(rawData.map((r: any) => [r.id, r.neverStarted]));
-                result.data = result.data.map((campaign: any) => ({
-                    ...campaign,
-                    neverStarted: neverStartedMap.get(campaign.id) ?? 0
-                }));
-            } finally {
-                await queryRunner.release();
+                const dataSource = await Repository.getDataSource();
+                if (dataSource && dataSource.isInitialized) {
+                    const rawData = await dataSource.query(`
+                        SELECT id, neverStarted
+                        FROM sas_campaigns
+                        WHERE commercialPartnerId = ? AND active = 1
+                    `, [partnerId]);
+                    const neverStartedMap = new Map(rawData.map((r: any) => [r.id, r.neverStarted]));
+                    result.data = result.data.map((campaign: any) => ({
+                        ...campaign,
+                        neverStarted: neverStartedMap.get(campaign.id) ?? 0
+                    }));
+                }
+            } catch (error) {
+                console.error('[getActiveCampaignsByPartner] Erro ao buscar neverStarted via raw query:', error);
             }
         }
         
@@ -79,21 +81,23 @@ export class CampaignsService {
         // Se neverStarted não estiver presente, buscar via query raw e mesclar
         if (result?.data && result.data.length > 0 && !('neverStarted' in result.data[0])) {
             console.log(`[getAllCampaignsByPartner] ⚠️ Campo neverStarted não presente, buscando via query raw...`);
-            const queryRunner = Repository.getDataSource().createQueryRunner();
             try {
-                const rawData = await queryRunner.query(`
-                    SELECT id, neverStarted 
-                    FROM sas_campaigns
-                    WHERE commercialPartnerId = ?
-                `, [partnerId]);
-                const neverStartedMap = new Map(rawData.map((r: any) => [r.id, r.neverStarted]));
-                result.data = result.data.map((campaign: any) => ({
-                    ...campaign,
-                    neverStarted: neverStartedMap.get(campaign.id) ?? 0
-                }));
-                console.log(`[getAllCampaignsByPartner] ✅ Campo neverStarted adicionado via query raw`);
-            } finally {
-                await queryRunner.release();
+                const dataSource = await Repository.getDataSource();
+                if (dataSource && dataSource.isInitialized) {
+                    const rawData = await dataSource.query(`
+                        SELECT id, neverStarted
+                        FROM sas_campaigns
+                        WHERE commercialPartnerId = ?
+                    `, [partnerId]);
+                    const neverStartedMap = new Map(rawData.map((r: any) => [r.id, r.neverStarted]));
+                    result.data = result.data.map((campaign: any) => ({
+                        ...campaign,
+                        neverStarted: neverStartedMap.get(campaign.id) ?? 0
+                    }));
+                    console.log(`[getAllCampaignsByPartner] ✅ Campo neverStarted adicionado via query raw`);
+                }
+            } catch (error) {
+                console.error('[getAllCampaignsByPartner] Erro ao buscar neverStarted via raw query:', error);
             }
         }
         
@@ -159,20 +163,32 @@ export class CampaignsService {
         // Se neverStarted não estiver presente, buscar via query raw e mesclar
         if (result?.data && result.data.length > 0 && !('neverStarted' in result.data[0])) {
             console.log(`[getAllCampaigns] ⚠️ Campo neverStarted não presente, buscando via query raw...`);
-            const queryRunner = Repository.getDataSource().createQueryRunner();
             try {
-                const rawData = await queryRunner.query(`
-                    SELECT id, neverStarted 
-                    FROM sas_campaigns
-                `);
-                const neverStartedMap = new Map(rawData.map((r: any) => [r.id, r.neverStarted]));
-                result.data = result.data.map((campaign: any) => ({
-                    ...campaign,
-                    neverStarted: neverStartedMap.get(campaign.id) ?? 0
-                }));
-                console.log(`[getAllCampaigns] ✅ Campo neverStarted adicionado via query raw`);
-            } finally {
-                await queryRunner.release();
+                const dataSource = Repository.getDataSource();
+                console.log(`[getAllCampaigns] DataSource obtido:`, {
+                    exists: !!dataSource,
+                    isInitialized: dataSource?.isInitialized,
+                    type: typeof dataSource
+                });
+
+                if (dataSource && dataSource.isInitialized) {
+                    console.log(`[getAllCampaigns] Executando query raw...`);
+                    const rawData = await dataSource.query(`
+                        SELECT id, neverStarted
+                        FROM sas_campaigns
+                    `);
+                    console.log(`[getAllCampaigns] Query raw retornou ${rawData.length} registros`);
+                    const neverStartedMap = new Map(rawData.map((r: any) => [r.id, r.neverStarted]));
+                    result.data = result.data.map((campaign: any) => ({
+                        ...campaign,
+                        neverStarted: neverStartedMap.get(campaign.id) ?? 0
+                    }));
+                    console.log(`[getAllCampaigns] ✅ Campo neverStarted adicionado via query raw`);
+                } else {
+                    console.log(`[getAllCampaigns] ❌ DataSource não está inicializado!`);
+                }
+            } catch (error) {
+                console.error('[getAllCampaigns] Erro ao buscar neverStarted via raw query:', error);
             }
         }
         
