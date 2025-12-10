@@ -81,7 +81,7 @@ export class SasTagsCustomService {
             // Criar objeto de dados explícito para garantir que todos os campos sejam preservados
             // IMPORTANTE: Preservar valores exatamente como vêm, apenas substituindo undefined por null
             const dataToInsert: any = {};
-            
+
             // Copiar todos os campos do body, preservando null mas convertendo undefined para null
             dataToInsert.name = body.name !== undefined ? body.name : '';
             dataToInsert.description = body.description !== undefined ? body.description : null;
@@ -89,6 +89,7 @@ export class SasTagsCustomService {
             dataToInsert.campaignIds = body.campaignIds !== undefined ? body.campaignIds : null;
             dataToInsert.generatedScript = body.generatedScript !== undefined ? body.generatedScript : null;
             dataToInsert.generatedCode = body.generatedCode !== undefined ? body.generatedCode : null;
+            dataToInsert.sellerUrl = body.sellerUrl !== undefined ? body.sellerUrl : null;
             dataToInsert.active = body.active !== undefined && body.active !== null ? body.active : true;
             dataToInsert.scriptStatus = body.scriptStatus !== undefined ? body.scriptStatus : 'Não verificada';
             
@@ -100,6 +101,8 @@ export class SasTagsCustomService {
                 'campaignIds (valor)': dataToInsert.campaignIds,
                 'generatedCode (tipo)': typeof dataToInsert.generatedCode,
                 'generatedCode (valor)': dataToInsert.generatedCode,
+                'sellerUrl (tipo)': typeof dataToInsert.sellerUrl,
+                'sellerUrl (valor)': dataToInsert.sellerUrl,
                 'generatedScript (presente)': !!dataToInsert.generatedScript,
                 'generatedScript (tamanho)': dataToInsert.generatedScript ? dataToInsert.generatedScript.length : 0
             });
@@ -112,6 +115,7 @@ export class SasTagsCustomService {
                 campaignIds: dataToInsert.campaignIds,
                 generatedScript: dataToInsert.generatedScript ? `${dataToInsert.generatedScript.substring(0, 100)}...` : null,
                 generatedCode: dataToInsert.generatedCode,
+                sellerUrl: dataToInsert.sellerUrl,
                 active: dataToInsert.active,
                 scriptStatus: dataToInsert.scriptStatus
             });
@@ -156,6 +160,7 @@ export class SasTagsCustomService {
                         if (!verify.campaignIds && dataToInsert.campaignIds) missingFields.push('campaignIds');
                         if (!verify.generatedScript && dataToInsert.generatedScript) missingFields.push('generatedScript');
                         if (!verify.generatedCode && dataToInsert.generatedCode) missingFields.push('generatedCode');
+                        if (!verify.sellerUrl && dataToInsert.sellerUrl) missingFields.push('sellerUrl');
                         
                         if (missingFields.length > 0) {
                             this.logger.error(`[createTagAndAttachToCampaign] ⚠️ ATENÇÃO: Campos não foram salvos: ${missingFields.join(', ')}`);
@@ -163,13 +168,15 @@ export class SasTagsCustomService {
                                 scriptSettingId: dataToInsert.scriptSettingId,
                                 campaignIds: dataToInsert.campaignIds,
                                 generatedScript: dataToInsert.generatedScript ? 'presente' : 'ausente',
-                                generatedCode: dataToInsert.generatedCode
+                                generatedCode: dataToInsert.generatedCode,
+                                sellerUrl: dataToInsert.sellerUrl
                             });
                             this.logger.error(`[createTagAndAttachToCampaign] Dados salvos:`, {
                                 scriptSettingId: verify.scriptSettingId,
                                 campaignIds: verify.campaignIds,
                                 generatedScript: verify.generatedScript ? 'presente' : 'ausente',
-                                generatedCode: verify.generatedCode
+                                generatedCode: verify.generatedCode,
+                                sellerUrl: verify.sellerUrl
                             });
                             
                             // FORÇAR atualização dos campos faltantes imediatamente
@@ -182,11 +189,13 @@ export class SasTagsCustomService {
                                 updateData.campaignIds = dataToInsert.campaignIds;
                                 updateData.generatedScript = dataToInsert.generatedScript;
                                 updateData.generatedCode = dataToInsert.generatedCode;
-                                
+                                updateData.sellerUrl = dataToInsert.sellerUrl;
+
                                 this.logger.log(`[createTagAndAttachToCampaign] ⚠️ Dados para atualização forçada:`, {
                                     scriptSettingId: updateData.scriptSettingId,
                                     campaignIds: updateData.campaignIds,
                                     generatedCode: updateData.generatedCode,
+                                    sellerUrl: updateData.sellerUrl,
                                     generatedScript: updateData.generatedScript ? 'presente' : 'null'
                                 });
                                 
@@ -202,14 +211,16 @@ export class SasTagsCustomService {
                                         scriptSettingId: verifyAfterUpdate.scriptSettingId,
                                         campaignIds: verifyAfterUpdate.campaignIds,
                                         generatedCode: verifyAfterUpdate.generatedCode,
+                                        sellerUrl: verifyAfterUpdate.sellerUrl,
                                         generatedScript: verifyAfterUpdate.generatedScript ? 'presente' : 'null'
                                     });
-                                    
+
                                     // Se ainda estiver faltando, é um problema sério
                                     const stillMissing: string[] = [];
                                     if (!verifyAfterUpdate.scriptSettingId && dataToInsert.scriptSettingId) stillMissing.push('scriptSettingId');
                                     if (!verifyAfterUpdate.campaignIds && dataToInsert.campaignIds) stillMissing.push('campaignIds');
                                     if (!verifyAfterUpdate.generatedCode && dataToInsert.generatedCode) stillMissing.push('generatedCode');
+                                    if (!verifyAfterUpdate.sellerUrl && dataToInsert.sellerUrl) stillMissing.push('sellerUrl');
                                     
                                     if (stillMissing.length > 0) {
                                         this.logger.error(`[createTagAndAttachToCampaign] ❌ CRÍTICO: Campos ainda faltando após atualização forçada: ${stillMissing.join(', ')}`);

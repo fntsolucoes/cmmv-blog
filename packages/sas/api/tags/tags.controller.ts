@@ -34,6 +34,7 @@ export class SasTagsCustomController {
             campaignIds: body.campaignIds,
             generatedScript: body.generatedScript ? `${body.generatedScript.substring(0, 100)}...` : null,
             generatedCode: body.generatedCode,
+            sellerUrl: body.sellerUrl,
             active: body.active,
             scriptStatus: body.scriptStatus
         });
