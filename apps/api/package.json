@@ -1,6 +1,6 @@
 {
     "name": "cmmv-blog-api",
-    "version": "0.0.162",
+    "version": "0.0.164",
     "private": true,
     "description": "Blog API sample",
     "dev": {
@@ -54,12 +54,13 @@
         "@cmmv/blog": "workspace:plugin",
         "@cmmv/cache": "^0.17.0",
         "@cmmv/cli": "^0.11.0",
+        "@cmmv/core": "0.17.0",
         "@cmmv/http": "^0.17.0",
+        "@cmmv/newsletter": "workspace:newsletter",
         "@cmmv/repository": "^0.17.0",
         "@cmmv/rss-aggregation": "workspace:rss-aggregation",
-        "@cmmv/yt-aggregation": "workspace:yt-aggregation",
-        "@cmmv/newsletter": "workspace:newsletter",
         "@cmmv/sas": "workspace:sas",
+        "@cmmv/yt-aggregation": "workspace:yt-aggregation",
         "cache-manager-fs-binary": "^1.0.4",
         "csv-parse": "^6.1.0",
         "firebase-admin": "^13.4.0",

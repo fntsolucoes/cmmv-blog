@@ -977,58 +977,43 @@ export class SasTagsCustomService {
         try {
             const TagsEntity = Repository.getEntity("SasTagsEntity");
             this.logger.log(`[getAllTags] Buscando todas as tags...`);
-            
+
             // Primeiro, contar quantas tags existem
             const totalCount = await Repository.count(TagsEntity, {});
             this.logger.log(`[getAllTags] Total de tags no banco: ${totalCount}`);
 
-            // Buscar todas as tags usando limite máximo permitido (1000)
-            // Se houver mais de 1000 tags, será necessário implementar paginação
-            const result = await Repository.findAll(TagsEntity, {}, [], { take: 1000 });
-            const data = result?.data || [];
-            const returnedCount = data.length;
-            
+            // Buscar todas as tags usando limite alto (como fazem outros métodos)
+            const result = await Repository.findAll(TagsEntity, {
+                limit: 10000  // Limite alto para pegar todas as tags
+            }, []);
+
+            const returnedCount = result?.data?.length || 0;
+
             this.logger.log(`[getAllTags] Tags retornadas: ${returnedCount} de ${totalCount} esperadas`);
-            
-            if (data.length > 0) {
-                this.logger.log(`[getAllTags] Primeira tag: ID=${data[0].id}, scriptSettingId=${data[0].scriptSettingId || 'null'}, generatedCode=${data[0].generatedCode || 'null'}`);
+
+            if (result?.data && result.data.length > 0) {
+                this.logger.log(`[getAllTags] Primeira tag: ID=${result.data[0].id}, scriptSettingId=${result.data[0].scriptSettingId || 'null'}, generatedCode=${result.data[0].generatedCode || 'null'}`);
             } else if (totalCount > 0) {
                 this.logger.error(`[getAllTags] ⚠️ ATENÇÃO: Existem ${totalCount} tags no banco, mas nenhuma foi retornada!`);
             }
-            
-            // Se houver mais de 1000 tags, implementar paginação
-            if (totalCount > 1000) {
-                this.logger.log(`[getAllTags] ⚠️ Total de tags (${totalCount}) excede o limite de 1000. Implementando paginação...`);
-                
-                const allTags: any[] = [];
-                let skip = 0;
-                const pageSize = 1000;
-                
-                while (skip < totalCount) {
-                    const pageResult = await Repository.findAll(TagsEntity, {}, [], { 
-                        take: pageSize,
-                        skip: skip
-                    });
-                    
-                    const pageData = pageResult?.data || [];
-                    allTags.push(...pageData);
-                    skip += pageSize;
-                    
-                    this.logger.log(`[getAllTags] Página carregada: ${pageData.length} tags (total acumulado: ${allTags.length})`);
+
+            // Se retornou menos que o total, tentar buscar todas de novo sem filtros
+            if (returnedCount < totalCount) {
+                this.logger.log(`[getAllTags] ⚠️ Retornou ${returnedCount} de ${totalCount}. Tentando buscar novamente sem limite...`);
+
+                const resultUnlimited = await Repository.findAll(TagsEntity, {}, []);
+                const unlimitedCount = resultUnlimited?.data?.length || 0;
+
+                this.logger.log(`[getAllTags] Tags retornadas sem limite: ${unlimitedCount}`);
+
+                if (unlimitedCount >= totalCount) {
+                    this.logger.log(`[getAllTags] ✅ Retornando ${unlimitedCount} tags`);
+                    return resultUnlimited;
                 }
-                
-                this.logger.log(`[getAllTags] ✅ Retornando ${allTags.length} tags via paginação`);
-                return {
-                    data: allTags,
-                    total: allTags.length
-                };
             }
-            
+
             this.logger.log(`[getAllTags] ✅ Retornando ${returnedCount} tags`);
-            return {
-                data,
-                total: returnedCount > 0 ? returnedCount : totalCount // Usar returnedCount se houver dados, senão usar totalCount
-            };
+            return result;
         } catch (error: any) {
             this.logger.error('Erro ao buscar todas as tags:', error);
             throw error;

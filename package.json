@@ -1,6 +1,6 @@
 {
     "name": "@cmmv/blog",
-    "version": "0.1.161",
+    "version": "0.1.163",
     "description": "Blog plugin for CMMV",
     "keywords": [
         "cmmv",
@@ -51,6 +51,15 @@
         "cli-cursor": "^5.0.0",
         "restore-cursor": "^5.1.0",
         "signal-exit": "^4.1.0"
+    },
+    "pnpm": {
+        "overrides": {
+            "@cmmv/core": "0.17.0",
+            "@cmmv/http": "0.17.0",
+            "@cmmv/auth": "0.17.0",
+            "@cmmv/cache": "0.17.0",
+            "@cmmv/repository": "0.17.0"
+        }
     },
     "scripts": {
         "dev": "turbo run dev",

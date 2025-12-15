@@ -522,10 +522,25 @@ const loadData = async () => {
             client.commercialPartners.getAll(),
             client.campaigns.getAll()
         ]);
-        items.value = tagsResult?.data || [];
-        scriptSettings.value = scriptSettingsResult?.data || [];
-        commercialPartners.value = partnersResult?.data || [];
-        allCampaigns.value = campaignsResult?.data || [];
+        items.value = tagsResult?.result?.data || [];
+        scriptSettings.value = scriptSettingsResult?.result?.data || [];
+        commercialPartners.value = partnersResult?.result?.data || [];
+        allCampaigns.value = campaignsResult?.result?.data || [];
+
+        console.log('[DEBUG loadData] Tags carregadas:', items.value.length);
+        console.log('[DEBUG loadData] Script Settings carregados:', scriptSettings.value.length);
+        console.log('[DEBUG loadData] Parceiros carregados:', commercialPartners.value.length);
+        console.log('[DEBUG loadData] Campanhas carregadas:', allCampaigns.value.length);
+
+        // Verificar quantos parceiros são do tipo "Direto"
+        const directPartners = commercialPartners.value.filter((p: any) => p.partnerType === 'Direto');
+        console.log('[DEBUG loadData] Parceiros do tipo "Direto":', directPartners.length);
+        console.log('[DEBUG loadData] Lista de parceiros Direto:', directPartners.map((p: any) => ({ id: p.id, name: p.name, partnerType: p.partnerType })));
+
+        // Verificar modelos de script sem commercialPartnerId (Modelo Único - Direto)
+        const directModels = scriptSettings.value.filter((s: any) => !s.commercialPartnerId);
+        console.log('[DEBUG loadData] Modelos "Direto" (sem commercialPartnerId):', directModels.length);
+        console.log('[DEBUG loadData] Detalhes dos modelos Direto:', directModels);
     } catch (error) {
         console.error('Erro ao carregar dados:', error);
         showNotification('error', 'Erro ao carregar dados. Verifique o console para mais detalhes.');
@@ -640,22 +655,51 @@ const loadAvailableCampaigns = async () => {
         const setting = scriptSettings.value.find(s => s.id === form.value.scriptSettingId);
         if (!setting) return;
 
+        console.log('[DEBUG] Script Setting selecionado:', setting);
+        console.log('[DEBUG] commercialPartnerId:', setting.commercialPartnerId);
+
         // Se for modelo Direto (sem commercialPartnerId), buscar todas as campanhas de parceiros Direto
         if (!setting.commercialPartnerId) {
+            console.log('[DEBUG] Modelo DIRETO detectado - buscando todas as campanhas de parceiros Direto');
+
             const allCampaigns = await client.campaigns.getAll();
             const allPartners = await client.commercialPartners.getAll();
-            
+
+            console.log('[DEBUG] Total de campanhas retornadas:', allCampaigns?.result?.data?.length || 0);
+            console.log('[DEBUG] Total de parceiros retornados:', allPartners?.result?.data?.length || 0);
+
             // Filtrar campanhas de parceiros Direto
-            const directPartners = (allPartners?.data || []).filter((p: any) => p.partnerType === 'Direto');
+            const directPartners = (allPartners?.result?.data || []).filter((p: any) => p.partnerType === 'Direto');
+            console.log('[DEBUG] Parceiros do tipo "Direto":', directPartners.length);
+            console.log('[DEBUG] Parceiros Direto:', directPartners.map((p: any) => ({ id: p.id, name: p.name, partnerType: p.partnerType })));
+
             const directPartnerIds = directPartners.map((p: any) => p.id);
-            
-            availableCampaigns.value = (allCampaigns?.data || []).filter((c: any) => 
+            console.log('[DEBUG] IDs dos parceiros Direto:', directPartnerIds);
+
+            // Debug: mostrar todas as campanhas e seus commercialPartnerIds
+            console.log('[DEBUG] Campanhas disponíveis (primeiras 5):',
+                (allCampaigns?.result?.data || []).slice(0, 5).map((c: any) => ({
+                    id: c.id,
+                    name: c.name,
+                    commercialPartnerId: c.commercialPartnerId
+                }))
+            );
+
+            availableCampaigns.value = (allCampaigns?.result?.data || []).filter((c: any) =>
                 directPartnerIds.includes(c.commercialPartnerId)
             );
+
+            console.log('[DEBUG] Campanhas filtradas para parceiros Direto:', availableCampaigns.value.length);
+            console.log('[DEBUG] Campanhas disponíveis:', availableCampaigns.value.map((c: any) => ({ id: c.id, name: c.name, commercialPartnerId: c.commercialPartnerId })));
         } else {
+            console.log('[DEBUG] Modelo de REDE detectado - buscando campanhas do parceiro específico');
+            console.log('[DEBUG] Partner ID:', setting.commercialPartnerId);
+
             // Se for modelo de Rede, buscar campanhas do parceiro específico
             const campaigns = await client.campaigns.getAllByPartner(setting.commercialPartnerId);
-            availableCampaigns.value = campaigns?.data || [];
+            console.log('[DEBUG] Campanhas retornadas para o parceiro:', campaigns?.result?.data?.length || 0);
+
+            availableCampaigns.value = campaigns?.result?.data || [];
         }
     } catch (error) {
         console.error('Erro ao carregar campanhas:', error);
