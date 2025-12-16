@@ -26,7 +26,62 @@ export class ScriptSettingsService {
     }
 
     /**
-     * Gera o próximo código sequencial baseado no código de partida
+     * Calcula o próximo código sequencial sem incrementar o contador (para preview)
+     * @param scriptSettingId - ID da configuração de script
+     * @returns Próximo código sequencial (sem incrementar)
+     */
+    async previewNextCode(scriptSettingId: string): Promise<string> {
+        try {
+            const ScriptSettingsEntity = Repository.getEntity("SasScriptSettingsEntity");
+            const setting = await Repository.findOne(ScriptSettingsEntity, { id: scriptSettingId });
+
+            if (!setting) {
+                throw new Error(`Configuração de script com ID ${scriptSettingId} não encontrada`);
+            }
+
+            // Obter sequência atual (sem incrementar)
+            const currentSequenceNumber = Number(setting.currentSequence ?? 0) || 0;
+            const nextSequence = currentSequenceNumber + 1;
+
+            // Gerar o código baseado no código de partida + sequencial
+            const baseCode = setting.startCode;
+
+            // Encontrar os últimos dígitos numéricos no código base
+            const match = baseCode.match(/(\d+)$/);
+            if (!match) {
+                throw new Error(`Código de partida "${baseCode}" não contém dígitos numéricos no final`);
+            }
+
+            const lastDigits = match[1];
+            const digitCount = lastDigits.length;
+
+            // Número base a partir do código inicial
+            const baseNumber = parseInt(lastDigits, 10);
+            if (Number.isNaN(baseNumber)) {
+                throw new Error(`Não foi possível converter os dígitos finais de "${baseCode}" em número`);
+            }
+
+            // Novo número = número base + sequência
+            const newNumericValue = baseNumber + nextSequence;
+
+            // Mantém o mesmo tamanho de dígitos, preenchendo com zeros à esquerda se necessário
+            const finalNumber = newNumericValue.toString().padStart(digitCount, '0');
+
+            // Substituir os últimos dígitos do código base pelo novo número
+            const nextCode = baseCode.replace(/\d+$/, finalNumber);
+
+            this.logger.log(`Preview do próximo código para script ${scriptSettingId}: ${nextCode} (sequência atual: ${currentSequenceNumber}, próxima: ${nextSequence})`);
+            
+            return nextCode;
+        } catch (error: any) {
+            this.logger.error(`Erro ao fazer preview do próximo código para script ${scriptSettingId}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Gera o próximo código sequencial e incrementa o contador no banco
+     * Este método deve ser chamado APENAS quando uma tag for realmente criada
      * @param scriptSettingId - ID da configuração de script
      * @returns Próximo código sequencial
      */
@@ -74,12 +129,12 @@ export class ScriptSettingsService {
             // Substituir os últimos dígitos do código base pelo novo número
             const nextCode = baseCode.replace(/\d+$/, finalNumber);
             
-            // Atualizar o contador no banco
+            // Atualizar o contador no banco (APENAS quando realmente criar a tag)
             await Repository.update(ScriptSettingsEntity, { id: scriptSettingId }, { 
                 currentSequence: nextSequence 
             });
 
-            this.logger.log(`Código gerado para script ${scriptSettingId}: ${nextCode} (sequência: ${nextSequence})`);
+            this.logger.log(`Código gerado e contador incrementado para script ${scriptSettingId}: ${nextCode} (sequência: ${nextSequence})`);
             
             return nextCode;
         } catch (error: any) {

@@ -1,61 +1,133 @@
 <template>
     <div class="space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
-            <h1 class="text-2xl font-bold text-white">Tags</h1>
-            <div class="flex gap-2">
-                <button 
-                    @click="validateAllScripts" 
-                    :disabled="validatingScripts"
-                    class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors flex items-center"
+            <h1 class="text-2xl font-bold text-white">Gerenciamento de Tags</h1>
+            <button
+                @click="openDialog"
+                class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors flex items-center"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-3.5 w-3.5 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                 >
-                    <svg v-if="!validatingScripts" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    <svg v-else class="animate-spin h-3.5 w-3.5 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    {{ validatingScripts ? 'Validando...' : 'Validar Scripts' }}
-                </button>
-                <button @click="openAddDialog" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Nova Tag
-                </button>
-            </div>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Nova Tag
+            </button>
         </div>
 
-        <!-- Filtros -->
-        <div class="bg-neutral-800 rounded-lg px-6 py-4 mb-4 flex flex-col md:flex-row gap-4 md:items-end">
-            <div class="flex-1">
-                <label class="block text-xs font-medium text-neutral-400 mb-1">
-                    Filtrar por modelo de script
-                </label>
-                <select
-                    v-model="modelFilter"
-                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                    <option value="">Todos os modelos</option>
-                    <option 
-                        v-for="setting in scriptSettings" 
-                        :key="setting.id" 
-                        :value="setting.id"
+        <!-- Filtros e busca -->
+        <div class="bg-neutral-800 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex-1 flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-1">
+                    <input
+                        v-model="campaignSearchTable"
+                        type="text"
+                        placeholder="Buscar por campanha"
+                        class="w-full pl-9 pr-3 py-2 bg-neutral-900 border border-neutral-700 rounded-md text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4 text-neutral-400 absolute left-2.5 top-2.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
                     >
-                        {{ getScriptSettingDisplayName(setting) }}
-                    </option>
-                </select>
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"
+                        />
+                    </svg>
+                </div>
+
+                <div class="w-full sm:w-64">
+                    <select
+                        v-model="modelFilter"
+                        class="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-md text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="">Todos os modelos</option>
+                        <option
+                            v-for="setting in scriptSettings"
+                            :key="setting.id"
+                            :value="setting.id"
+                        >
+                            {{ getScriptSettingDisplayName(setting) }}
+                        </option>
+                    </select>
+                </div>
             </div>
-            <div class="flex-1">
-                <label class="block text-xs font-medium text-neutral-400 mb-1">
-                    Buscar por campanha
-                </label>
-                <input
-                    v-model="campaignSearchTable"
-                    type="text"
-                    placeholder="Digite o nome da campanha..."
-                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+
+            <div class="flex items-center gap-3">
+                <button
+                    @click="refreshData"
+                    class="px-3 py-2 bg-neutral-700 hover:bg-neutral-600 text-white text-xs font-medium rounded-md flex items-center gap-1"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9H4m0 0V4m0 5a8.003 8.003 0 0015.356 2H20"
+                        />
+                    </svg>
+                    Atualizar
+                </button>
+
+                <button
+                    @click="validateAllScripts"
+                    :disabled="validatingScripts"
+                    class="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-medium rounded-md flex items-center gap-1"
+                >
+                    <svg
+                        v-if="!validatingScripts"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                    </svg>
+                    <svg
+                        v-else
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <circle
+                            class="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            stroke-width="4"
+                        ></circle>
+                        <path
+                            class="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 000 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z"
+                        ></path>
+                    </svg>
+                    {{ validatingScripts ? 'Validando scripts...' : 'Validar Scripts' }}
+                </button>
             </div>
         </div>
 
@@ -64,122 +136,163 @@
             <table class="min-w-full divide-y divide-neutral-700">
                 <thead class="bg-neutral-700">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Modelo de Script</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Campanhas</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">URL do Seller</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Código</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Ações</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">
+                            Modelo de Script
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">
+                            Campanha
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">
+                            URL do Seller
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">
+                            Código Gerado
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">
+                            Status Script
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">
+                            Status Tag
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">
+                            Ações
+                        </th>
                     </tr>
                 </thead>
                 <tbody class="bg-neutral-800 divide-y divide-neutral-700">
-                    <tr v-if="filteredItems.length === 0">
-                        <td colspan="6" class="px-6 py-4 text-center text-sm text-neutral-400">
+                    <tr v-if="paginatedItems.length === 0">
+                        <td colspan="7" class="px-6 py-4 text-center text-sm text-neutral-400">
                             Nenhuma tag cadastrada
                         </td>
                     </tr>
-                    <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-neutral-700">
-                        <td class="px-6 py-4 text-sm text-neutral-300">
-                            {{ item.scriptSettingId ? getScriptSettingName(item.scriptSettingId) : '-' }}
+                    <tr
+                        v-for="item in paginatedItems"
+                        :key="item.id"
+                        class="hover:bg-neutral-700"
+                    >
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-300">
+                            {{ getScriptSettingName(item.scriptSettingId) }}
                         </td>
-                        <td class="px-6 py-4 text-sm text-neutral-300">
-                            <span v-if="getItemCampaignName(item)" class="text-xs">
-                                {{ getItemCampaignName(item) }}
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-300">
+                            {{ getItemCampaignName(item) || '-' }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-300">
+                            <span class="block max-w-xs truncate" :title="item.sellerUrl || ''">
+                                {{ item.sellerUrl || '-' }}
                             </span>
-                            <span v-else class="text-neutral-500">-</span>
-                        </td>
-                        <td class="px-6 py-4 text-sm text-neutral-300">
-                            <a 
-                                v-if="item.sellerUrl" 
-                                :href="item.sellerUrl" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                class="text-blue-400 hover:text-blue-300 underline truncate block max-w-xs"
-                                :title="item.sellerUrl"
-                            >
-                                {{ item.sellerUrl }}
-                            </a>
-                            <span v-else class="text-neutral-500">-</span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-300 font-mono">
                             {{ item.generatedCode || '-' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span 
-                                :class="getStatusClass(item.scriptStatus)" 
-                                class="px-2 py-1 text-xs rounded-full text-white font-medium"
+                            <span
+                                :class="getStatusClass(item.scriptStatus)"
+                                class="px-2 py-1 text-xs rounded-full text-white"
                             >
                                 {{ getStatusLabel(item.scriptStatus) }}
                             </span>
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span
+                                :class="item.active ? 'bg-green-500' : 'bg-red-500'"
+                                class="px-2 py-1 text-xs rounded-full text-white"
+                            >
+                                {{ item.active ? 'Ativa' : 'Inativa' }}
+                            </span>
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex items-center gap-2">
-                                <button 
-                                    v-if="item.generatedScript"
-                                    @click="viewScript(item)" 
-                                    class="text-green-400 hover:text-green-300"
-                                    title="Ver script"
+                                <button
+                                    @click="editItem(item)"
+                                    class="text-blue-400 hover:text-blue-300 transition-colors"
+                                    title="Editar"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </button>
+                                <button
+                                    @click="viewScript(item.generatedScript)"
+                                    class="text-yellow-400 hover:text-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    :disabled="!item.generatedScript"
+                                    title="Ver Script"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                     </svg>
                                 </button>
-                                <button @click="editItem(item)" class="text-blue-400 hover:text-blue-300 mr-3">Editar</button>
-                                <button @click="deleteItem(item.id)" class="text-red-400 hover:text-red-300">Excluir</button>
+                                <button
+                                    @click="deleteItem(item.id)"
+                                    class="text-red-400 hover:text-red-300 transition-colors"
+                                    title="Excluir"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
                             </div>
                         </td>
                     </tr>
                 </tbody>
             </table>
+        </div>
 
-            <!-- Paginação -->
-            <div 
-                v-if="filteredItems.length > 0" 
-                class="px-6 py-3 border-t border-neutral-700 flex items-center justify-between text-xs text-neutral-400"
-            >
-                <div>
-                    Mostrando {{ pageStart }} - {{ pageEnd }} de {{ filteredItems.length }} tag(s)
-                </div>
-                <div class="flex items-center gap-2">
-                    <button
-                        class="px-2 py-1 rounded bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                        :disabled="currentPage === 1"
-                        @click="currentPage = currentPage - 1"
-                    >
-                        Anterior
-                    </button>
-                    <span>
-                        Página {{ currentPage }} de {{ totalPages }}
-                    </span>
-                    <button
-                        class="px-2 py-1 rounded bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                        :disabled="currentPage === totalPages"
-                        @click="currentPage = currentPage + 1"
-                    >
-                        Próxima
-                    </button>
-                </div>
+        <!-- Paginação -->
+        <div
+            v-if="filteredItems.length > 0"
+            class="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-neutral-300"
+        >
+            <div>
+                Mostrando {{ pageStart }}-{{ pageEnd }} de {{ filteredItems.length }} registros
+            </div>
+            <div class="flex items-center gap-2">
+                <button
+                    @click="currentPage = Math.max(1, currentPage - 1)"
+                    :disabled="currentPage === 1"
+                    class="px-2 py-1 bg-neutral-800 border border-neutral-700 rounded disabled:opacity-50"
+                >
+                    Anterior
+                </button>
+                <span>Página {{ currentPage }} de {{ totalPages }}</span>
+                <button
+                    @click="currentPage = Math.min(totalPages, currentPage + 1)"
+                    :disabled="currentPage === totalPages"
+                    class="px-2 py-1 bg-neutral-800 border border-neutral-700 rounded disabled:opacity-50"
+                >
+                    Próxima
+                </button>
             </div>
         </div>
 
         <!-- Modal de Cadastro/Edição -->
-        <div v-if="showDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
+        <div
+            v-if="showDialog"
+            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4"
+            style="backdrop-filter: blur(4px);"
+        >
             <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-2xl mx-auto max-h-[90vh] overflow-y-auto">
                 <div class="p-6 border-b border-neutral-700 flex justify-between items-center">
-                    <h3 class="text-lg font-medium text-white">{{ isEditing ? 'Editar Tag' : 'Nova Tag' }}</h3>
+                    <h3 class="text-lg font-medium text-white">
+                        {{ isEditing ? 'Editar Tag' : 'Nova Tag' }}
+                    </h3>
                     <button @click="closeDialog" class="text-neutral-400 hover:text-white">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-5 w-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
                 <form @submit.prevent="saveTag" class="p-6 space-y-4">
-                    <!-- Modelo de Script -->
                     <div>
                         <label class="block text-sm font-medium text-neutral-300 mb-2">
-                            Modelo de Script
+                            Modelo de Script <span class="text-red-500">*</span>
                         </label>
                         <select
                             v-model="form.scriptSettingId"
@@ -187,120 +300,156 @@
                             :class="{ 'border-red-500': formErrors.scriptSettingId }"
                             @change="onScriptSettingChange"
                         >
-                            <option value="">Selecione um modelo de script (opcional)</option>
-                            <option 
-                                v-for="setting in scriptSettings" 
-                                :key="setting.id" 
+                            <option value="">Selecione um modelo</option>
+                            <option
+                                v-for="setting in scriptSettings"
+                                :key="setting.id"
                                 :value="setting.id"
                             >
                                 {{ getScriptSettingDisplayName(setting) }}
                             </option>
                         </select>
-                        <p v-if="formErrors.scriptSettingId" class="mt-1 text-sm text-red-400">{{ formErrors.scriptSettingId }}</p>
-                        <p class="mt-1 text-xs text-neutral-400">Primeiro, selecione o modelo de script</p>
+                        <p v-if="formErrors.scriptSettingId" class="mt-1 text-sm text-red-400">
+                            {{ formErrors.scriptSettingId }}
+                        </p>
                     </div>
 
-                    <!-- Campanhas (apenas quando modelo de script for selecionado) -->
-                    <div v-if="form.scriptSettingId">
+                    <!-- Campo para nome do arquivo JS (apenas para modelos personalizados) -->
+                    <div v-if="isCustomScriptSettingSelected" class="space-y-2">
                         <label class="block text-sm font-medium text-neutral-300 mb-2">
-                            Campanhas <span class="text-red-500">*</span>
-                        </label>
-                        <!-- Campo de busca -->
-                        <div class="mb-3">
-                            <input
-                                v-model="campaignSearch"
-                                type="text"
-                                placeholder="Buscar campanha por nome..."
-                                class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-                        <div v-if="loadingCampaigns" class="flex items-center py-2">
-                            <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-500"></div>
-                            <span class="ml-2 text-neutral-400 text-sm">Carregando campanhas...</span>
-                        </div>
-                        <div v-else class="max-h-48 overflow-y-auto border border-neutral-600 rounded-md p-3 bg-neutral-700">
-                            <div v-if="filteredCampaigns.length === 0" class="text-sm text-neutral-400 italic">
-                                {{ campaignSearch ? 'Nenhuma campanha encontrada com este nome' : 'Nenhuma campanha disponível para este modelo' }}
-                            </div>
-                            <div v-else class="space-y-2">
-                                <label 
-                                    v-for="campaign in filteredCampaigns" 
-                                    :key="campaign.id"
-                                    class="flex items-center text-sm text-neutral-300 hover:text-white cursor-pointer"
-                                >
-                                    <input
-                                        type="radio"
-                                        :value="campaign.id"
-                                        v-model="form.campaignId"
-                                        class="w-4 h-4 text-blue-600 bg-neutral-700 border-neutral-600 rounded focus:ring-blue-500 mr-2"
-                                        name="tag-campaign"
-                                    />
-                                    <span>{{ campaign.name }}</span>
-                                </label>
-                            </div>
-                        </div>
-                        <p v-if="formErrors.campaignIds" class="mt-1 text-sm text-red-400">{{ formErrors.campaignIds }}</p>
-                        <p class="mt-1 text-xs text-neutral-400">Selecione as campanhas que usarão este script</p>
-                    </div>
-
-                    <!-- Nome do arquivo JS (apenas para modelos personalizados) -->
-                    <div v-if="form.scriptSettingId && isCustomScriptSettingSelected">
-                        <label class="block text-sm font-medium text-neutral-300 mb-2">
-                            Nome do arquivo JS <span class="text-red-500">*</span>
+                            Nome do arquivo JS gerado
                         </label>
                         <input
                             v-model="form.customJsFileName"
                             type="text"
-                            placeholder="ex: dio31ds4h6as25520.js ou apenas dio31ds4h6as25520"
+                            placeholder="Ex: gab22s4h20001000.js ou apenas gab22s4h20001000"
                             class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                             :class="{ 'border-red-500': formErrors.customJsFileName }"
                         />
-                        <p v-if="formErrors.customJsFileName" class="mt-1 text-sm text-red-400">{{ formErrors.customJsFileName }}</p>
                         <p class="mt-1 text-xs text-neutral-400">
-                            Informe exatamente o nome do arquivo JavaScript que você subiu no servidor para este modelo.
+                            Informe o nome exato do arquivo JS já criado no servidor do parceiro. Você pode colar a URL
+                            completa que o sistema extrai apenas o nome do arquivo.
+                        </p>
+                        <p v-if="formErrors.customJsFileName" class="mt-1 text-sm text-red-400">
+                            {{ formErrors.customJsFileName }}
                         </p>
                     </div>
 
-                    <!-- URL do Seller -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            Campanha <span class="text-red-500">*</span>
+                        </label>
+
+                        <div class="relative">
+                            <input
+                                v-model="campaignSearch"
+                                type="text"
+                                placeholder="Buscar campanha pelo nome"
+                                class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                @focus="loadAvailableCampaigns"
+                                @input="loadAvailableCampaigns"
+                            />
+                            <div
+                                v-if="loadingCampaigns"
+                                class="absolute inset-y-0 right-0 flex items-center pr-3"
+                            >
+                                <svg
+                                    class="animate-spin h-4 w-4 text-white"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <circle
+                                        class="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        stroke-width="4"
+                                    ></circle>
+                                    <path
+                                        class="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 000 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z"
+                                    ></path>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="mt-2 max-h-48 overflow-y-auto bg-neutral-900 border border-neutral-700 rounded-md">
+                            <div
+                                v-for="campaign in filteredCampaigns"
+                                :key="campaign.id"
+                                class="px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-neutral-800"
+                                @click="form.campaignId = campaign.id"
+                            >
+                                <div class="flex-1">
+                                    <p class="text-sm text-white font-medium">
+                                        {{ campaign.name }}
+                                    </p>
+                                    <p class="text-xs text-neutral-400">
+                                        {{ campaign.sellerDomain || 'Domínio não informado' }}
+                                    </p>
+                                </div>
+                                <div class="ml-3">
+                                    <span
+                                        v-if="form.campaignId === campaign.id"
+                                        class="inline-flex items-center justify-center w-4 h-4 rounded-full border border-blue-500"
+                                    >
+                                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                                    </span>
+                                    <span
+                                        v-else
+                                        class="inline-flex items-center justify-center w-4 h-4 rounded-full border border-neutral-600"
+                                    ></span>
+                                </div>
+                            </div>
+
+                            <div v-if="!loadingCampaigns && filteredCampaigns.length === 0" class="px-3 py-2 text-xs text-neutral-400">
+                                Nenhuma campanha encontrada para o modelo selecionado.
+                            </div>
+                        </div>
+
+                        <p v-if="formErrors.campaignIds" class="mt-1 text-sm text-red-400">
+                            {{ formErrors.campaignIds }}
+                        </p>
+                    </div>
+
                     <div>
                         <label class="block text-sm font-medium text-neutral-300 mb-2">
                             URL do Seller <span class="text-red-500">*</span>
                         </label>
                         <input
                             v-model="form.sellerUrl"
-                            type="url"
-                            placeholder="https://exemplo.com.br"
+                            type="text"
+                            placeholder="https://exemplo.com.br/pagina-com-o-script"
                             class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             :class="{ 'border-red-500': formErrors.sellerUrl }"
                         />
-                        <p v-if="formErrors.sellerUrl" class="mt-1 text-sm text-red-400">{{ formErrors.sellerUrl }}</p>
-                        <p class="mt-1 text-xs text-neutral-400">Informe a URL onde a tag será instalada</p>
-                    </div>
-
-                    <!-- Script Gerado (apenas quando houver script) -->
-                    <div v-if="form.generatedScript" class="p-3 bg-neutral-900 rounded-md border border-neutral-700">
-                        <label class="block text-sm font-medium text-neutral-300 mb-2">
-                            Script Gerado
-                        </label>
-                        <div class="relative">
-                            <pre class="text-xs text-neutral-300 font-mono whitespace-pre-wrap break-all overflow-x-auto p-3 bg-neutral-800 rounded border border-neutral-600">{{ form.generatedScript }}</pre>
-                            <button
-                                type="button"
-                                @click="copyScript"
-                                class="absolute top-2 right-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
-                                title="Copiar script"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                </svg>
-                            </button>
-                        </div>
-                        <p class="mt-2 text-xs text-neutral-400">
-                            Código gerado: <span class="font-mono text-neutral-300">{{ form.generatedCode }}</span>
+                        <p class="mt-1 text-xs text-neutral-400">
+                            Informe a URL exata da página onde o script será instalado.
+                        </p>
+                        <p v-if="formErrors.sellerUrl" class="mt-1 text-sm text-red-400">
+                            {{ formErrors.sellerUrl }}
                         </p>
                     </div>
 
-                    <!-- Status Ativo -->
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                            Script Gerado
+                        </label>
+                        <textarea
+                            v-model="form.generatedScript"
+                            rows="6"
+                            class="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-md text-xs text-neutral-200 font-mono placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="O script será gerado automaticamente ao selecionar o modelo de script"
+                            readonly
+                        ></textarea>
+                        <p class="mt-1 text-xs text-neutral-400">
+                            Este é o script que deve ser instalado na página do seller.
+                        </p>
+                    </div>
+
                     <div class="flex items-center">
                         <input
                             v-model="form.active"
@@ -313,7 +462,6 @@
                         </label>
                     </div>
 
-                    <!-- Botões -->
                     <div class="flex justify-end gap-3 pt-4">
                         <button
                             type="button"
@@ -339,8 +487,8 @@
         <div v-if="showScriptModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
             <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-3xl mx-auto max-h-[90vh] overflow-y-auto">
                 <div class="p-6 border-b border-neutral-700 flex justify-between items-center">
-                    <h3 class="text-lg font-medium text-white">Script Gerado</h3>
-                    <button @click="showScriptModal = false" class="text-neutral-400 hover:text-white">
+                    <h3 class="text-lg font-medium text:white">Script Gerado</h3>
+                    <button @click="showScriptModal = false" class="text-neutral-400 hover:text:white">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -453,7 +601,7 @@ const filteredCampaigns = computed(() => {
     );
 });
 
-// Lista de tags filtrada por modelo e nome de campanha
+// Lista de tags filtrada por modelo e nome de campanha, ordenada pelo último script criado
 const filteredItems = computed(() => {
     // Cria mapa de campanhas por id para busca rápida
     const campaignMap = new Map<string, string>();
@@ -465,7 +613,7 @@ const filteredItems = computed(() => {
 
     const searchTerm = campaignSearchTable.value.toLowerCase().trim();
 
-    return items.value.filter((item: any) => {
+    const filtered = items.value.filter((item: any) => {
         // Filtrar por modelo
         if (modelFilter.value && item.scriptSettingId !== modelFilter.value) {
             return false;
@@ -480,6 +628,19 @@ const filteredItems = computed(() => {
         }
 
         return true;
+    });
+
+    // Ordenar pelo último script criado (id descendente - mais recente primeiro)
+    return filtered.sort((a: any, b: any) => {
+        // Comparar por id (UUIDs mais recentes são maiores)
+        // Se não houver id, usar generatedCode como fallback
+        if (a.id && b.id) {
+            return b.id.localeCompare(a.id);
+        }
+        if (a.generatedCode && b.generatedCode) {
+            return b.generatedCode.localeCompare(a.generatedCode);
+        }
+        return 0;
     });
 });
 
@@ -522,10 +683,10 @@ const loadData = async () => {
             client.commercialPartners.getAll(),
             client.campaigns.getAll()
         ]);
-        items.value = tagsResult?.result?.data || [];
-        scriptSettings.value = scriptSettingsResult?.result?.data || [];
-        commercialPartners.value = partnersResult?.result?.data || [];
-        allCampaigns.value = campaignsResult?.result?.data || [];
+        items.value = tagsResult?.data || [];
+        scriptSettings.value = scriptSettingsResult?.data || [];
+        commercialPartners.value = partnersResult?.data || [];
+        allCampaigns.value = campaignsResult?.data || [];
 
         console.log('[DEBUG loadData] Tags carregadas:', items.value.length);
         console.log('[DEBUG loadData] Script Settings carregados:', scriptSettings.value.length);
@@ -588,7 +749,19 @@ const getItemCampaignName = (item: any, campaignMapParam?: Map<string, string>):
             return m;
         })();
 
-        return mapToUse.get(firstId) || '';
+        // 1) Tentar resolver como campanha normal
+        const fromCampaign = mapToUse.get(firstId);
+        if (fromCampaign) {
+            return fromCampaign;
+        }
+
+        // 2) Fallback: tentar resolver como parceiro comercial (para casos Direto)
+        const partner = commercialPartners.value.find((p: any) => p.id === firstId);
+        if (partner && partner.name) {
+            return partner.name;
+        }
+
+        return '';
     } catch {
         return '';
     }
@@ -658,48 +831,53 @@ const loadAvailableCampaigns = async () => {
         console.log('[DEBUG] Script Setting selecionado:', setting);
         console.log('[DEBUG] commercialPartnerId:', setting.commercialPartnerId);
 
-        // Se for modelo Direto (sem commercialPartnerId), buscar todas as campanhas de parceiros Direto
+        // Se for modelo Direto (sem commercialPartnerId), usar parceiros do tipo "Direto" como opções
         if (!setting.commercialPartnerId) {
-            console.log('[DEBUG] Modelo DIRETO detectado - buscando todas as campanhas de parceiros Direto');
+            console.log('[DEBUG] Modelo DIRETO detectado - usando parceiros com partnerType = \"Direto\" como opções');
 
-            const allCampaigns = await client.campaigns.getAll();
-            const allPartners = await client.commercialPartners.getAll();
+            // Reutilizar parceiros já carregados se possível; caso contrário, buscar da API
+            let allPartnersData = commercialPartners.value && commercialPartners.value.length
+                ? commercialPartners.value
+                : (await client.commercialPartners.getAll())?.data || [];
 
-            console.log('[DEBUG] Total de campanhas retornadas:', allCampaigns?.result?.data?.length || 0);
-            console.log('[DEBUG] Total de parceiros retornados:', allPartners?.result?.data?.length || 0);
+            console.log('[DEBUG] Total de parceiros retornados (cache + API):', allPartnersData.length);
 
-            // Filtrar campanhas de parceiros Direto
-            const directPartners = (allPartners?.result?.data || []).filter((p: any) => p.partnerType === 'Direto');
-            console.log('[DEBUG] Parceiros do tipo "Direto":', directPartners.length);
-            console.log('[DEBUG] Parceiros Direto:', directPartners.map((p: any) => ({ id: p.id, name: p.name, partnerType: p.partnerType })));
+            // Filtrar parceiros do tipo Direto (case-insensitive, ignorando espaços)
+            const directPartners = allPartnersData.filter((p: any) => {
+                if (!p.partnerType) return false;
+                const partnerType = String(p.partnerType).trim().toLowerCase();
+                return partnerType === 'direto';
+            });
+            
+            console.log('[DEBUG] Parceiros do tipo \"Direto\":', directPartners.length);
+            console.log('[DEBUG] Parceiros Direto usados como \"campanhas\":', directPartners.map((p: any) => ({ 
+                id: p.id, 
+                name: p.name, 
+                partnerType: p.partnerType,
+                idType: typeof p.id,
+                link: p.link || null
+            })));
 
-            const directPartnerIds = directPartners.map((p: any) => p.id);
-            console.log('[DEBUG] IDs dos parceiros Direto:', directPartnerIds);
+            // Montar availableCampaigns a partir dos parceiros Direto
+            // Assim, para o modelo Direto, o usuário escolhe diretamente um parceiro do tipo Direto
+            availableCampaigns.value = directPartners.map((p: any) => ({
+                id: p.id,
+                name: p.name,
+                sellerDomain: p.link || '',
+                partnerType: p.partnerType,
+                isDirectPartner: true
+            }));
 
-            // Debug: mostrar todas as campanhas e seus commercialPartnerIds
-            console.log('[DEBUG] Campanhas disponíveis (primeiras 5):',
-                (allCampaigns?.result?.data || []).slice(0, 5).map((c: any) => ({
-                    id: c.id,
-                    name: c.name,
-                    commercialPartnerId: c.commercialPartnerId
-                }))
-            );
-
-            availableCampaigns.value = (allCampaigns?.result?.data || []).filter((c: any) =>
-                directPartnerIds.includes(c.commercialPartnerId)
-            );
-
-            console.log('[DEBUG] Campanhas filtradas para parceiros Direto:', availableCampaigns.value.length);
-            console.log('[DEBUG] Campanhas disponíveis:', availableCampaigns.value.map((c: any) => ({ id: c.id, name: c.name, commercialPartnerId: c.commercialPartnerId })));
+            console.log('[DEBUG] ✅ Opções disponíveis para modelo Direto (parceiros Direto):', availableCampaigns.value.length);
         } else {
             console.log('[DEBUG] Modelo de REDE detectado - buscando campanhas do parceiro específico');
             console.log('[DEBUG] Partner ID:', setting.commercialPartnerId);
 
             // Se for modelo de Rede, buscar campanhas do parceiro específico
             const campaigns = await client.campaigns.getAllByPartner(setting.commercialPartnerId);
-            console.log('[DEBUG] Campanhas retornadas para o parceiro:', campaigns?.result?.data?.length || 0);
+            console.log('[DEBUG] Campanhas retornadas para o parceiro:', campaigns?.data?.length || 0);
 
-            availableCampaigns.value = campaigns?.result?.data || [];
+            availableCampaigns.value = campaigns?.data || [];
         }
     } catch (error) {
         console.error('Erro ao carregar campanhas:', error);
@@ -727,113 +905,6 @@ const generateScript = async () => {
         form.value.generatedScript = '';
         form.value.generatedCode = '';
     }
-};
-
-// Copiar script para clipboard
-const copyScript = async () => {
-    if (!form.value.generatedScript) return;
-    
-    try {
-        await navigator.clipboard.writeText(form.value.generatedScript);
-        showNotification('success', 'Script copiado para a área de transferência!');
-    } catch (error) {
-        console.error('Erro ao copiar script:', error);
-        showNotification('error', 'Erro ao copiar script. Tente selecionar e copiar manualmente.');
-    }
-};
-
-// Copiar script do modal
-const copyScriptToClipboard = async (script: string) => {
-    if (!script) return;
-    
-    try {
-        await navigator.clipboard.writeText(script);
-        showNotification('success', 'Script copiado para a área de transferência!');
-    } catch (error) {
-        console.error('Erro ao copiar script:', error);
-        showNotification('error', 'Erro ao copiar script. Tente selecionar e copiar manualmente.');
-    }
-};
-
-// Ver script completo
-const viewScript = (item: any) => {
-    scriptToView.value = item.generatedScript || '';
-    showScriptModal.value = true;
-};
-
-// Abrir dialog para adicionar
-const openAddDialog = () => {
-    isEditing.value = false;
-    editingItem.value = null;
-    form.value = {
-        description: '',
-        scriptSettingId: '',
-        campaignId: '',
-        generatedScript: '',
-        generatedCode: '',
-        sellerUrl: '',
-        active: true,
-        customJsFileName: ''
-    };
-    formErrors.value = {};
-    availableCampaigns.value = [];
-    campaignSearch.value = '';
-    showDialog.value = true;
-};
-
-// Editar item
-const editItem = (item: any) => {
-    isEditing.value = true;
-    editingItem.value = item;
-    form.value = {
-        description: item.description || '',
-        scriptSettingId: item.scriptSettingId || '',
-        campaignId: (() => {
-            if (item.campaignIds) {
-                try {
-                    const ids = JSON.parse(item.campaignIds);
-                    return Array.isArray(ids) && ids.length > 0 ? ids[0] : '';
-                } catch {
-                    return '';
-                }
-            }
-            return '';
-        })(),
-        generatedScript: item.generatedScript || '',
-        generatedCode: item.generatedCode || '',
-        sellerUrl: item.sellerUrl || '',
-        active: item.active !== undefined ? item.active : true,
-        customJsFileName: item.customJsFileName || ''
-    };
-    formErrors.value = {};
-    campaignSearch.value = '';
-    
-    // Carregar campanhas se houver modelo selecionado
-    if (form.value.scriptSettingId) {
-        loadAvailableCampaigns();
-    }
-    
-    showDialog.value = true;
-};
-
-// Fechar dialog
-const closeDialog = () => {
-    showDialog.value = false;
-    isEditing.value = false;
-    editingItem.value = null;
-    form.value = {
-        description: '',
-        scriptSettingId: '',
-        campaignId: '',
-        generatedScript: '',
-        generatedCode: '',
-        sellerUrl: '',
-        active: true,
-        customJsFileName: ''
-    };
-    formErrors.value = {};
-    availableCampaigns.value = [];
-    campaignSearch.value = '';
 };
 
 // Salvar tag
@@ -966,37 +1037,61 @@ const saveTag = async () => {
     }
 };
 
-// Validar scripts de todas as tags
-const validateAllScripts = async () => {
-    if (validatingScripts.value) {
-        return;
+// Fechar dialog
+const closeDialog = () => {
+    showDialog.value = false;
+    isEditing.value = false;
+    editingItem.value = null;
+    formErrors.value = {};
+    availableCampaigns.value = [];
+    campaignSearch.value = '';
+};
+
+// Abrir dialog para adicionar
+const openDialog = () => {
+    isEditing.value = false;
+    editingItem.value = null;
+    form.value = {
+        description: '',
+        scriptSettingId: '',
+        campaignId: '',
+        generatedScript: '',
+        generatedCode: '',
+        sellerUrl: '',
+        active: true,
+        customJsFileName: ''
+    };
+    formErrors.value = {};
+    availableCampaigns.value = [];
+    campaignSearch.value = '';
+    showDialog.value = true;
+};
+
+// Editar item
+const editItem = (item: any) => {
+    isEditing.value = true;
+    editingItem.value = item;
+
+    form.value = {
+        description: item.description || '',
+        scriptSettingId: item.scriptSettingId || '',
+        campaignId: '',
+        generatedScript: item.generatedScript || '',
+        generatedCode: item.generatedCode || '',
+        sellerUrl: item.sellerUrl || '',
+        active: item.active !== undefined ? item.active : true,
+        customJsFileName: ''
+    };
+
+    formErrors.value = {};
+    availableCampaigns.value = [];
+    campaignSearch.value = '';
+
+    if (item.scriptSettingId) {
+        onScriptSettingChange();
     }
 
-    validatingScripts.value = true;
-
-    try {
-        const result = await client.tags.validateScripts();
-        console.log('[TagsView] Resultado da validação de scripts:', result);
-
-        // Recarregar dados para garantir que qualquer mudança futura seja refletida
-        await loadData();
-
-        const total = result?.total ?? 0;
-        const encontrados = result?.encontrados ?? 0;
-        const naoEncontrados = result?.naoEncontrados ?? 0;
-        const erros = result?.erros ?? 0;
-
-        const message =
-            `Validação concluída. ` +
-            `Total: ${total} | Ativos: ${encontrados} | Caiu/Não encontrados: ${naoEncontrados} | Erros: ${erros}`;
-
-        showNotification('success', message);
-    } catch (error: any) {
-        console.error('[TagsView] Erro ao validar scripts:', error);
-        showNotification('error', 'Erro ao validar scripts. Verifique o console para mais detalhes.');
-    } finally {
-        validatingScripts.value = false;
-    }
+    showDialog.value = true;
 };
 
 // Excluir item
@@ -1009,13 +1104,72 @@ const deleteItem = async (id: string) => {
         await client.tags.delete(id);
         await loadData();
     } catch (error) {
-        console.error('Erro ao excluir:', error);
+        console.error('Erro ao excluir tag:', error);
         showNotification('error', 'Erro ao excluir tag. Verifique o console para mais detalhes.');
     }
+};
+
+// Visualizar script completo em modal
+const viewScript = (script: string | null | undefined) => {
+    if (!script) return;
+    scriptToView.value = script;
+    showScriptModal.value = true;
+};
+
+// Copiar script para área de transferência
+const copyScriptToClipboard = async (script: string) => {
+    try {
+        await navigator.clipboard.writeText(script);
+        showNotification('success', 'Script copiado para a área de transferência!');
+    } catch (error) {
+        console.error('Erro ao copiar script:', error);
+        showNotification('error', 'Não foi possível copiar o script.');
+    }
+};
+
+// Validar todos os scripts
+const validateAllScripts = async () => {
+    if (validatingScripts.value) return;
+
+    if (!confirm('Deseja validar todos os scripts agora? Isso pode levar alguns minutos.')) {
+        return;
+    }
+
+    validatingScripts.value = true;
+
+    try {
+        const result = await client.tags.validateScripts();
+        console.log('Resultado da validação de scripts:', result);
+
+        showNotification('success', 'Validação de scripts iniciada. Aguarde alguns minutos e atualize a página.');
+    } catch (error) {
+        console.error('Erro ao validar scripts:', error);
+        showNotification('error', 'Erro ao iniciar validação de scripts. Verifique o console para mais detalhes.');
+    } finally {
+        validatingScripts.value = false;
+    }
+};
+
+const filters = ref({
+    sortBy: 'id',
+    sortOrder: 'desc' as 'asc' | 'desc'
+});
+
+const toggleSort = (column: string) => {
+    if (filters.value.sortBy === column) {
+        filters.value.sortOrder = filters.value.sortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        filters.value.sortBy = column;
+        filters.value.sortOrder = 'asc';
+    }
+};
+
+// Atualizar dados
+const refreshData = async () => {
+    await loadData();
 };
 
 onMounted(() => {
     loadData();
 });
 </script>
-

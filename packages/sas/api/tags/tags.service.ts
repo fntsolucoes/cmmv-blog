@@ -13,6 +13,8 @@ import {
     ScriptSettingsService
 } from "../script-settings/script-settings.service";
 
+const CUSTOM_START_CODE_SENTINEL = '__CUSTOM__';
+
 @Service()
 export class SasTagsCustomService {
     private readonly logger = new Logger("SasTagsCustomService");
@@ -243,6 +245,60 @@ export class SasTagsCustomService {
                 
                 // Usar insertedData para o resto do código
                 inserted = insertedData || inserted;
+
+                // INCREMENTAR CONTADOR SEQUENCIAL APENAS QUANDO A TAG FOR REALMENTE CRIADA E SALVA COM SUCESSO
+                // IMPORTANTE: O contador NUNCA é incrementado durante o preview/generateScript
+                // Ele só é incrementado aqui, DEPOIS que a tag foi inserida no banco com sucesso
+                if (insertedId && dataToInsert.scriptSettingId && dataToInsert.generatedCode) {
+                    try {
+                        const ScriptSettingsEntity = Repository.getEntity("SasScriptSettingsEntity");
+                        const setting = await Repository.findOne(ScriptSettingsEntity, { id: dataToInsert.scriptSettingId });
+                        
+                        // Só incrementar se não for modelo personalizado
+                        if (setting && setting.startCode !== "__CUSTOM__" && setting.startCode !== CUSTOM_START_CODE_SENTINEL) {
+                            // Verificar se o código gerado corresponde ao preview esperado (sem incrementar)
+                            const expectedCode = await this.scriptSettingsService.previewNextCode(dataToInsert.scriptSettingId);
+                            
+                            this.logger.log(`[createTagAndAttachToCampaign] Comparando códigos - Esperado (preview): ${expectedCode}, Recebido: ${dataToInsert.generatedCode}`);
+                            
+                            if (expectedCode === dataToInsert.generatedCode) {
+                                // O código corresponde ao preview - incrementar o contador APENAS AGORA que a tag foi salva
+                                this.logger.log(`[createTagAndAttachToCampaign] ✅ Código válido. Incrementando contador sequencial...`);
+                                await this.scriptSettingsService.generateNextCode(dataToInsert.scriptSettingId);
+                                this.logger.log(`[createTagAndAttachToCampaign] ✅ Contador sequencial incrementado para scriptSettingId ${dataToInsert.scriptSettingId} (código: ${dataToInsert.generatedCode})`);
+                            } else {
+                                // O código não corresponde ao preview atual - pode ter sido gerado há muito tempo
+                                // Neste caso, gerar um novo código baseado no contador atual e atualizar a tag
+                                this.logger.log(`[createTagAndAttachToCampaign] ⚠️ Código não corresponde ao preview atual. Gerando novo código...`);
+                                const newCode = await this.scriptSettingsService.generateNextCode(dataToInsert.scriptSettingId);
+                                
+                                // Atualizar o script com o novo código (substituir apenas na URL do script)
+                                let updatedScript = dataToInsert.generatedScript;
+                                if (updatedScript && setting.defaultRoute) {
+                                    const oldScriptUrl = `${setting.defaultRoute}${dataToInsert.generatedCode}.js`;
+                                    const newScriptUrl = `${setting.defaultRoute}${newCode}.js`;
+                                    updatedScript = updatedScript.replace(oldScriptUrl, newScriptUrl);
+                                }
+                                
+                                // Atualizar a tag com o novo código e script
+                                await Repository.update(TagsEntity, { id: insertedId }, {
+                                    generatedCode: newCode,
+                                    generatedScript: updatedScript
+                                });
+                                
+                                this.logger.log(`[createTagAndAttachToCampaign] ⚠️ Código preview desatualizado. Novo código gerado e contador incrementado: ${newCode} (antigo: ${dataToInsert.generatedCode})`);
+                            }
+                        } else {
+                            this.logger.log(`[createTagAndAttachToCampaign] ⏭️  Modelo personalizado detectado - contador não incrementado`);
+                        }
+                    } catch (incrementError: any) {
+                        // Não bloquear a criação da tag se houver erro ao incrementar contador
+                        this.logger.error(`[createTagAndAttachToCampaign] ⚠️ Erro ao incrementar contador sequencial:`, incrementError);
+                        this.logger.error(`[createTagAndAttachToCampaign] Tag foi criada, mas contador pode não ter sido atualizado`);
+                    }
+                } else {
+                    this.logger.log(`[createTagAndAttachToCampaign] ⏭️  Tag criada sem scriptSettingId ou generatedCode - contador não incrementado`);
+                }
             } catch (insertError: any) {
                 this.logger.error(`[createTagAndAttachToCampaign] ❌ Erro ao inserir tag no banco de dados:`, insertError);
                 this.logger.error(`[createTagAndAttachToCampaign] Tipo do erro: ${insertError?.constructor?.name || 'Unknown'}`);
@@ -281,15 +337,43 @@ export class SasTagsCustomService {
                 }
             }
 
-            // Se tiver campanha e script gerado, atualizar a campanha
+            // Se tiver campanha/parceiro e script gerado, propagar script
             if (campaignId && dataToInsert?.generatedScript) {
-                await Repository.update(CampaignsEntity, { id: campaignId }, {
-                    script: dataToInsert.generatedScript
-                });
+                try {
+                    // 1) Tentar atualizar uma campanha normal
+                    const existingCampaign = await Repository.findOne(CampaignsEntity, { id: campaignId });
 
-                this.logger.log(
-                    `Script da campanha ${campaignId} atualizado a partir da criação da tag`
-                );
+                    if (existingCampaign) {
+                        await Repository.update(CampaignsEntity, { id: campaignId }, {
+                            script: dataToInsert.generatedScript
+                        });
+
+                        this.logger.log(
+                            `[createTagAndAttachToCampaign] Script da campanha ${campaignId} atualizado a partir da criação da tag`
+                        );
+                    } else {
+                        // 2) Fallback: tratar o ID como parceiro direto
+                        const CommercialPartnersEntity = Repository.getEntity("SasCommercialPartnersEntity");
+                        const directPartner = await Repository.findOne(CommercialPartnersEntity, { id: campaignId });
+
+                        if (directPartner && directPartner.partnerType === 'Direto') {
+                            await Repository.update(CommercialPartnersEntity, { id: campaignId }, {
+                                script: dataToInsert.generatedScript,
+                                scriptStatus: dataToInsert.scriptStatus || 'Pendente de instalar'
+                            });
+
+                            this.logger.log(
+                                `[createTagAndAttachToCampaign] Script do parceiro direto ${campaignId} atualizado a partir da criação da tag`
+                            );
+                        } else {
+                            this.logger.log(
+                                `[createTagAndAttachToCampaign] campaignId ${campaignId} não encontrado em campanhas nem como parceiro direto. Script não foi propagado.`
+                            );
+                        }
+                    }
+                } catch (propagateError: any) {
+                    this.logger.error('[createTagAndAttachToCampaign] Erro ao propagar script para campanha/parceiro:', propagateError);
+                }
             }
 
             return inserted;
@@ -651,24 +735,43 @@ export class SasTagsCustomService {
             };
         }
 
-        // Buscar campanha
+        // Buscar campanha; se não existir, tentar tratar o ID como parceiro direto
         const campaign = await Repository.findOne(CampaignsEntity, { id: campaignId });
-        if (!campaign) {
-            return {
-                tagId: tag.id,
-                campaignId,
-                status: "erro",
-                reason: "Campanha vinculada não encontrada"
-            };
-        }
 
-        // Determinar URL da página do seller
+        // Determinar URL da página do seller (pode vir de campanha OU de parceiro direto)
         let pageUrl: string | null = null;
-        if (campaign.sellerDomain && String(campaign.sellerDomain).trim() !== "") {
-            pageUrl = String(campaign.sellerDomain).trim();
-        } else if (campaign.link && String(campaign.link).trim() !== "") {
-            // Fallback: usar link da campanha, se o domínio não estiver preenchido
-            pageUrl = String(campaign.link).trim();
+
+        if (campaign) {
+            if (campaign.sellerDomain && String(campaign.sellerDomain).trim() !== "") {
+                pageUrl = String(campaign.sellerDomain).trim();
+            } else if (campaign.link && String(campaign.link).trim() !== "") {
+                // Fallback: usar link da campanha, se o domínio não estiver preenchido
+                pageUrl = String(campaign.link).trim();
+            }
+        } else {
+            // Fallback: tentar interpretar campaignId como ID de parceiro direto
+            const CommercialPartnersEntity = Repository.getEntity("SasCommercialPartnersEntity");
+            const directPartner = await Repository.findOne(CommercialPartnersEntity, { id: campaignId });
+
+            if (!directPartner || directPartner.partnerType !== 'Direto') {
+                return {
+                    tagId: tag.id,
+                    campaignId,
+                    status: "erro",
+                    reason: "Campanha/parceiro vinculado não encontrado"
+                };
+            }
+
+            if (directPartner.link && String(directPartner.link).trim() !== "") {
+                pageUrl = String(directPartner.link).trim();
+            } else {
+                return {
+                    tagId: tag.id,
+                    campaignId,
+                    status: "erro",
+                    reason: "Parceiro direto sem link configurado"
+                };
+            }
         }
 
         if (!pageUrl) {
@@ -1021,9 +1124,11 @@ export class SasTagsCustomService {
     }
 
     /**
-     * Gera o script baseado no modelo de script e código sequencial
+     * Gera o script baseado no modelo de script e código sequencial (PREVIEW - não incrementa contador)
+     * IMPORTANTE: Este método é usado apenas para preview/visualização. O contador só é incrementado
+     * quando a tag é realmente criada e salva no método createTagAndAttachToCampaign.
      * @param scriptSettingId - ID do modelo de script
-     * @returns Objeto com o script gerado e o código usado
+     * @returns Objeto com o script gerado e o código usado (preview)
      */
     async generateScript(scriptSettingId: string): Promise<{ script: string; code: string }> {
         try {
@@ -1035,12 +1140,13 @@ export class SasTagsCustomService {
             }
 
             // Proteger contra uso incorreto em modelos personalizados
-            if (setting.startCode === "__CUSTOM__") {
+            if (setting.startCode === "__CUSTOM__" || setting.startCode === CUSTOM_START_CODE_SENTINEL) {
                 throw new Error(`O modelo de script ${scriptSettingId} é personalizado e não suporta geração sequencial de código.`);
             }
 
-            // Gerar o próximo código sequencial
-            const generatedCode = await this.scriptSettingsService.generateNextCode(scriptSettingId);
+            // Gerar o próximo código sequencial (PREVIEW - NÃO incrementa o contador)
+            // O contador só será incrementado quando a tag for realmente criada e salva
+            const generatedCode = await this.scriptSettingsService.previewNextCode(scriptSettingId);
 
             // Montar a URL completa
             const scriptUrl = `${setting.defaultRoute}${generatedCode}.js`;
