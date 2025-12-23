@@ -487,10 +487,28 @@ export class PaymentOrdersService {
                 const netValue = this.calculateNetValue(existing.invoiceAmount, existing.taxAmount);
                 payload.paidValue = netValue;
             }
+
+            // Preencher finalizedForProfitSharingAt com a data/hora atual quando confirma o pagamento
+            // Isso marca a ordem como finalizada para divisão de lucros
+            // Só preencher se ainda não estiver preenchido (não sobrescrever se já foi finalizada antes)
+            if (!existing.finalizedForProfitSharingAt) {
+                // Normalizar data/hora atual para UTC para consistência
+                const now = new Date();
+                payload.finalizedForProfitSharingAt = new Date(Date.UTC(
+                    now.getUTCFullYear(),
+                    now.getUTCMonth(),
+                    now.getUTCDate(),
+                    now.getUTCHours(),
+                    now.getUTCMinutes(),
+                    now.getUTCSeconds(),
+                    now.getUTCMilliseconds()
+                ));
+            }
         } else {
             // Se voltar para pendente, limpar data e valor pago
             payload.effectivePaymentDate = null;
             payload.paidValue = null;
+            // Não limpar finalizedForProfitSharingAt para manter histórico de quando foi finalizada
         }
 
         payload.status = status;

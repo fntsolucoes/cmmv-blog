@@ -28,6 +28,13 @@ const migrations: Migration[] = [
         name: 'Normalizar valores neverStarted em sas_campaigns',
         file: 'fix-neverStarted-values.sql',
         type: 'data'
+    },
+    {
+        name: 'Adicionar coluna finalized_for_profit_sharing_at em sas_payment_orders',
+        file: 'add-payment-orders-finalized-for-profit-sharing.sql',
+        tableName: 'sas_payment_orders',
+        columnName: 'finalized_for_profit_sharing_at',
+        type: 'schema'
     }
 ];
 

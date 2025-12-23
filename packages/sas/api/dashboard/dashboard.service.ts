@@ -19,8 +19,9 @@ export class DashboardService {
         const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
 
         const today = new Date();
-        const currentMonth = today.getMonth() + 1;
-        const currentYear = today.getFullYear();
+        // Usar UTC para consistência com as datas armazenadas no backend
+        const currentMonth = today.getUTCMonth() + 1;
+        const currentYear = today.getUTCFullYear();
         
         console.log(`[DashboardService] Mês/Ano atual: ${currentMonth}/${currentYear}`);
 
@@ -202,8 +203,9 @@ export class DashboardService {
         const paidOrdersThisMonth = (allPaymentOrders?.data || []).filter((order: any) => {
             if (order.status !== 'Pago' || !order.effectivePaymentDate) return false;
             const paymentDate = new Date(order.effectivePaymentDate);
-            return paymentDate.getMonth() + 1 === currentMonth && 
-                   paymentDate.getFullYear() === currentYear;
+            // Usar UTC para consistência com as datas armazenadas no backend
+            return paymentDate.getUTCMonth() + 1 === currentMonth && 
+                   paymentDate.getUTCFullYear() === currentYear;
         });
         
         const paidThisMonth = paidOrdersThisMonth.length;
@@ -267,8 +269,9 @@ export class DashboardService {
         
         for (let i = 11; i >= 0; i--) {
             const date = new Date();
-            date.setMonth(date.getMonth() - i);
-            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            date.setUTCMonth(date.getUTCMonth() - i);
+            // Usar UTC para consistência com as datas armazenadas no backend
+            const monthKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
             last12Months.push(monthKey);
             notesByMonth[monthKey] = { paid: 0, pending: 0 };
         }
@@ -276,7 +279,8 @@ export class DashboardService {
         (allPaymentOrders?.data || []).forEach((order: any) => {
             if (order.status === 'Pago' && order.effectivePaymentDate) {
                 const paymentDate = new Date(order.effectivePaymentDate);
-                const monthKey = `${paymentDate.getFullYear()}-${String(paymentDate.getMonth() + 1).padStart(2, '0')}`;
+                // Usar UTC para consistência com as datas armazenadas no backend
+                const monthKey = `${paymentDate.getUTCFullYear()}-${String(paymentDate.getUTCMonth() + 1).padStart(2, '0')}`;
                 if (notesByMonth[monthKey]) {
                     notesByMonth[monthKey].paid++;
                 }

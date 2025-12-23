@@ -998,7 +998,8 @@ const filteredItems = computed(() => {
 // Separar em duas tabelas
 const currentMonth = computed(() => {
     const now = new Date();
-    return { month: now.getMonth() + 1, year: now.getFullYear() };
+    // Usar UTC para consistência com as datas armazenadas no backend
+    return { month: now.getUTCMonth() + 1, year: now.getUTCFullYear() };
 });
 
 // Função auxiliar para ordenação
@@ -1072,8 +1073,9 @@ const filteredTable1 = computed(() => {
         if (item.status === 'Pendente') return true;
         if (item.status === 'Pago' && item.effectivePaymentDate) {
             const paymentDate = new Date(item.effectivePaymentDate);
-            return paymentDate.getMonth() + 1 === currentMonth.value.month &&
-                   paymentDate.getFullYear() === currentMonth.value.year;
+            // Usar UTC para consistência com as datas armazenadas no backend
+            return paymentDate.getUTCMonth() + 1 === currentMonth.value.month &&
+                   paymentDate.getUTCFullYear() === currentMonth.value.year;
         }
         return false;
     });
@@ -1085,8 +1087,9 @@ const filteredTable2 = computed(() => {
     let result = filteredItems.value.filter(item => {
         if (item.status === 'Pago' && item.effectivePaymentDate) {
             const paymentDate = new Date(item.effectivePaymentDate);
-            return !(paymentDate.getMonth() + 1 === currentMonth.value.month &&
-                    paymentDate.getFullYear() === currentMonth.value.year);
+            // Usar UTC para consistência com as datas armazenadas no backend
+            return !(paymentDate.getUTCMonth() + 1 === currentMonth.value.month &&
+                    paymentDate.getUTCFullYear() === currentMonth.value.year);
         }
         return false;
     });

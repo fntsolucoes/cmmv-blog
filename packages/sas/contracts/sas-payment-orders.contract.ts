@@ -113,6 +113,13 @@ export class SasPaymentOrdersContract extends AbstractContract {
         index: false,
     })
     observations?: string; // Observações sobre a ordem de pagamento
+
+    @ContractField({
+        protoType: 'date',
+        nullable: true,
+        index: true,
+    })
+    finalizedForProfitSharingAt?: Date; // Data/hora em que foi finalizada para divisão de lucros (preenchido automaticamente ao confirmar pagamento)
 }
 
 
