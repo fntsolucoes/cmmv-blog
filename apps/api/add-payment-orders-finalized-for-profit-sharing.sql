@@ -9,3 +9,4 @@ ALTER TABLE sas_payment_orders ADD COLUMN finalized_for_profit_sharing_at INTEGE
 -- Criar índice para melhorar performance em consultas que filtram por esta data
 CREATE INDEX IF NOT EXISTS idx_sas_payment_orders_finalized_for_profit_sharing_at ON sas_payment_orders(finalized_for_profit_sharing_at);
 
+

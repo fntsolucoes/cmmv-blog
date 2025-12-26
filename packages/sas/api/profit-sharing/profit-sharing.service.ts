@@ -89,7 +89,7 @@ export class ProfitSharingService {
             };
         }
 
-        // Agrupar por moeda e calcular totais
+        // Agrupar por moeda e calcular totais (para exibição)
         const totalsByCurrency: Record<string, number> = {};
         
         for (const order of orders) {
@@ -108,31 +108,13 @@ export class ProfitSharingService {
             totalsByCurrency[order.currency] += netAmount;
         }
 
-        // Converter para BRL se necessário
-        // Para cada ordem, buscar a taxa de câmbio na data do pagamento
-        let totalBRL = totalsByCurrency['BRL'] || 0;
-
-        // Converter USD e EUR para BRL usando a taxa de cada ordem
+        // Calcular total em BRL usando paidValue diretamente (igual ao dashboard)
+        // paidValue já está em BRL e foi calculado quando a ordem foi marcada como paga
+        let totalBRL = 0;
         for (const order of orders) {
-            // Desconto também está na mesma moeda da ordem
-            const discountAmount = order.discountAmount ?? 0;
-            let netAmount = order.invoiceAmount - order.taxAmount - discountAmount;
-            
-            if (netAmount < 0) {
-                netAmount = 0;
-            }
-
-            if (order.currency === 'USD' && order.effectivePaymentDate) {
-                const usdRate = await this.getExchangeRate('USD-BRL', new Date(order.effectivePaymentDate));
-                if (usdRate) {
-                    totalBRL += netAmount * Number(usdRate.rate);
-                }
-            } else if (order.currency === 'EUR' && order.effectivePaymentDate) {
-                const eurRate = await this.getExchangeRate('EUR-BRL', new Date(order.effectivePaymentDate));
-                if (eurRate) {
-                    totalBRL += netAmount * Number(eurRate.rate);
-                }
-            }
+            // Usar paidValue diretamente, que já está em BRL
+            const value = order.paidValue || 0;
+            totalBRL += value;
         }
 
         // Calcular divisão por sócio
