@@ -78,14 +78,35 @@ export class ProfitSharingService {
             limit: 100
         }, []);
 
+        // Total gasto em imposto por centro de custo (para exibição na divisão mensal)
+        const taxByCostCenterId: Record<string, number> = {};
+        for (const order of orders) {
+            const costCenterId = order.costCenterId || '';
+            if (!costCenterId) continue;
+            const tax = order.taxAmount ?? 0;
+            taxByCostCenterId[costCenterId] = (taxByCostCenterId[costCenterId] || 0) + tax;
+        }
+        const CostCentersEntity = Repository.getEntity("SasCostCentersEntity");
+        const costCentersRes = await Repository.findAll(CostCentersEntity, { limit: 500 }, []);
+        const costCentersList = costCentersRes?.data || [];
+        const totalTaxByCostCenter = Object.entries(taxByCostCenterId).map(([costCenterId, taxAmount]) => {
+            const cc = costCentersList.find((c: any) => c.id === costCenterId);
+            return {
+                costCenterId,
+                costCenterName: cc?.name || costCenterId,
+                taxAmount
+            };
+        });
+
         if (!shareholders?.data || shareholders.data.length === 0) {
             return {
                 year,
                 month,
                 totalByCurrency: {},
                 totalBRL: 0,
+                totalTaxByCostCenter,
                 distribution: [],
-                ordersCount: 0
+                ordersCount: orders.length
             };
         }
 
@@ -130,6 +151,7 @@ export class ProfitSharingService {
             month,
             totalByCurrency: totalsByCurrency,
             totalBRL,
+            totalTaxByCostCenter,
             distribution,
             ordersCount: orders.length
         };

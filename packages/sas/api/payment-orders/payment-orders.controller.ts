@@ -20,6 +20,14 @@ export class PaymentOrdersBusinessController {
     }
 
     /**
+     * Importar ordens de pagamento em lote via CSV
+     */
+    @Post("import-csv")
+    async importCSV(@Body() body: { csvContent: string }) {
+        return await this.paymentOrdersService.importFromCSV(body.csvContent || "");
+    }
+
+    /**
      * Buscar ordem por ID
      */
     @Get(":id")

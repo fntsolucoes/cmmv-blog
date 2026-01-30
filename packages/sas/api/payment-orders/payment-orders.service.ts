@@ -6,6 +6,8 @@ import {
     Repository
 } from "@cmmv/repository";
 
+import { parse } from "csv-parse/sync";
+
 @Service()
 export class PaymentOrdersService {
     /**
@@ -38,15 +40,25 @@ export class PaymentOrdersService {
     }
 
     /**
+     * Calcular taxAmount a partir do percentual sobre o valor da fatura.
+     * taxAmount nao e enviado pelo usuario; o sistema calcula para evitar erros.
+     */
+    private calculateTaxAmount(invoiceAmount: number, taxPercentage: number): number {
+        const pct = Math.max(0, Math.min(100, taxPercentage));
+        return Math.round(invoiceAmount * (pct / 100) * 100) / 100;
+    }
+
+    /**
      * Criar nova ordem de pagamento
      * Regras baseadas no PaymentOrderService do projeto 1001div.
+     * taxAmount e calculado pelo sistema a partir de taxPercentage (nao enviado pelo usuario).
      */
     async create(data: {
         commercialPartnerId: string;
         costCenterId: string;
         currency: string;
         invoiceAmount: number;
-        taxAmount: number;
+        taxPercentage?: number;
         discountAmount?: number;
         withdrawalDate: string | Date;
         expectedPaymentMonth: number;
@@ -66,11 +78,13 @@ export class PaymentOrdersService {
             throw new Error("Invoice value must be greater than zero");
         }
 
-        if (data.taxAmount < 0) {
+        // taxAmount calculado pelo sistema (usuario nao envia)
+        const taxAmount = this.calculateTaxAmount(data.invoiceAmount, data.taxPercentage ?? 0);
+        if (taxAmount < 0) {
             throw new Error("Tax value cannot be negative");
         }
 
-        if (data.taxAmount > data.invoiceAmount) {
+        if (taxAmount > data.invoiceAmount) {
             throw new Error("Tax value cannot exceed invoice value");
         }
 
@@ -80,8 +94,8 @@ export class PaymentOrdersService {
             throw new Error("Discount value cannot be negative");
         }
 
-        // Validar que imposto + desconto não exceda o valor da fatura
-        if (data.taxAmount + discountAmount > data.invoiceAmount) {
+        // Validar que imposto + desconto nao exceda o valor da fatura
+        if (taxAmount + discountAmount > data.invoiceAmount) {
             throw new Error("Tax and discount combined cannot exceed invoice value");
         }
 
@@ -153,13 +167,13 @@ export class PaymentOrdersService {
             data.expectedPaymentMonth
         );
 
-        // Preparar payload para inserção
+        // Preparar payload para insercao (taxAmount calculado pelo sistema)
         const payload: any = {
             commercialPartnerId: data.commercialPartnerId,
             costCenterId: data.costCenterId,
             currency: data.currency,
             invoiceAmount: data.invoiceAmount,
-            taxAmount: data.taxAmount,
+            taxAmount,
             discountAmount: discountAmount,
             withdrawalDate,
             expectedPaymentMonth: expectedPaymentMonthStr,
@@ -217,7 +231,7 @@ export class PaymentOrdersService {
         costCenterId: string;
         currency: string;
         invoiceAmount: number;
-        taxAmount: number;
+        taxPercentage?: number;
         discountAmount?: number;
         withdrawalDate: string | Date | null;
         expectedPaymentMonth: number;
@@ -247,15 +261,17 @@ export class PaymentOrdersService {
             payload.invoiceAmount = data.invoiceAmount;
         }
 
-        if (data.taxAmount !== undefined) {
-            if (data.taxAmount < 0) {
+        // taxAmount calculado pelo sistema a partir de taxPercentage (usuario nao envia taxAmount)
+        if (data.taxPercentage !== undefined) {
+            const invoiceAmount = data.invoiceAmount ?? existing.invoiceAmount;
+            const taxAmount = this.calculateTaxAmount(invoiceAmount, data.taxPercentage);
+            if (taxAmount < 0) {
                 throw new Error("Tax value cannot be negative");
             }
-            const invoiceAmount = data.invoiceAmount ?? existing.invoiceAmount;
-            if (data.taxAmount > invoiceAmount) {
+            if (taxAmount > invoiceAmount) {
                 throw new Error("Tax value cannot exceed invoice value");
             }
-            payload.taxAmount = data.taxAmount;
+            payload.taxAmount = taxAmount;
         }
 
         if (data.discountAmount !== undefined) {
@@ -263,7 +279,9 @@ export class PaymentOrdersService {
                 throw new Error("Discount value cannot be negative");
             }
             const invoiceAmount = data.invoiceAmount ?? existing.invoiceAmount;
-            const taxAmount = data.taxAmount ?? existing.taxAmount;
+            const taxAmount = payload.taxAmount ?? (data.taxPercentage !== undefined
+                ? this.calculateTaxAmount(invoiceAmount, data.taxPercentage)
+                : existing.taxAmount);
             const discountAmount = data.discountAmount ?? 0;
             if (taxAmount + discountAmount > invoiceAmount) {
                 throw new Error("Tax and discount combined cannot exceed invoice value");
@@ -601,6 +619,127 @@ export class PaymentOrdersService {
             discountAmount: discountAmount,
             netAmount: order.invoiceAmount - order.taxAmount - discountAmount
         };
+    }
+
+    /**
+     * Importar ordens de pagamento a partir de CSV.
+     * taxAmount nao e enviado no CSV: o sistema calcula a partir do percentual (coluna opcional taxPercentage).
+     * Formato: commercialPartnerId,currency,invoiceAmount,taxPercentage,discountAmount,withdrawalDate,expectedPaymentMonth,expectedPaymentYear,effectivePaymentDate,status,paidValue,paymentMethod,observations
+     * costCenterId nao e enviado: o sistema usa o centro de custo cadastrado no parceiro comercial.
+     * Delimitador: virgula (,) ou ponto e virgula (;) - detectado automaticamente. Valores decimais com ponto. Datas YYYY-MM-DD.
+     */
+    async importFromCSV(csvContent: string): Promise<{
+        data: {
+            imported: number;
+            errors: string[];
+        }
+    }> {
+        const errors: string[] = [];
+        let imported = 0;
+
+        interface CSVRow {
+            commercialPartnerId?: string;
+            currency?: string;
+            invoiceAmount?: string;
+            taxPercentage?: string;
+            discountAmount?: string;
+            withdrawalDate?: string;
+            expectedPaymentMonth?: string;
+            expectedPaymentYear?: string;
+            effectivePaymentDate?: string;
+            status?: string;
+            paidValue?: string;
+            paymentMethod?: string;
+            observations?: string;
+        }
+
+        let records: CSVRow[];
+        const firstLine = csvContent.split(/\r?\n/)[0] || "";
+        const delimiter = firstLine.includes(";") && !firstLine.includes(",") ? ";" : ",";
+        try {
+            records = parse(csvContent, {
+                columns: true,
+                skip_empty_lines: true,
+                trim: true,
+                bom: true,
+                delimiter
+            });
+        } catch (parseError: any) {
+            return {
+                data: {
+                    imported: 0,
+                    errors: ["Erro ao ler CSV: " + (parseError?.message || String(parseError))]
+                }
+            };
+        }
+
+        for (let i = 0; i < records.length; i++) {
+            const row = records[i];
+            const rowNum = i + 2; // 1-based + header
+
+            const commercialPartnerId = row.commercialPartnerId?.trim();
+            const currency = (row.currency?.trim() || "BRL").toUpperCase();
+            const invoiceAmount = parseFloat(row.invoiceAmount?.replace(",", ".") || "0");
+            const taxPercentage = parseFloat(row.taxPercentage?.replace(",", ".") || "0");
+            const discountAmount = parseFloat(row.discountAmount?.replace(",", ".") || "0");
+            const withdrawalDate = row.withdrawalDate?.trim() || "";
+            const expectedPaymentMonth = parseInt(row.expectedPaymentMonth?.trim() || "1", 10);
+            const expectedPaymentYear = parseInt(row.expectedPaymentYear?.trim() || String(new Date().getFullYear()), 10);
+            const effectivePaymentDate = row.effectivePaymentDate?.trim() || null;
+            const status = (row.status?.trim() || "Pendente") === "Pago" ? "Pago" : "Pendente";
+            const paidValue = row.paidValue?.trim() ? parseFloat(row.paidValue.replace(",", ".")) : null;
+            const paymentMethod = row.paymentMethod?.trim() || null;
+            const observations = row.observations?.trim() || null;
+
+            if (!commercialPartnerId) {
+                errors.push(`Linha ${rowNum}: commercialPartnerId e obrigatorio`);
+                continue;
+            }
+
+            const CommercialPartnersEntity = Repository.getEntity("SasCommercialPartnersEntity");
+            const partner = await Repository.findOne(CommercialPartnersEntity, { id: commercialPartnerId });
+            if (!partner) {
+                errors.push(`Linha ${rowNum}: parceiro comercial nao encontrado`);
+                continue;
+            }
+            const costCenterId = (partner as any).costCenterId;
+            if (!costCenterId) {
+                errors.push(`Linha ${rowNum}: parceiro sem centro de custo cadastrado`);
+                continue;
+            }
+            if (!withdrawalDate || !/^\d{4}-\d{2}-\d{2}$/.test(withdrawalDate)) {
+                errors.push(`Linha ${rowNum}: withdrawalDate deve estar no formato YYYY-MM-DD`);
+                continue;
+            }
+            if (status === "Pago" && !effectivePaymentDate) {
+                errors.push(`Linha ${rowNum}: effectivePaymentDate e obrigatorio quando status e Pago`);
+                continue;
+            }
+
+            try {
+                await this.create({
+                    commercialPartnerId,
+                    costCenterId,
+                    currency,
+                    invoiceAmount,
+                    taxPercentage,
+                    discountAmount: discountAmount || 0,
+                    withdrawalDate,
+                    expectedPaymentMonth,
+                    expectedPaymentYear,
+                    effectivePaymentDate: effectivePaymentDate || undefined,
+                    status,
+                    paidValue: paidValue ?? undefined,
+                    paymentMethod: paymentMethod ?? undefined,
+                    observations: observations ?? undefined
+                });
+                imported++;
+            } catch (err: any) {
+                errors.push(`Linha ${rowNum}: ${err?.message || String(err)}`);
+            }
+        }
+
+        return { data: { imported, errors } };
     }
 }
 

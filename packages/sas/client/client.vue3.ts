@@ -148,6 +148,9 @@ export const useSasClient = () => {
         },
         getNetAmount: async (id: string) => {
             return api.authRequest(`affiliation-manager/payment-orders/v2/${id}/net-amount`, "GET");
+        },
+        importCSV: async (csvContent: string) => {
+            return api.authRequest("affiliation-manager/payment-orders/v2/import-csv", "POST", { csvContent });
         }
     };
 

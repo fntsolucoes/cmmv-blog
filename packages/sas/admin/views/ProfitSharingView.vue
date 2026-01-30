@@ -16,38 +16,57 @@
         </div>
 
         <div v-else-if="result" class="space-y-4">
-            <div class="bg-neutral-800 rounded-lg p-6">
-                <h2 class="text-xl font-bold text-white mb-4">Resumo - {{ String(selectedMonth).padStart(2, '0') }}/{{ selectedYear }}</h2>
-                
-                <div v-if="result.ordersCount === 0" class="bg-yellow-900 border border-yellow-700 rounded-lg p-4 mb-4">
-                    <p class="text-yellow-200">
-                        <strong>Atenção:</strong> Nenhuma ordem de pagamento encontrada para o período selecionado.
-                    </p>
-                </div>
+            <!-- Divisão mensal: tudo em boxes, exceto a listagem Distribuição por Sócio -->
+            <div class="space-y-4">
+                <div class="bg-neutral-800 rounded-lg border border-neutral-700 p-6">
+                    <h2 class="text-xl font-bold text-white mb-4">Resumo - {{ String(selectedMonth).padStart(2, '0') }}/{{ selectedYear }}</h2>
 
-                <div v-else class="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <p class="text-neutral-400 text-sm">Total por Moeda</p>
-                        <div class="mt-2 space-y-2">
-                            <div v-if="Object.keys(result.totalByCurrency || {}).length === 0" class="text-neutral-400 italic">
-                                Nenhum valor encontrado
+                    <div v-if="result.ordersCount === 0" class="bg-yellow-900 border border-yellow-700 rounded-lg p-4">
+                        <p class="text-yellow-200">
+                            <strong>Atenção:</strong> Nenhuma ordem de pagamento encontrada para o período selecionado.
+                        </p>
+                    </div>
+
+                    <template v-else>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div class="bg-neutral-700/50 rounded-lg border border-neutral-600 p-4">
+                                <p class="text-neutral-400 text-sm mb-2">Total por Moeda</p>
+                                <div class="space-y-2">
+                                    <div v-if="Object.keys(result.totalByCurrency || {}).length === 0" class="text-neutral-400 italic">
+                                        Nenhum valor encontrado
+                                    </div>
+                                    <div v-for="(amount, currency) in result.totalByCurrency" :key="currency" class="text-white">
+                                        <strong>{{ currency }}:</strong> {{ formatCurrency(amount, currency) }}
+                                    </div>
+                                </div>
                             </div>
-                            <div v-for="(amount, currency) in result.totalByCurrency" :key="currency" class="text-white">
-                                <strong>{{ currency }}:</strong> {{ formatCurrency(amount, currency) }}
+                            <div class="bg-neutral-700/50 rounded-lg border border-neutral-600 p-4">
+                                <p class="text-neutral-400 text-sm mb-2">Total em BRL</p>
+                                <p class="text-2xl font-bold text-white">
+                                    {{ formatCurrency(result.totalBRL || 0, 'BRL') }}
+                                </p>
+                                <p class="text-xs text-neutral-400 mt-1">
+                                    {{ result.ordersCount || 0 }} ordem(ns) processada(s)
+                                </p>
                             </div>
                         </div>
-                    </div>
-                    <div>
-                        <p class="text-neutral-400 text-sm">Total em BRL</p>
-                        <p class="text-2xl font-bold text-white mt-2">
-                            {{ formatCurrency(result.totalBRL || 0, 'BRL') }}
-                        </p>
-                        <p class="text-xs text-neutral-400 mt-1">
-                            {{ result.ordersCount || 0 }} ordem(ns) processada(s)
-                        </p>
-                    </div>
+
+                        <div class="bg-neutral-700/50 rounded-lg border border-neutral-600 p-4">
+                            <p class="text-neutral-400 text-sm mb-2">Total gasto em imposto por centro de custo</p>
+                            <div v-if="!result.totalTaxByCostCenter || result.totalTaxByCostCenter.length === 0" class="text-neutral-400 italic">
+                                Nenhum imposto no período
+                            </div>
+                            <div v-else class="space-y-2">
+                                <div v-for="row in result.totalTaxByCostCenter" :key="row.costCenterId" class="flex justify-between items-center text-white">
+                                    <span>{{ row.costCenterName }}</span>
+                                    <span class="font-medium">{{ formatCurrency(row.taxAmount, 'BRL') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
                 </div>
 
+                <!-- Listagem Distribuição por Sócio fora do box -->
                 <div v-if="result.distribution && result.distribution.length > 0">
                     <p class="text-neutral-400 text-sm mb-2">Distribuição por Sócio</p>
                     <table class="min-w-full divide-y divide-neutral-700">

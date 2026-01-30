@@ -156,6 +156,27 @@
                 </div>
 
                 <form @submit.prevent="savePartner" class="p-6 space-y-4">
+                    <!-- ID para uso no CSV (visivel apenas ao editar) -->
+                    <div v-if="isEditing && editingItem" class="p-3 bg-neutral-700/50 rounded-lg border border-neutral-600">
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">ID para uso no CSV (commercialPartnerId)</label>
+                        <div class="flex gap-2 items-center">
+                            <input
+                                :value="editingItem?.id"
+                                type="text"
+                                readonly
+                                class="flex-1 px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm font-mono"
+                            />
+                            <button
+                                type="button"
+                                @click="copyIdToClipboard(editingItem?.id)"
+                                class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
+                            >
+                                Copiar
+                            </button>
+                        </div>
+                        <p class="mt-1 text-xs text-neutral-400">Use este ID na coluna commercialPartnerId ao importar ordens de pagamento via CSV.</p>
+                    </div>
+
                     <!-- Nome do Parceiro Comercial -->
                     <div>
                         <label class="block text-sm font-medium text-neutral-300 mb-2">
@@ -1005,6 +1026,16 @@ const editItem = async (item: any) => {
     formErrors.value = {};
     await loadAffiliateNetworks();
     showDialog.value = true;
+};
+
+const copyIdToClipboard = async (id: string | undefined) => {
+    if (!id) return;
+    try {
+        await navigator.clipboard.writeText(id);
+        alert('ID copiado para a area de transferencia.');
+    } catch {
+        alert('Nao foi possivel copiar. Copie o ID manualmente.');
+    }
 };
 
 // Fechar dialog

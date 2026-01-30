@@ -1,19 +1,50 @@
 <template>
     <div class="space-y-6">
         <!-- Cabeçalho -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-2">
             <h1 class="text-2xl font-bold text-white">Ordens de Pagamento</h1>
-            <button @click="openAddDialog" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Nova Ordem
-            </button>
+            <div class="flex items-center gap-2">
+                <button
+                    type="button"
+                    @click="exportToCSV"
+                    :disabled="exportingCSV || filteredItems.length === 0"
+                    class="px-2.5 py-1 bg-neutral-600 hover:bg-neutral-500 text-white text-xs font-medium rounded-md transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    {{ exportingCSV ? 'Exportando...' : 'Exportar CSV' }}
+                </button>
+                <button
+                    type="button"
+                    @click="triggerImportCSV"
+                    :disabled="importingCSV"
+                    class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    {{ importingCSV ? 'Importando...' : 'Importar CSV' }}
+                </button>
+                <input
+                    ref="csvFileInput"
+                    type="file"
+                    accept=".csv"
+                    class="hidden"
+                    @change="handleImportCSVFile"
+                />
+                <button @click="openAddDialog" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Nova Ordem
+                </button>
+            </div>
         </div>
 
         <!-- Filtros -->
         <div class="bg-neutral-800 rounded-lg p-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-neutral-300 mb-2">Filtrar por Parceiro</label>
                     <input
@@ -28,6 +59,14 @@
                     <input
                         v-model="filters.withdrawalDate"
                         type="date"
+                        class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-neutral-300 mb-2">Filtrar por Mês de Pagamento</label>
+                    <input
+                        v-model="filters.paymentMonthYear"
+                        type="month"
                         class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
@@ -893,6 +932,10 @@ const partners = ref<any[]>([]);
 const costCenters = ref<any[]>([]);
 const exchangeRatesCache = ref<Map<string, any>>(new Map());
 
+const csvFileInput = ref<HTMLInputElement | null>(null);
+const importingCSV = ref(false);
+const exportingCSV = ref(false);
+
 // Estados para busca de parceiros
 const partnerSearchText = ref('');
 const showPartnerDropdown = ref(false);
@@ -910,7 +953,8 @@ const sortOrder2 = ref<'asc' | 'desc'>('asc');
 // Filtros
 const filters = ref({
     partnerName: '',
-    withdrawalDate: ''
+    withdrawalDate: '',
+    paymentMonthYear: ''
 });
 
 // Paginação
@@ -989,6 +1033,17 @@ const filteredItems = computed(() => {
             const day = String(d.getUTCDate()).padStart(2, '0');
             const itemDate = `${year}-${month}-${day}`;
             return itemDate === filters.value.withdrawalDate;
+        });
+    }
+
+    if (filters.value.paymentMonthYear) {
+        const [filterYear, filterMonth] = filters.value.paymentMonthYear.split('-').map(Number);
+        result = result.filter(item => {
+            if (!item.effectivePaymentDate) return false;
+            const d = new Date(item.effectivePaymentDate);
+            const itemYear = d.getUTCFullYear();
+            const itemMonth = d.getUTCMonth() + 1;
+            return itemYear === filterYear && itemMonth === filterMonth;
         });
     }
 
@@ -1137,10 +1192,13 @@ const selectedPartnerName = computed(() => {
     return partner?.name || '';
 });
 
-// Selecionar parceiro
+// Selecionar parceiro (preenche tambem o centro de custo/Empresa atrelado ao parceiro)
 const selectPartner = (partner: any) => {
     form.value.commercialPartnerId = partner.id;
     partnerSearchText.value = partner.name;
+    if (partner.costCenterId) {
+        form.value.costCenterId = partner.costCenterId;
+    }
     showPartnerDropdown.value = false;
 };
 
@@ -1492,7 +1550,8 @@ const loadCostCenters = async () => {
 const clearFilters = () => {
     filters.value = {
         partnerName: '',
-        withdrawalDate: ''
+        withdrawalDate: '',
+        paymentMonthYear: ''
     };
     currentPage1.value = 1;
     currentPage2.value = 1;
@@ -1529,6 +1588,115 @@ const toggleSort2 = (key: string) => {
 };
 
 // Modais
+const triggerImportCSV = () => {
+    csvFileInput.value?.click();
+};
+
+const escapeCSVCell = (val: string | number | null | undefined): string => {
+    const s = val === null || val === undefined ? '' : String(val);
+    if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+};
+
+const formatDateForCSV = (date: string | Date | null | undefined): string => {
+    if (!date) return '';
+    const d = typeof date === 'string' ? new Date(date) : date;
+    const year = d.getUTCFullYear();
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const parseExpectedPaymentMonth = (monthStr: string | null | undefined): { month: number; year: number } => {
+    if (!monthStr) return { month: 1, year: new Date().getFullYear() };
+    const parts = monthStr.split('-').map(Number);
+    if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        return { year: parts[0], month: parts[1] };
+    }
+    return { month: 1, year: new Date().getFullYear() };
+};
+
+const exportToCSV = () => {
+    const list = filteredItems.value;
+    if (list.length === 0) {
+        alert('Nao ha dados para exportar. Ajuste os filtros ou cadastre ordens.');
+        return;
+    }
+    exportingCSV.value = true;
+    try {
+        const header = 'parceiroComercial,centroCusto,currency,invoiceAmount,taxPercentage,discountAmount,withdrawalDate,expectedPaymentMonth,expectedPaymentYear,effectivePaymentDate,status,paidValue,paymentMethod';
+        const rows = list.map(item => {
+            const taxPct = item.invoiceAmount ? (item.taxAmount || 0) / item.invoiceAmount * 100 : 0;
+            const { month: expMonth, year: expYear } = parseExpectedPaymentMonth(item.expectedPaymentMonth);
+            const cells = [
+                escapeCSVCell(getPartnerName(item.commercialPartnerId) ?? ''),
+                escapeCSVCell(getCostCenterName(item.costCenterId) ?? ''),
+                escapeCSVCell(item.currency || 'BRL'),
+                escapeCSVCell(item.invoiceAmount ?? ''),
+                escapeCSVCell(taxPct.toFixed(2)),
+                escapeCSVCell(item.discountAmount ?? 0),
+                escapeCSVCell(formatDateForCSV(item.withdrawalDate)),
+                escapeCSVCell(expMonth),
+                escapeCSVCell(expYear),
+                escapeCSVCell(formatDateForCSV(item.effectivePaymentDate)),
+                escapeCSVCell(item.status || 'Pendente'),
+                escapeCSVCell(item.paidValue ?? ''),
+                escapeCSVCell(item.paymentMethod ?? '')
+            ];
+            return cells.join(',');
+        });
+        const csv = [header, ...rows].join('\r\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        a.download = `payment-orders-${dateStr}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (err: any) {
+        console.error('Erro ao exportar CSV:', err);
+        alert('Erro ao exportar CSV: ' + (err?.message || String(err)));
+    } finally {
+        exportingCSV.value = false;
+    }
+};
+
+const handleImportCSVFile = async (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert('Selecione um arquivo CSV.');
+        target.value = '';
+        return;
+    }
+    importingCSV.value = true;
+    target.value = '';
+    try {
+        const text = await file.text();
+        const res = await client.paymentOrders.importCSV(text);
+        const data = res?.data ?? res?.result?.data ?? res;
+        const imported = data?.imported ?? 0;
+        const errors = data?.errors ?? [];
+        await loadData();
+        let msg = `Importacao concluida.\nOrdens criadas: ${imported}`;
+        if (errors.length > 0) {
+            msg += `\n\nErros (${errors.length}):\n${errors.slice(0, 10).join('\n')}`;
+            if (errors.length > 10) msg += '\n...';
+        }
+        alert(msg);
+    } catch (err: any) {
+        console.error('Erro ao importar CSV:', err);
+        alert('Erro ao importar CSV: ' + (err?.message || String(err)));
+    } finally {
+        importingCSV.value = false;
+    }
+};
+
 const openAddDialog = () => {
     isEditing.value = false;
     editingItem.value = null;
@@ -2098,7 +2266,7 @@ const saveOrder = async () => {
             costCenterId: form.value.costCenterId,
             currency: form.value.currency,
             invoiceAmount: parseCurrencyValue(form.value.invoiceAmount),
-            taxAmount: Number(form.value.taxAmount),
+            taxPercentage: Number(taxPercentage.value) || 0,
             discountAmount: parseCurrencyValue(form.value.discountAmount),
             withdrawalDate: form.value.withdrawalDate || null,
             expectedPaymentMonth: Number(form.value.expectedPaymentMonth),
@@ -2161,6 +2329,11 @@ watch(() => filters.value.withdrawalDate, () => {
     currentPage2.value = 1;
 });
 
+watch(() => filters.value.paymentMonthYear, () => {
+    currentPage1.value = 1;
+    currentPage2.value = 1;
+});
+
 // Resetar método de pagamento quando centro de custos mudar
 watch(() => form.value.costCenterId, () => {
     form.value.paymentMethod = null;
@@ -2168,14 +2341,15 @@ watch(() => form.value.costCenterId, () => {
 
 // O CurrencyInput atualiza automaticamente quando a moeda muda através das opções
 
-// Sincronizar campo de busca quando o parceiro for limpo
+// Sincronizar campo de busca e centro de custo quando o parceiro mudar
 watch(() => form.value.commercialPartnerId, (newId) => {
-    if (!newId && partnerSearchText.value) {
-        partnerSearchText.value = '';
-    } else if (newId && !partnerSearchText.value) {
+    if (!newId) {
+        if (partnerSearchText.value) partnerSearchText.value = '';
+    } else {
         const partner = partners.value.find(p => p.id === newId);
         if (partner) {
-            partnerSearchText.value = partner.name;
+            if (!partnerSearchText.value) partnerSearchText.value = partner.name;
+            if (partner.costCenterId) form.value.costCenterId = partner.costCenterId;
         }
     }
 });
