@@ -9,6 +9,64 @@ import {
 @Service()
 export class ProfitSharingService {
     /**
+     * Retorna as ordens de pagamento do mês (mesma regra do resumo mensal), com nome do parceiro comercial.
+     */
+    async getMonthlyOrders(year: number, month: number) {
+        const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
+        const allOrders = await Repository.findAll(PaymentOrdersEntity, {
+            status: 'Pago',
+            limit: 10000
+        }, []);
+        const orders = this.filterOrdersByMonth(allOrders?.data || [], year, month);
+
+        const partnerIds = [...new Set((orders as any[]).map((o: any) => o.commercialPartnerId).filter(Boolean))];
+        const partnerNameById: Record<string, string> = {};
+        if (partnerIds.length > 0) {
+            const CommercialPartnersEntity = Repository.getEntity("SasCommercialPartnersEntity");
+            const partnersRes = await Repository.findAll(CommercialPartnersEntity, { limit: 10000 }, []);
+            const partnersList = partnersRes?.data || [];
+            for (const p of partnersList as any[]) {
+                if (p.id && partnerIds.includes(p.id)) partnerNameById[p.id] = p.name || p.id;
+            }
+        }
+
+        const enriched = (orders as any[]).map((o: any) => ({
+            ...o,
+            commercialPartnerName: (o.commercialPartnerId && partnerNameById[o.commercialPartnerId]) || '-'
+        }));
+        enriched.sort((a: any, b: any) =>
+            (a.commercialPartnerName || '').localeCompare(b.commercialPartnerName || '', 'pt-BR')
+        );
+        return { data: enriched };
+    }
+
+    private filterOrdersByMonth(ordersList: any[], year: number, month: number): any[] {
+        const now = new Date();
+        const currentYear = now.getUTCFullYear();
+        const currentMonth = now.getUTCMonth() + 1;
+        const isCurrentMonth = (year === currentYear && month === currentMonth);
+
+        return ordersList.filter((order: any) => {
+            if (!order.effectivePaymentDate) return false;
+            const paymentDate = new Date(order.effectivePaymentDate);
+            const paymentYear = paymentDate.getUTCFullYear();
+            const paymentMonth = paymentDate.getUTCMonth() + 1;
+            const isRetroactive = (paymentYear < currentYear) ||
+                (paymentYear === currentYear && paymentMonth < currentMonth);
+
+            if (order.finalizedForProfitSharingAt) {
+                const finalizedDate = new Date(order.finalizedForProfitSharingAt);
+                const finalizedYear = finalizedDate.getUTCFullYear();
+                const finalizedMonth = finalizedDate.getUTCMonth() + 1;
+                const isRecentlyFinalized = (finalizedYear === currentYear && finalizedMonth === currentMonth);
+                if (isRetroactive && isRecentlyFinalized) return isCurrentMonth;
+                return paymentYear === year && paymentMonth === month;
+            }
+            return paymentYear === year && paymentMonth === month;
+        });
+    }
+
+    /**
      * Calcular divisão de lucros por mês
      */
     async calculateMonthlyProfitSharing(year: number, month: number) {
@@ -30,56 +88,7 @@ export class ProfitSharingService {
         const openOrdersList = Array.isArray(openOrdersRes?.data) ? openOrdersRes.data : [];
         const ordersCountOpen = openOrdersList.filter((o: any) => (o.expectedPaymentMonth || '') === expectedMonthStr).length;
 
-        // Filtrar ordens do mês especificado
-        // Usar UTC para consistência com as datas armazenadas no backend
-        // REGRA: Se finalizedForProfitSharingAt existir, usar ele para determinar o mês de referência
-        // Se não existir (ordens antigas), usar effectivePaymentDate para alocar no mês certo
-        // REGRA ESPECIAL: Se uma ordem foi RECÉM finalizada (finalizedForProfitSharingAt preenchido no mês atual)
-        // e tem data retroativa (mês anterior), ela deve ir para o mês atual (aberto), não para o mês da data retroativa
-        const now = new Date();
-        const currentYear = now.getUTCFullYear();
-        const currentMonth = now.getUTCMonth() + 1;
-        
-        // Verificar se estamos calculando o mês atual (aberto) ou um mês já fechado
-        const isCurrentMonth = (year === currentYear && month === currentMonth);
-        
-        const orders = (allOrders?.data || []).filter((order: any) => {
-            if (!order.effectivePaymentDate) {
-                return false;
-            }
-            
-            const paymentDate = new Date(order.effectivePaymentDate);
-            const paymentYear = paymentDate.getUTCFullYear();
-            const paymentMonth = paymentDate.getUTCMonth() + 1;
-            
-            // Verificar se a ordem tem data retroativa (mês anterior ao atual)
-            const isRetroactive = (paymentYear < currentYear) || 
-                                  (paymentYear === currentYear && paymentMonth < currentMonth);
-            
-            // Se a ordem tem finalizedForProfitSharingAt (ordem nova com controle de finalização)
-            if (order.finalizedForProfitSharingAt) {
-                const finalizedDate = new Date(order.finalizedForProfitSharingAt);
-                const finalizedYear = finalizedDate.getUTCFullYear();
-                const finalizedMonth = finalizedDate.getUTCMonth() + 1;
-                
-                // Verificar se foi finalizada no mês atual (ordem nova recém marcada como paga)
-                const isRecentlyFinalized = (finalizedYear === currentYear && finalizedMonth === currentMonth);
-                
-                // Se a ordem foi finalizada recentemente (mês atual) e tem data retroativa,
-                // ela NÃO deve aparecer no mês da data retroativa, apenas no mês atual
-                if (isRetroactive && isRecentlyFinalized) {
-                    // Ordem retroativa recém finalizada: só considerar no mês atual (aberto)
-                    return isCurrentMonth; // Só aparece no mês atual, não no mês da data retroativa
-                }
-                
-                // Para outras ordens finalizadas, usar effectivePaymentDate para determinar o mês
-                return paymentYear === year && paymentMonth === month;
-            } else {
-                // Ordem antiga sem finalizedForProfitSharingAt: usar effectivePaymentDate para determinar o mês
-                // (comportamento antigo - alocar pelo mês da data de pagamento)
-                return paymentYear === year && paymentMonth === month;
-            }
-        });
+        const orders = this.filterOrdersByMonth(allOrders?.data || [], year, month);
 
         // Buscar sócios ativos
         const shareholders = await Repository.findAll(ShareholdersEntity, {

@@ -19,7 +19,20 @@
             <!-- Divisão mensal: tudo em boxes, exceto a listagem Distribuição por Sócio -->
             <div class="space-y-4">
                 <div class="bg-neutral-800 rounded-lg border border-neutral-700 p-6">
-                    <h2 class="text-xl font-bold text-white mb-4">Resumo - {{ String(selectedMonth).padStart(2, '0') }}/{{ selectedYear }}</h2>
+                    <div class="flex items-center gap-2 mb-4">
+                        <h2 class="text-xl font-bold text-white">Resumo - {{ String(selectedMonth).padStart(2, '0') }}/{{ selectedYear }}</h2>
+                        <button
+                            type="button"
+                            @click="openOrdersModal"
+                            class="px-2.5 py-1 bg-neutral-600 hover:bg-neutral-500 text-white text-xs font-medium rounded-md transition-colors flex items-center gap-1"
+                            title="Ver ordens de pagamento do período"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            Ver ordens
+                        </button>
+                    </div>
 
                     <div v-if="result.ordersCount === 0" class="bg-yellow-900 border border-yellow-700 rounded-lg p-4">
                         <p class="text-yellow-200">
@@ -156,18 +169,121 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal: Ordens de pagamento do período -->
+        <div v-if="showOrdersModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
+            <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-5xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="p-6 border-b border-neutral-700 flex justify-between items-center shrink-0">
+                    <h3 class="text-lg font-medium text-white">
+                        Ordens de pagamento - {{ String(selectedMonth).padStart(2, '0') }}/{{ selectedYear }}
+                    </h3>
+                    <button @click="closeOrdersModal" class="text-neutral-400 hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-4 overflow-auto flex-1">
+                    <div v-if="loadingOrders" class="text-center py-8 text-neutral-400">Carregando ordens...</div>
+                    <div v-else-if="!modalOrders.length" class="text-center py-8 text-neutral-400">Nenhuma ordem de pagamento neste período.</div>
+                    <template v-else>
+                        <table class="min-w-full divide-y divide-neutral-700">
+                            <thead class="bg-neutral-700 sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Parceiro comercial</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Data pagamento</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Valor fatura</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Moeda</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Valor pago (BRL)</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-neutral-800 divide-y divide-neutral-700">
+                                <tr v-for="order in modalOrdersPaginated" :key="order.id" class="hover:bg-neutral-700">
+                                    <td class="px-4 py-3 text-sm text-white">{{ order.commercialPartnerName ?? '-' }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-white">
+                                        {{ order.effectivePaymentDate ? formatDate(order.effectivePaymentDate) : '-' }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-white">
+                                        {{ formatCurrency(order.invoiceAmount ?? 0, order.currency || 'BRL') }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-white">{{ order.currency || '-' }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-white">
+                                        {{ formatCurrency(order.paidValue ?? 0, 'BRL') }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-white">{{ order.status || '-' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div v-if="modalOrdersTotalPages > 1" class="mt-4 flex items-center justify-between border-t border-neutral-700 pt-4">
+                            <p class="text-sm text-neutral-400">
+                                Notas {{ modalOrdersRange.from }}-{{ modalOrdersRange.to }} de {{ modalOrders.length }}
+                            </p>
+                            <div class="flex gap-2">
+                                <button
+                                    type="button"
+                                    :disabled="modalOrdersPage <= 1"
+                                    @click="modalOrdersPage = Math.max(1, modalOrdersPage - 1)"
+                                    class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-neutral-300 bg-neutral-700 hover:bg-neutral-600 disabled:hover:bg-neutral-700"
+                                >
+                                    Anterior
+                                </button>
+                                <span class="px-3 py-1.5 text-sm text-neutral-400">
+                                    Página {{ modalOrdersPage }} de {{ modalOrdersTotalPages }}
+                                </span>
+                                <button
+                                    type="button"
+                                    :disabled="modalOrdersPage >= modalOrdersTotalPages"
+                                    @click="modalOrdersPage = Math.min(modalOrdersTotalPages, modalOrdersPage + 1)"
+                                    class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-neutral-300 bg-neutral-700 hover:bg-neutral-600 disabled:hover:bg-neutral-700"
+                                >
+                                    Próxima
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useSasClient } from '../client';
+
+const ORDERS_PAGE_SIZE = 40;
 
 const client = useSasClient();
 const selectedYear = ref(new Date().getFullYear());
 const selectedMonth = ref(new Date().getMonth() + 1);
 const result = ref<any>(null);
 const loading = ref(false);
+const showOrdersModal = ref(false);
+const modalOrders = ref<any[]>([]);
+const modalOrdersPage = ref(1);
+const loadingOrders = ref(false);
+
+const modalOrdersPaginated = computed(() => {
+    const start = (modalOrdersPage.value - 1) * ORDERS_PAGE_SIZE;
+    return modalOrders.value.slice(start, start + ORDERS_PAGE_SIZE);
+});
+const modalOrdersTotalPages = computed(() =>
+    Math.max(1, Math.ceil(modalOrders.value.length / ORDERS_PAGE_SIZE))
+);
+const modalOrdersRange = computed(() => {
+    const total = modalOrders.value.length;
+    if (total === 0) return { from: 0, to: 0 };
+    const from = (modalOrdersPage.value - 1) * ORDERS_PAGE_SIZE + 1;
+    const to = Math.min(modalOrdersPage.value * ORDERS_PAGE_SIZE, total);
+    return { from, to };
+});
+
+const formatDate = (dateStr: string) => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
 
 const formatCurrency = (value: number, currency: string) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -198,6 +314,32 @@ const calculateProfitSharing = async () => {
     } finally {
         loading.value = false;
     }
+};
+
+const openOrdersModal = async () => {
+    if (!selectedYear.value || !selectedMonth.value) return;
+    showOrdersModal.value = true;
+    modalOrders.value = [];
+    modalOrdersPage.value = 1;
+    loadingOrders.value = true;
+    try {
+        const response = await client.profitSharing.getMonthlyOrders(
+            String(selectedYear.value),
+            String(selectedMonth.value)
+        );
+        const raw = response?.data ?? response;
+        modalOrders.value = Array.isArray(raw) ? raw : (raw?.data ?? []);
+    } catch (error: any) {
+        console.error('Erro ao carregar ordens:', error);
+        const msg = error.response?.data?.message || error.message || 'Erro ao carregar ordens';
+        alert(msg);
+    } finally {
+        loadingOrders.value = false;
+    }
+};
+
+const closeOrdersModal = () => {
+    showOrdersModal.value = false;
 };
 </script>
 

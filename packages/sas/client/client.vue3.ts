@@ -219,6 +219,9 @@ export const useSasClient = () => {
     const profitSharing = {
         getMonthly: async (year: string, month: string) => {
             return api.authRequest(`affiliation-manager/profit-sharing/monthly?year=${year}&month=${month}`, "GET");
+        },
+        getMonthlyOrders: async (year: string, month: string) => {
+            return api.authRequest(`affiliation-manager/profit-sharing/monthly/orders?year=${year}&month=${month}`, "GET");
         }
     };
 
