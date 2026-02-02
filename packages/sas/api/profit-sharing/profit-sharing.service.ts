@@ -9,6 +9,54 @@ import {
 @Service()
 export class ProfitSharingService {
     /**
+     * Retorna os meses (ano/mês) que possuem ordens pagas (mesma regra do resumo), ordenados cronologicamente.
+     */
+    async getAvailableMonths() {
+        const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
+        const allOrders = await Repository.findAll(PaymentOrdersEntity, {
+            status: 'Pago',
+            limit: 10000
+        }, []);
+        const ordersList = allOrders?.data || [];
+        const now = new Date();
+        const currentYear = now.getUTCFullYear();
+        const currentMonth = now.getUTCMonth() + 1;
+        const keys = new Set<string>();
+        for (const order of ordersList as any[]) {
+            if (!order.effectivePaymentDate) continue;
+            const paymentDate = new Date(order.effectivePaymentDate);
+            const paymentYear = paymentDate.getUTCFullYear();
+            const paymentMonth = paymentDate.getUTCMonth() + 1;
+            const isRetroactive = (paymentYear < currentYear) ||
+                (paymentYear === currentYear && paymentMonth < currentMonth);
+            let year: number;
+            let month: number;
+            if (order.finalizedForProfitSharingAt) {
+                const finalizedDate = new Date(order.finalizedForProfitSharingAt);
+                const finalizedYear = finalizedDate.getUTCFullYear();
+                const finalizedMonth = finalizedDate.getUTCMonth() + 1;
+                const isRecentlyFinalized = (finalizedYear === currentYear && finalizedMonth === currentMonth);
+                if (isRetroactive && isRecentlyFinalized) {
+                    year = currentYear;
+                    month = currentMonth;
+                } else {
+                    year = paymentYear;
+                    month = paymentMonth;
+                }
+            } else {
+                year = paymentYear;
+                month = paymentMonth;
+            }
+            keys.add(`${year}-${String(month).padStart(2, '0')}`);
+        }
+        const list = Array.from(keys).sort().map((key) => {
+            const [y, m] = key.split('-').map(Number);
+            return { year: y, month: m };
+        });
+        return { data: list };
+    }
+
+    /**
      * Retorna as ordens de pagamento do mês (mesma regra do resumo mensal), com nome do parceiro comercial.
      */
     async getMonthlyOrders(year: number, month: number) {

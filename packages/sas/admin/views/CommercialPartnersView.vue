@@ -81,7 +81,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex items-center gap-2">
                                 <button 
-                                    @click="viewPaymentOrders(item.id)" 
+                                    @click="openHistoryModal(item)" 
                                     class="text-blue-400 hover:text-blue-300 p-1.5 rounded transition-colors"
                                     title="Histórico"
                                 >
@@ -563,6 +563,56 @@
                 </form>
             </div>
         </div>
+
+        <!-- Modal: Histórico de ordens de pagamento do parceiro -->
+        <div v-if="showHistoryModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
+            <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-5xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="p-6 border-b border-neutral-700 flex justify-between items-center shrink-0">
+                    <h3 class="text-lg font-medium text-white">
+                        Ordens de pagamento - {{ historyPartnerName || 'Parceiro' }}
+                    </h3>
+                    <button @click="closeHistoryModal" class="text-neutral-400 hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-4 overflow-auto flex-1">
+                    <div v-if="loadingHistory" class="text-center py-8 text-neutral-400">Carregando ordens...</div>
+                    <div v-else-if="!historyOrders.length" class="text-center py-8 text-neutral-400">Nenhuma ordem de pagamento para este parceiro.</div>
+                    <table v-else class="min-w-full divide-y divide-neutral-700">
+                        <thead class="bg-neutral-700 sticky top-0">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Data de criação</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Valor fatura</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Moeda</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Valor pago (BRL)</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Data pagamento</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-neutral-800 divide-y divide-neutral-700">
+                            <tr v-for="order in historyOrdersSorted" :key="order.id" class="hover:bg-neutral-700">
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-white">
+                                    {{ order.createdAt ? formatDate(order.createdAt) : '-' }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-white">
+                                    {{ formatCurrency(order.invoiceAmount ?? 0, order.currency || 'BRL') }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-white">{{ order.currency || '-' }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-white">
+                                    {{ formatCurrency(order.paidValue ?? 0, 'BRL') }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-white">
+                                    {{ order.effectivePaymentDate ? formatDate(order.effectivePaymentDate) : '-' }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-white">{{ order.status || '-' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -636,6 +686,21 @@ const prevPage = () => {
 
 const showCampaignDialog = ref(false);
 const editingCampaignIndex = ref<number | null>(null);
+
+// Modal Histórico de ordens do parceiro
+const showHistoryModal = ref(false);
+const historyPartnerName = ref('');
+const historyOrders = ref<any[]>([]);
+const loadingHistory = ref(false);
+const historyOrdersSorted = computed(() => {
+    const list = [...historyOrders.value];
+    list.sort((a, b) => {
+        const da = new Date(a.createdAt || 0).getTime();
+        const db = new Date(b.createdAt || 0).getTime();
+        return db - da;
+    });
+    return list;
+});
 const campaignErrors = ref<Record<string, string>>({});
 const campaignForm = ref({
     name: '',
@@ -688,6 +753,13 @@ const formatDate = (date: string | Date): string => {
     if (!date) return '';
     const d = typeof date === 'string' ? new Date(date) : date;
     return d.toLocaleDateString('pt-BR');
+};
+
+const formatCurrency = (value: number, currency: string) => {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: currency === 'BRL' ? 'BRL' : (currency === 'EUR' ? 'EUR' : 'USD')
+    }).format(value);
 };
 
 // Função para validar caracteres orientais
@@ -1291,8 +1363,29 @@ const deleteItem = async (id: string) => {
 };
 
 // Ver histórico de ordens de pagamento
-const viewPaymentOrders = (partnerId: string) => {
-    router.push({ name: 'sas.payment-orders', query: { partnerId } });
+const openHistoryModal = async (item: { id: string; name: string }) => {
+    historyPartnerName.value = item.name || 'Parceiro';
+    historyOrders.value = [];
+    showHistoryModal.value = true;
+    loadingHistory.value = true;
+    try {
+        const response = await client.paymentOrders.get({
+            commercialPartnerId: item.id,
+            limit: '10000'
+        });
+        const data = response?.data ?? response;
+        historyOrders.value = Array.isArray(data) ? data : (data?.data ?? []);
+    } catch (error: any) {
+        console.error('Erro ao carregar ordens do parceiro:', error);
+        const msg = error.response?.data?.message || error.message || 'Erro ao carregar ordens';
+        alert(msg);
+    } finally {
+        loadingHistory.value = false;
+    }
+};
+
+const closeHistoryModal = () => {
+    showHistoryModal.value = false;
 };
 
 // Resetar página quando busca mudar

@@ -10,6 +10,11 @@ import {
 export class ProfitSharingController {
     constructor(private readonly profitSharingService: ProfitSharingService){}
 
+    @Get("available-months")
+    async getAvailableMonths() {
+        return await this.profitSharingService.getAvailableMonths();
+    }
+
     @Get("monthly")
     async getMonthlyProfitSharing(
         @Query("year") year: string,

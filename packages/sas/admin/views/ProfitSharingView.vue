@@ -1,11 +1,27 @@
 <template>
     <div class="space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
             <h1 class="text-2xl font-bold text-white">Divisão de Lucros</h1>
-            <div class="flex gap-2">
-                <input v-model="selectedYear" type="number" placeholder="Ano" class="px-3 py-1 bg-neutral-700 text-white rounded-md text-sm" />
-                <input v-model="selectedMonth" type="number" min="1" max="12" placeholder="Mês" class="px-3 py-1 bg-neutral-700 text-white rounded-md text-sm" />
-                <button @click="calculateProfitSharing" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors flex items-center">
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-neutral-400 whitespace-nowrap">Período:</label>
+                <select
+                    v-model="selectedPeriod"
+                    @change="onPeriodChange"
+                    :disabled="loadingAvailableMonths || !availableMonths.length"
+                    class="px-3 py-1.5 bg-neutral-700 text-white rounded-md text-sm border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[180px]"
+                >
+                    <option v-if="loadingAvailableMonths" value="">Carregando...</option>
+                    <option v-else-if="!availableMonths.length" value="">Nenhum mês com dados</option>
+                    <option v-for="m in availableMonths" :key="`${m.year}-${m.month}`" :value="`${m.year}-${String(m.month).padStart(2, '0')}`">
+                        {{ monthName(m.month) }}/{{ m.year }}
+                    </option>
+                </select>
+                <button
+                    v-if="selectedPeriod"
+                    @click="calculateProfitSharing"
+                    :disabled="loading"
+                    class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md transition-colors flex items-center disabled:opacity-50"
+                >
                     Calcular
                 </button>
             </div>
@@ -192,27 +208,31 @@
                                 <tr>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Parceiro comercial</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Data pagamento</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Valor fatura</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Moeda</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Valor pago (BRL)</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-neutral-800 divide-y divide-neutral-700">
-                                <tr v-for="order in modalOrdersPaginated" :key="order.id" class="hover:bg-neutral-700">
-                                    <td class="px-4 py-3 text-sm text-white">{{ order.commercialPartnerName ?? '-' }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-white">
-                                        {{ order.effectivePaymentDate ? formatDate(order.effectivePaymentDate) : '-' }}
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-white">
-                                        {{ formatCurrency(order.invoiceAmount ?? 0, order.currency || 'BRL') }}
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-white">{{ order.currency || '-' }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-white">
-                                        {{ formatCurrency(order.paidValue ?? 0, 'BRL') }}
-                                    </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-white">{{ order.status || '-' }}</td>
-                                </tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Valor fatura</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Moeda</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">% imposto</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Valor pago (BRL)</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-neutral-300 uppercase">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-neutral-800 divide-y divide-neutral-700">
+                            <tr v-for="order in modalOrdersPaginated" :key="order.id" class="hover:bg-neutral-700">
+                                <td class="px-4 py-3 text-sm text-white">{{ order.commercialPartnerName ?? '-' }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-white">
+                                    {{ order.effectivePaymentDate ? formatDate(order.effectivePaymentDate) : '-' }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-white">
+                                    {{ formatCurrency(order.invoiceAmount ?? 0, order.currency || 'BRL') }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-white">{{ order.currency || '-' }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-white">
+                                    {{ formatTaxPct(order) }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-white">
+                                    {{ formatCurrency(order.paidValue ?? 0, 'BRL') }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-white">{{ order.status || '-' }}</td>
+                            </tr>
                             </tbody>
                         </table>
                         <div v-if="modalOrdersTotalPages > 1" class="mt-4 flex items-center justify-between border-t border-neutral-700 pt-4">
@@ -249,12 +269,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useSasClient } from '../client';
 
 const ORDERS_PAGE_SIZE = 40;
+const MONTH_NAMES: Record<number, string> = {
+    1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho',
+    7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+};
+
+const monthName = (month: number) => MONTH_NAMES[month] || String(month);
 
 const client = useSasClient();
+const availableMonths = ref<Array<{ year: number; month: number }>>([]);
+const loadingAvailableMonths = ref(true);
+const selectedPeriod = ref(''); // "YYYY-MM"
 const selectedYear = ref(new Date().getFullYear());
 const selectedMonth = ref(new Date().getMonth() + 1);
 const result = ref<any>(null);
@@ -292,9 +321,45 @@ const formatCurrency = (value: number, currency: string) => {
     }).format(value);
 };
 
+const formatTaxPct = (order: any) => {
+    const inv = order.invoiceAmount ?? 0;
+    if (inv <= 0) return '0%';
+    const tax = order.taxAmount ?? 0;
+    const pct = (tax / inv) * 100;
+    return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 }).format(pct) + '%';
+};
+
+const onPeriodChange = () => {
+    if (!selectedPeriod.value) return;
+    const [y, m] = selectedPeriod.value.split('-').map(Number);
+    selectedYear.value = y;
+    selectedMonth.value = m;
+    calculateProfitSharing();
+};
+
+const loadAvailableMonths = async () => {
+    loadingAvailableMonths.value = true;
+    try {
+        const response = await client.profitSharing.getAvailableMonths();
+        const raw = response?.data ?? response;
+        const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+        availableMonths.value = list;
+        if (list.length > 0 && !selectedPeriod.value) {
+            const last = list[list.length - 1];
+            selectedPeriod.value = `${last.year}-${String(last.month).padStart(2, '0')}`;
+            selectedYear.value = last.year;
+            selectedMonth.value = last.month;
+            await calculateProfitSharing();
+        }
+    } catch (error: any) {
+        console.error('Erro ao carregar meses disponíveis:', error);
+    } finally {
+        loadingAvailableMonths.value = false;
+    }
+};
+
 const calculateProfitSharing = async () => {
     if (!selectedYear.value || !selectedMonth.value) {
-        alert('Por favor, selecione ano e mês');
         return;
     }
 
@@ -341,6 +406,10 @@ const openOrdersModal = async () => {
 const closeOrdersModal = () => {
     showOrdersModal.value = false;
 };
+
+onMounted(() => {
+    loadAvailableMonths();
+});
 </script>
 
 
