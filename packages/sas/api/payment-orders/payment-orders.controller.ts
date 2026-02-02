@@ -2,7 +2,7 @@ import {
     Controller, Get, Post, Put, Delete, Patch,
     Queries, Body, Param
 } from "@cmmv/http";
-
+import { Auth } from "@cmmv/auth";
 import {
     PaymentOrdersService
 } from "./payment-orders.service";
@@ -20,11 +20,39 @@ export class PaymentOrdersBusinessController {
     }
 
     /**
+     * Exportar todas as ordens em formato do banco (para CSV)
+     */
+    @Get("export")
+    async exportAll() {
+        return await this.paymentOrdersService.findAllForExport();
+    }
+
+    /**
      * Importar ordens de pagamento em lote via CSV
      */
     @Post("import-csv")
     async importCSV(@Body() body: { csvContent: string }) {
         return await this.paymentOrdersService.importFromCSV(body.csvContent || "");
+    }
+
+    /**
+     * Verificar se o usuario atual pode fazer update em lote (somente root).
+     * Usado na UI para exibir o botao "Update em lote" apenas para root.
+     */
+    @Get("can-bulk-update")
+    @Auth({ rootOnly: true })
+    async canBulkUpdate() {
+        return { canBulkUpdate: true };
+    }
+
+    /**
+     * Atualizar ordens em lote via CSV no mesmo formato do export (formato do banco).
+     * Somente usuario root pode executar.
+     */
+    @Post("update-csv")
+    @Auth({ rootOnly: true })
+    async updateCSV(@Body() body: { csvContent: string }) {
+        return await this.paymentOrdersService.updateFromExportCSV(body.csvContent || "");
     }
 
     /**

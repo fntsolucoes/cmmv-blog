@@ -33,6 +33,26 @@
                     class="hidden"
                     @change="handleImportCSVFile"
                 />
+                <template v-if="canBulkUpdate">
+                    <button
+                        type="button"
+                        @click="triggerBulkUpdateCSV"
+                        :disabled="updatingBulkCSV"
+                        class="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-md transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        {{ updatingBulkCSV ? 'Atualizando...' : 'Update em lote' }}
+                    </button>
+                    <input
+                        ref="bulkUpdateFileInput"
+                        type="file"
+                        accept=".csv"
+                        class="hidden"
+                        @change="handleBulkUpdateCSVFile"
+                    />
+                </template>
                 <button @click="openAddDialog" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -935,6 +955,9 @@ const exchangeRatesCache = ref<Map<string, any>>(new Map());
 const csvFileInput = ref<HTMLInputElement | null>(null);
 const importingCSV = ref(false);
 const exportingCSV = ref(false);
+const canBulkUpdate = ref(false);
+const updatingBulkCSV = ref(false);
+const bulkUpdateFileInput = ref<HTMLInputElement | null>(null);
 
 // Estados para busca de parceiros
 const partnerSearchText = ref('');
@@ -1618,33 +1641,34 @@ const parseExpectedPaymentMonth = (monthStr: string | null | undefined): { month
     return { month: 1, year: new Date().getFullYear() };
 };
 
+const DB_EXPORT_COLUMNS = [
+    'id', 'commercialPartnerId', 'currency', 'costCenterId', 'invoiceAmount', 'taxAmount', 'discountAmount',
+    'withdrawalDate', 'expectedPaymentMonth', 'effectivePaymentDate', 'paidValue', 'status', 'paymentMethod',
+    'finalizedForProfitSharingAt', 'createdAt', 'updatedAt'
+] as const;
+
+const formatValueForDBExport = (val: unknown): string => {
+    if (val === null || val === undefined) return '';
+    if (val instanceof Date) return val.toISOString();
+    if (typeof val === 'object') return JSON.stringify(val);
+    return String(val);
+};
+
 const exportToCSV = () => {
     const list = filteredItems.value;
     if (list.length === 0) {
-        alert('Nao ha dados para exportar. Ajuste os filtros ou cadastre ordens.');
+        alert('Nao ha dados para exportar. Ajuste os filtros ou carregue as ordens.');
         return;
     }
     exportingCSV.value = true;
     try {
-        const header = 'parceiroComercial,centroCusto,currency,invoiceAmount,taxPercentage,discountAmount,withdrawalDate,expectedPaymentMonth,expectedPaymentYear,effectivePaymentDate,status,paidValue,paymentMethod';
-        const rows = list.map(item => {
-            const taxPct = item.invoiceAmount ? (item.taxAmount || 0) / item.invoiceAmount * 100 : 0;
-            const { month: expMonth, year: expYear } = parseExpectedPaymentMonth(item.expectedPaymentMonth);
-            const cells = [
-                escapeCSVCell(getPartnerName(item.commercialPartnerId) ?? ''),
-                escapeCSVCell(getCostCenterName(item.costCenterId) ?? ''),
-                escapeCSVCell(item.currency || 'BRL'),
-                escapeCSVCell(item.invoiceAmount ?? ''),
-                escapeCSVCell(taxPct.toFixed(2)),
-                escapeCSVCell(item.discountAmount ?? 0),
-                escapeCSVCell(formatDateForCSV(item.withdrawalDate)),
-                escapeCSVCell(expMonth),
-                escapeCSVCell(expYear),
-                escapeCSVCell(formatDateForCSV(item.effectivePaymentDate)),
-                escapeCSVCell(item.status || 'Pendente'),
-                escapeCSVCell(item.paidValue ?? ''),
-                escapeCSVCell(item.paymentMethod ?? '')
-            ];
+        const header = DB_EXPORT_COLUMNS.join(',');
+        const rows = list.map((item: any) => {
+            const cells = DB_EXPORT_COLUMNS.map(col => {
+                const raw = item[col];
+                const str = formatValueForDBExport(raw);
+                return escapeCSVCell(str);
+            });
             return cells.join(',');
         });
         const csv = [header, ...rows].join('\r\n');
@@ -1662,6 +1686,42 @@ const exportToCSV = () => {
         alert('Erro ao exportar CSV: ' + (err?.message || String(err)));
     } finally {
         exportingCSV.value = false;
+    }
+};
+
+const triggerBulkUpdateCSV = () => {
+    bulkUpdateFileInput.value?.click();
+};
+
+const handleBulkUpdateCSVFile = async (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert('Selecione um arquivo CSV no formato do export.');
+        target.value = '';
+        return;
+    }
+    updatingBulkCSV.value = true;
+    target.value = '';
+    try {
+        const text = await file.text();
+        const res = await client.paymentOrders.updateBulkCSV(text);
+        const data = res?.data ?? res?.result?.data ?? res;
+        const updated = data?.updated ?? 0;
+        const errors = data?.errors ?? [];
+        await loadData();
+        let msg = `Update em lote concluido.\nRegistros atualizados: ${updated}`;
+        if (errors.length > 0) {
+            msg += `\n\nErros (${errors.length}):\n${errors.slice(0, 10).join('\n')}`;
+            if (errors.length > 10) msg += '\n...';
+        }
+        alert(msg);
+    } catch (err: any) {
+        console.error('Erro no update em lote:', err);
+        alert('Erro no update em lote: ' + (err?.message || String(err)) + '\nApenas usuario root pode executar.');
+    } finally {
+        updatingBulkCSV.value = false;
     }
 };
 
@@ -2298,7 +2358,6 @@ const saveOrder = async () => {
 
         await loadData();
         closeDialog();
-        clearFilters();
     } catch (error: any) {
         console.error('Erro ao salvar ordem:', error);
         alert(`Erro: ${error.response?.data?.message || error.message || 'Erro desconhecido'}`);
@@ -2354,9 +2413,16 @@ watch(() => form.value.commercialPartnerId, (newId) => {
     }
 });
 
-onMounted(() => {
+onMounted(async () => {
     loadData();
     loadPartners();
     loadCostCenters();
+    try {
+        const res = await client.paymentOrders.canBulkUpdate();
+        const data = res?.data ?? res?.result ?? res;
+        canBulkUpdate.value = !!(data?.canBulkUpdate === true || (res?.status === 200 && data?.canBulkUpdate !== false));
+    } catch {
+        canBulkUpdate.value = false;
+    }
 });
 </script>

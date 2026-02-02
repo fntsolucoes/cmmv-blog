@@ -1,13 +1,16 @@
 {
     "name": "@cmmv/sas",
-    "version": "0.1.166",
+    "version": "0.1.167",
     "description": "Sistema de Administração de Saques package for CMMV",
     "scripts": {
-        "build": "tsup"
+        "build": "tsup",
+        "test": "vitest run",
+        "test:watch": "vitest"
     },
     "devDependencies": {
         "tsup": "^8.4.0",
-        "typescript": "^5.8.2"
+        "typescript": "^5.8.2",
+        "vitest": "^3.0.9"
     },
     "dependencies": {
         "@cmmv/core": "latest",

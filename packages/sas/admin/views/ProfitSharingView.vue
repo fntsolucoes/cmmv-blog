@@ -28,25 +28,86 @@
                     </div>
 
                     <template v-else>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div class="bg-neutral-700/50 rounded-lg border border-neutral-600 p-4">
+                        <div class="bg-neutral-700/50 rounded-lg border border-neutral-600 p-4 mb-4">
+                            <p class="text-neutral-400 text-sm mb-3">Total bruto do período</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-neutral-500 text-xs font-medium mb-2">Com imposto</p>
+                                    <div v-if="Object.keys(result.totalGrossWithTaxByCurrency || {}).length === 0" class="text-neutral-400 italic text-sm">
+                                        Nenhum valor
+                                    </div>
+                                    <div v-else class="space-y-1.5 text-sm">
+                                        <div v-for="(amount, currency) in result.totalGrossWithTaxByCurrency" :key="'with-' + currency" class="text-white">
+                                            <span v-if="currency === 'BRL'">{{ currency }}: {{ formatCurrency(amount, currency) }}</span>
+                                            <span v-else-if="currency === 'USD'">
+                                                USD: {{ formatCurrency(amount, 'USD') }}
+                                                <span v-if="(result.totalGrossWithTaxUsdInBRL ?? 0) > 0" class="text-neutral-400">(convertido: {{ formatCurrency(result.totalGrossWithTaxUsdInBRL, 'BRL') }})</span>
+                                            </span>
+                                            <span v-else-if="currency === 'EUR'">
+                                                EUR: {{ formatCurrency(amount, 'EUR') }}
+                                                <span v-if="(result.totalGrossWithTaxEurInBRL ?? 0) > 0" class="text-neutral-400">(convertido: {{ formatCurrency(result.totalGrossWithTaxEurInBRL, 'BRL') }})</span>
+                                            </span>
+                                            <span v-else>{{ currency }}: {{ formatCurrency(amount, currency) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-neutral-500 text-xs font-medium mb-2">Sem imposto</p>
+                                    <div v-if="Object.keys(result.totalGrossWithoutTaxByCurrency || {}).length === 0" class="text-neutral-400 italic text-sm">
+                                        Nenhum valor
+                                    </div>
+                                    <div v-else class="space-y-1.5 text-sm">
+                                        <div v-for="(amount, currency) in result.totalGrossWithoutTaxByCurrency" :key="'without-' + currency" class="text-white">
+                                            <span v-if="currency === 'BRL'">{{ currency }}: {{ formatCurrency(amount, currency) }}</span>
+                                            <span v-else-if="currency === 'USD'">
+                                                USD: {{ formatCurrency(amount, 'USD') }}
+                                                <span v-if="(result.totalGrossWithoutTaxUsdInBRL ?? 0) > 0" class="text-neutral-400">(convertido: {{ formatCurrency(result.totalGrossWithoutTaxUsdInBRL, 'BRL') }})</span>
+                                            </span>
+                                            <span v-else-if="currency === 'EUR'">
+                                                EUR: {{ formatCurrency(amount, 'EUR') }}
+                                                <span v-if="(result.totalGrossWithoutTaxEurInBRL ?? 0) > 0" class="text-neutral-400">(convertido: {{ formatCurrency(result.totalGrossWithoutTaxEurInBRL, 'BRL') }})</span>
+                                            </span>
+                                            <span v-else>{{ currency }}: {{ formatCurrency(amount, currency) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-xs text-neutral-500 mt-2">Soma dos valores da fatura (antes de imposto e desconto)</p>
+                            <div class="mt-4 pt-4 border-t border-neutral-600">
+                                <p class="text-neutral-400 text-sm mb-1">Total final em R$</p>
+                                <p class="text-2xl font-bold text-white">
+                                    {{ formatCurrency(result.totalGrossFinalBRL ?? 0, 'BRL') }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                            <div class="bg-neutral-700/50 rounded-lg border border-neutral-600 p-4 max-w-xs">
                                 <p class="text-neutral-400 text-sm mb-2">Total por Moeda</p>
                                 <div class="space-y-2">
-                                    <div v-if="Object.keys(result.totalByCurrency || {}).length === 0" class="text-neutral-400 italic">
+                                    <div v-if="Object.keys(result.totalByCurrency || {}).length === 0" class="text-neutral-400 italic text-sm">
                                         Nenhum valor encontrado
                                     </div>
-                                    <div v-for="(amount, currency) in result.totalByCurrency" :key="currency" class="text-white">
+                                    <div v-for="(amount, currency) in result.totalByCurrency" :key="currency" class="text-white text-sm">
                                         <strong>{{ currency }}:</strong> {{ formatCurrency(amount, currency) }}
                                     </div>
                                 </div>
                             </div>
-                            <div class="bg-neutral-700/50 rounded-lg border border-neutral-600 p-4">
+                            <div class="bg-neutral-700/50 rounded-lg border border-neutral-600 p-4 max-w-xs">
                                 <p class="text-neutral-400 text-sm mb-2">Total em BRL</p>
-                                <p class="text-2xl font-bold text-white">
+                                <p class="text-xl font-bold text-white">
                                     {{ formatCurrency(result.totalBRL || 0, 'BRL') }}
                                 </p>
-                                <p class="text-xs text-neutral-400 mt-1">
-                                    {{ result.ordersCount || 0 }} ordem(ns) processada(s)
+                            </div>
+                            <div class="bg-neutral-700/50 rounded-lg border border-neutral-600 p-4 max-w-xs">
+                                <p class="text-neutral-400 text-sm mb-2">Número de notas pagas</p>
+                                <p class="text-2xl font-bold text-green-500">
+                                    {{ result.ordersCount ?? 0 }}
+                                </p>
+                            </div>
+                            <div class="bg-neutral-700/50 rounded-lg border border-neutral-600 p-4 max-w-xs">
+                                <p class="text-neutral-400 text-sm mb-2">Número de notas em aberto</p>
+                                <p class="text-2xl font-bold text-red-500">
+                                    {{ result.ordersCountOpen ?? 0 }}
                                 </p>
                             </div>
                         </div>

@@ -21,6 +21,15 @@ export class ProfitSharingService {
             limit: 10000
         }, []);
 
+        // Notas em aberto do periodo (status Pendente e expectedPaymentMonth = mes selecionado)
+        const expectedMonthStr = `${year}-${String(month).padStart(2, '0')}`;
+        const openOrdersRes = await Repository.findAll(PaymentOrdersEntity, {
+            status: 'Pendente',
+            limit: 10000
+        }, []);
+        const openOrdersList = Array.isArray(openOrdersRes?.data) ? openOrdersRes.data : [];
+        const ordersCountOpen = openOrdersList.filter((o: any) => (o.expectedPaymentMonth || '') === expectedMonthStr).length;
+
         // Filtrar ordens do mês especificado
         // Usar UTC para consistência com as datas armazenadas no backend
         // REGRA: Se finalizedForProfitSharingAt existir, usar ele para determinar o mês de referência
@@ -98,15 +107,57 @@ export class ProfitSharingService {
             };
         });
 
+        // Total bruto do periodo: com imposto (taxAmount > 0) e sem imposto (taxAmount = 0)
+        const totalGrossWithTaxByCurrency: Record<string, number> = {};
+        const totalGrossWithoutTaxByCurrency: Record<string, number> = {};
+        for (const order of orders) {
+            const gross = order.invoiceAmount ?? 0;
+            const hasTax = (order.taxAmount ?? 0) > 0;
+            const target = hasTax ? totalGrossWithTaxByCurrency : totalGrossWithoutTaxByCurrency;
+            if (!target[order.currency]) {
+                target[order.currency] = 0;
+            }
+            target[order.currency] += gross;
+        }
+
+        // Converter USD e EUR para BRL (usar ultimo dia do mes como data da taxa)
+        const lastDayOfMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+        const rateDate = new Date(Date.UTC(year, month - 1, lastDayOfMonth, 12, 0, 0, 0)); // month 1-12 -> index 0-11
+        const rateUsd = await this.getExchangeRate('USD-BRL', rateDate);
+        const rateEur = await this.getExchangeRate('EUR-BRL', rateDate);
+        const usdToBrl = rateUsd?.rate ? Number(rateUsd.rate) : 0;
+        const eurToBrl = rateEur?.rate ? Number(rateEur.rate) : 0;
+
+        const totalGrossWithTaxUsdInBRL = (totalGrossWithTaxByCurrency['USD'] ?? 0) * usdToBrl;
+        const totalGrossWithTaxEurInBRL = (totalGrossWithTaxByCurrency['EUR'] ?? 0) * eurToBrl;
+        const totalGrossWithoutTaxUsdInBRL = (totalGrossWithoutTaxByCurrency['USD'] ?? 0) * usdToBrl;
+        const totalGrossWithoutTaxEurInBRL = (totalGrossWithoutTaxByCurrency['EUR'] ?? 0) * eurToBrl;
+
+        const totalGrossFinalBRL =
+            (totalGrossWithTaxByCurrency['BRL'] ?? 0) +
+            (totalGrossWithoutTaxByCurrency['BRL'] ?? 0) +
+            totalGrossWithTaxUsdInBRL +
+            totalGrossWithTaxEurInBRL +
+            totalGrossWithoutTaxUsdInBRL +
+            totalGrossWithoutTaxEurInBRL;
+
         if (!shareholders?.data || shareholders.data.length === 0) {
             return {
                 year,
                 month,
                 totalByCurrency: {},
                 totalBRL: 0,
+                totalGrossWithTaxByCurrency,
+                totalGrossWithoutTaxByCurrency,
+                totalGrossWithTaxUsdInBRL,
+                totalGrossWithTaxEurInBRL,
+                totalGrossWithoutTaxUsdInBRL,
+                totalGrossWithoutTaxEurInBRL,
+                totalGrossFinalBRL,
                 totalTaxByCostCenter,
                 distribution: [],
-                ordersCount: orders.length
+                ordersCount: orders.length,
+                ordersCountOpen
             };
         }
 
@@ -151,9 +202,17 @@ export class ProfitSharingService {
             month,
             totalByCurrency: totalsByCurrency,
             totalBRL,
+            totalGrossWithTaxByCurrency,
+            totalGrossWithoutTaxByCurrency,
+            totalGrossWithTaxUsdInBRL,
+            totalGrossWithTaxEurInBRL,
+            totalGrossWithoutTaxUsdInBRL,
+            totalGrossWithoutTaxEurInBRL,
+            totalGrossFinalBRL,
             totalTaxByCostCenter,
             distribution,
-            ordersCount: orders.length
+            ordersCount: orders.length,
+            ordersCountOpen
         };
     }
 

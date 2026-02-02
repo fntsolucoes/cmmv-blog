@@ -151,6 +151,15 @@ export const useSasClient = () => {
         },
         importCSV: async (csvContent: string) => {
             return api.authRequest("affiliation-manager/payment-orders/v2/import-csv", "POST", { csvContent });
+        },
+        exportAll: async () => {
+            return api.authRequest("affiliation-manager/payment-orders/v2/export", "GET");
+        },
+        canBulkUpdate: async () => {
+            return api.authRequest("affiliation-manager/payment-orders/v2/can-bulk-update", "GET");
+        },
+        updateBulkCSV: async (csvContent: string) => {
+            return api.authRequest("affiliation-manager/payment-orders/v2/update-csv", "POST", { csvContent });
         }
     };
 

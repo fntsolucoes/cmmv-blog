@@ -563,6 +563,15 @@ export class PaymentOrdersService {
     }
 
     /**
+     * Retornar todas as ordens de pagamento para exportacao (formato do banco).
+     * Usa limite alto explicito para evitar limite padrao do repositório.
+     */
+    async findAllForExport() {
+        const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
+        return await Repository.findAll(PaymentOrdersEntity, { limit: 1000000 });
+    }
+
+    /**
      * Buscar ordem por ID
      */
     async findById(id: string) {
@@ -740,6 +749,139 @@ export class PaymentOrdersService {
         }
 
         return { data: { imported, errors } };
+    }
+
+    /**
+     * Atualizar ordens em lote a partir de CSV no mesmo formato do export (formato do banco).
+     * Colunas: id, commercialPartnerId, currency, costCenterId, invoiceAmount, taxAmount, discountAmount,
+     * withdrawalDate, expectedPaymentMonth, effectivePaymentDate, paidValue, status, paymentMethod,
+     * observations, finalizedForProfitSharingAt. id e obrigatorio para identificar o registro.
+     * Delimitador: virgula ou ponto e virgula. Datas em ISO (YYYY-MM-DD ou ISO completo).
+     */
+    async updateFromExportCSV(csvContent: string): Promise<{
+        data: { updated: number; errors: string[] };
+    }> {
+        const errors: string[] = [];
+        let updated = 0;
+        const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
+        const CommercialPartnersEntity = Repository.getEntity("SasCommercialPartnersEntity");
+        const CostCentersEntity = Repository.getEntity("SasCostCentersEntity");
+
+        const firstLine = csvContent.split(/\r?\n/)[0] || "";
+        const delimiter = firstLine.includes(";") && !firstLine.includes(",") ? ";" : ",";
+        let records: Record<string, string>[];
+        try {
+            records = parse(csvContent, {
+                columns: true,
+                skip_empty_lines: true,
+                trim: true,
+                bom: true,
+                delimiter
+            });
+        } catch (parseError: any) {
+            return {
+                data: {
+                    updated: 0,
+                    errors: ["Erro ao ler CSV: " + (parseError?.message || String(parseError))]
+                }
+            };
+        }
+
+        const parseOptionalDate = (val: string | null | undefined): Date | null => {
+            const s = val?.trim();
+            if (!s) return null;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+                const [y, m, d] = s.split("-").map(Number);
+                return new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0));
+            }
+            const d = new Date(s);
+            return isNaN(d.getTime()) ? null : d;
+        };
+
+        const parseOptionalNumber = (val: string | null | undefined): number | null => {
+            const s = val?.trim();
+            if (s === "" || s === null || s === undefined) return null;
+            const n = parseFloat(s.replace(",", "."));
+            return isNaN(n) ? null : n;
+        };
+
+        for (let i = 0; i < records.length; i++) {
+            const row = records[i];
+            const rowNum = i + 2;
+            const id = row.id?.trim();
+            if (!id) {
+                errors.push(`Linha ${rowNum}: id e obrigatorio`);
+                continue;
+            }
+
+            const existing = await Repository.findOne(PaymentOrdersEntity, { id });
+            if (!existing) {
+                errors.push(`Linha ${rowNum}: ordem nao encontrada (id=${id})`);
+                continue;
+            }
+
+            const payload: any = {};
+
+            if (row.commercialPartnerId !== undefined && row.commercialPartnerId !== "") {
+                const partner = await Repository.findOne(CommercialPartnersEntity, { id: row.commercialPartnerId.trim() });
+                if (!partner) {
+                    errors.push(`Linha ${rowNum}: parceiro comercial nao encontrado`);
+                    continue;
+                }
+                payload.commercialPartnerId = row.commercialPartnerId.trim();
+            }
+            if (row.costCenterId !== undefined && row.costCenterId !== "") {
+                const cc = await Repository.findOne(CostCentersEntity, { id: row.costCenterId.trim() });
+                if (!cc) {
+                    errors.push(`Linha ${rowNum}: centro de custo nao encontrado`);
+                    continue;
+                }
+                payload.costCenterId = row.costCenterId.trim();
+            }
+            if (row.currency !== undefined && row.currency !== "") payload.currency = row.currency.trim().toUpperCase();
+            if (row.invoiceAmount !== undefined && row.invoiceAmount !== "") {
+                const v = parseOptionalNumber(row.invoiceAmount);
+                if (v !== null && v >= 0) payload.invoiceAmount = v;
+            }
+            if (row.taxAmount !== undefined && row.taxAmount !== "") {
+                const v = parseOptionalNumber(row.taxAmount);
+                if (v !== null && v >= 0) payload.taxAmount = v;
+            }
+            if (row.discountAmount !== undefined && row.discountAmount !== "") {
+                const v = parseOptionalNumber(row.discountAmount);
+                if (v !== null && v >= 0) payload.discountAmount = v;
+            }
+            if (row.withdrawalDate !== undefined && row.withdrawalDate !== "") {
+                const d = parseOptionalDate(row.withdrawalDate);
+                if (d) payload.withdrawalDate = d;
+            }
+            if (row.expectedPaymentMonth !== undefined && row.expectedPaymentMonth !== "") {
+                const s = row.expectedPaymentMonth.trim();
+                if (/^\d{4}-\d{2}$/.test(s)) payload.expectedPaymentMonth = s;
+            }
+            if (row.effectivePaymentDate !== undefined) {
+                payload.effectivePaymentDate = parseOptionalDate(row.effectivePaymentDate);
+            }
+            if (row.paidValue !== undefined) {
+                const v = parseOptionalNumber(row.paidValue);
+                payload.paidValue = v;
+            }
+            if (row.status !== undefined && row.status !== "") payload.status = row.status.trim();
+            if (row.paymentMethod !== undefined) payload.paymentMethod = row.paymentMethod.trim() || null;
+            if (row.observations !== undefined) payload.observations = row.observations.trim() || null;
+            if (row.finalizedForProfitSharingAt !== undefined) {
+                payload.finalizedForProfitSharingAt = parseOptionalDate(row.finalizedForProfitSharingAt);
+            }
+
+            try {
+                await Repository.update(PaymentOrdersEntity, id, payload);
+                updated++;
+            } catch (err: any) {
+                errors.push(`Linha ${rowNum}: ${err?.message || String(err)}`);
+            }
+        }
+
+        return { data: { updated, errors } };
     }
 }
 
