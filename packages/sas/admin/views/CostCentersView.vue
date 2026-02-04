@@ -34,7 +34,7 @@
                         <td class="px-6 py-4 text-sm text-white">
                             <div class="flex flex-wrap gap-2">
                                 <span v-for="(method, index) in getPaymentMethods(item)" :key="index" class="px-2 py-1 bg-blue-600 rounded text-xs">
-                                    {{ method.method }}
+                                    {{ formatPaymentMethodLabel(method) }}
                                 </span>
                                 <span v-if="getPaymentMethods(item).length === 0" class="text-neutral-400 italic">Nenhum método cadastrado</span>
                             </div>
@@ -45,8 +45,33 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button @click="editItem(item)" class="text-blue-400 hover:text-blue-300 mr-3">Editar</button>
-                            <button @click="deleteItem(item.id)" class="text-red-400 hover:text-red-300">Excluir</button>
+                            <button
+                                @click="openHistoryModal(item)"
+                                title="Historico de notas"
+                                class="text-neutral-300 hover:text-white p-1.5 rounded hover:bg-neutral-600 transition-colors mr-1"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </button>
+                            <button
+                                @click="editItem(item)"
+                                title="Alterar"
+                                class="text-blue-400 hover:text-blue-300 p-1.5 rounded hover:bg-neutral-600 transition-colors mr-1"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                            </button>
+                            <button
+                                @click="deleteItem(item.id)"
+                                title="Remover"
+                                class="text-red-400 hover:text-red-300 p-1.5 rounded hover:bg-neutral-600 transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
                         </td>
                     </tr>
                 </tbody>
@@ -173,13 +198,42 @@
                                         <option value="">Selecione uma opção</option>
                                         <option value="Wise">Wise</option>
                                         <option value="PIX">PIX</option>
+                                        <option value="Crypto">Crypto</option>
                                         <option value="Outro">Outro</option>
                                     </select>
                                     <p v-if="formErrors[`paymentMethod_${index}`]" class="mt-1 text-xs text-red-400">{{ formErrors[`paymentMethod_${index}`] }}</p>
                                 </div>
 
-                                <!-- Detalhes do Método -->
-                                <div>
+                                <!-- Crypto: Código da wallet e Sigla da moeda -->
+                                <template v-if="method.method === 'Crypto'">
+                                    <div>
+                                        <label class="block text-xs font-medium text-neutral-400 mb-1">Codigo da wallet <span class="text-red-500">*</span></label>
+                                        <input
+                                            v-model="method.wallet"
+                                            type="text"
+                                            placeholder="Ex: 0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+                                            class="w-full px-3 py-2 bg-neutral-600 border border-neutral-500 rounded-md text-white placeholder-neutral-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            :class="{ 'border-red-500': formErrors[`paymentWallet_${index}`] }"
+                                        />
+                                        <p v-if="formErrors[`paymentWallet_${index}`]" class="mt-1 text-xs text-red-400">{{ formErrors[`paymentWallet_${index}`] }}</p>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-neutral-400 mb-1">Sigla da moeda <span class="text-red-500">*</span></label>
+                                        <input
+                                            v-model="method.currency"
+                                            type="text"
+                                            placeholder="Ex: BTC, ETH, USDT"
+                                            class="w-full px-3 py-2 bg-neutral-600 border border-neutral-500 rounded-md text-white placeholder-neutral-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                                            maxlength="10"
+                                            :class="{ 'border-red-500': formErrors[`paymentCurrency_${index}`] }"
+                                            @input="method.currency = (method.currency || '').toUpperCase()"
+                                        />
+                                        <p v-if="formErrors[`paymentCurrency_${index}`]" class="mt-1 text-xs text-red-400">{{ formErrors[`paymentCurrency_${index}`] }}</p>
+                                    </div>
+                                </template>
+
+                                <!-- Detalhes do Método (Wise, PIX, Outro) -->
+                                <div v-else>
                                     <label class="block text-xs font-medium text-neutral-400 mb-1">
                                         Detalhes
                                         <span v-if="method.method === 'Outro'" class="text-red-500">*</span>
@@ -241,11 +295,71 @@
                 </form>
             </div>
         </div>
+
+        <!-- Modal Historico de Notas -->
+        <div v-if="showHistoryModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
+            <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-4xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="p-6 border-b border-neutral-700 flex justify-between items-center">
+                    <h3 class="text-lg font-medium text-white">Historico de notas - {{ historyCostCenter?.name }}</h3>
+                    <button @click="closeHistoryModal" class="text-neutral-400 hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-6 overflow-y-auto flex-1">
+                    <div v-if="historyLoading" class="text-center text-neutral-400 py-8">Carregando notas...</div>
+                    <div v-else-if="historyOrders.length === 0" class="text-center text-neutral-400 py-8">Nenhuma nota emitida para este centro de custo.</div>
+                    <div v-else>
+                        <table class="min-w-full divide-y divide-neutral-700">
+                            <thead class="bg-neutral-700 sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Parceiro</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Moeda</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Valor</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Data criacao</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Data de pagamento</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-neutral-800 divide-y divide-neutral-700">
+                                <tr v-for="order in paginatedHistoryOrders" :key="order.id" class="hover:bg-neutral-700">
+                                    <td class="px-4 py-3 text-sm text-white">{{ getHistoryPartnerName(order.commercialPartnerId) }}</td>
+                                    <td class="px-4 py-3 text-sm text-white">{{ order.currency || 'BRL' }}</td>
+                                    <td class="px-4 py-3 text-sm text-white">{{ formatHistoryAmount(order.invoiceAmount, order.currency) }}</td>
+                                    <td class="px-4 py-3 text-sm text-white">{{ formatHistoryDate(order.createdAt) }}</td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <span :class="order.status === 'Pago' ? 'bg-green-500' : 'bg-yellow-500'" class="px-2 py-1 text-xs rounded-full text-white">{{ order.status || 'Pendente' }}</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-white">{{ formatHistoryDate(order.effectivePaymentDate) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div v-if="totalHistoryPages > 1" class="mt-4 flex items-center justify-between text-sm text-neutral-400">
+                            <span>Mostrando {{ (historyPage - 1) * 50 + 1 }} a {{ Math.min(historyPage * 50, historyOrders.length) }} de {{ historyOrders.length }}</span>
+                            <div class="flex gap-2">
+                                <button
+                                    @click="historyPage = Math.max(1, historyPage - 1)"
+                                    :disabled="historyPage === 1"
+                                    class="px-3 py-1.5 bg-neutral-600 hover:bg-neutral-500 rounded disabled:opacity-50"
+                                >Anterior</button>
+                                <span class="px-2 py-1.5">Pagina {{ historyPage }} de {{ totalHistoryPages }}</span>
+                                <button
+                                    @click="historyPage = Math.min(totalHistoryPages, historyPage + 1)"
+                                    :disabled="historyPage === totalHistoryPages"
+                                    class="px-3 py-1.5 bg-neutral-600 hover:bg-neutral-500 rounded disabled:opacity-50"
+                                >Proxima</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useSasClient } from '../client';
 
 const client = useSasClient();
@@ -256,10 +370,19 @@ const saving = ref(false);
 const editingItem = ref<any>(null);
 const formErrors = ref<Record<string, string>>({});
 
+// Historico de notas
+const showHistoryModal = ref(false);
+const historyCostCenter = ref<any>(null);
+const historyOrders = ref<any[]>([]);
+const historyPartners = ref<any[]>([]);
+const historyLoading = ref(false);
+const historyPage = ref(1);
+const HISTORY_PAGE_SIZE = 50;
+
 const form = ref({
     identifier: '',
     name: '',
-    paymentMethods: [] as Array<{ method: string; details: string }>,
+    paymentMethods: [] as Array<{ method: string; details: string; wallet?: string; currency?: string }>,
     active: true
 });
 
@@ -306,30 +429,43 @@ const getPaymentDetailsPlaceholder = (method: string): string => {
         return 'Digite o email da conta Wise';
     } else if (method === 'PIX') {
         return 'Digite a chave PIX (CPF, CNPJ, Email, Telefone ou Chave Aleatória)';
+    } else if (method === 'Crypto') {
+        return 'Use os campos Código da wallet e Sigla da moeda acima';
     } else if (method === 'Outro') {
         return 'Especifique os detalhes (ex: dados bancários, conta, agência, etc.)';
     }
     return 'Preencha os detalhes conforme o método selecionado';
 };
 
-// Função para obter métodos de pagamento do item
-const getPaymentMethods = (item: any): Array<{ method: string; details: string }> => {
+// Função para obter métodos de pagamento do item (method, details?, wallet?, currency?)
+const getPaymentMethods = (item: any): Array<{ method: string; details?: string; wallet?: string; currency?: string }> => {
     if (!item.paymentMethods) return [];
     try {
-        if (typeof item.paymentMethods === 'string') {
-            return JSON.parse(item.paymentMethods);
-        }
-        return item.paymentMethods;
+        const parsed = typeof item.paymentMethods === 'string' ? JSON.parse(item.paymentMethods) : item.paymentMethods;
+        return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
         return [];
     }
 };
 
-// Adicionar método de pagamento
+const formatPaymentMethodLabel = (method: { method: string; details?: string; wallet?: string; currency?: string }): string => {
+    if (method.method === 'Crypto' && (method.currency || method.wallet)) {
+        const c = (method.currency || '').trim();
+        const w = (method.wallet || '').trim();
+        if (c && w) return `Crypto (${c})`;
+        if (c) return `Crypto (${c})`;
+        return 'Crypto';
+    }
+    return method.method || '';
+};
+
+// Adicionar método de pagamento (permite mais de 20 wallets/métodos)
 const addPaymentMethod = () => {
     form.value.paymentMethods.push({
         method: '',
-        details: ''
+        details: '',
+        wallet: '',
+        currency: ''
     });
 };
 
@@ -351,6 +487,76 @@ const loadData = async () => {
     }
 };
 
+// Historico de notas
+const openHistoryModal = async (item: any) => {
+    historyCostCenter.value = item;
+    historyPage.value = 1;
+    historyOrders.value = [];
+    historyPartners.value = [];
+    showHistoryModal.value = true;
+    historyLoading.value = true;
+    try {
+        const [ordersRes, partnersRes] = await Promise.all([
+            client.paymentOrders.get({ costCenterId: item.id, limit: '5000' }),
+            client.commercialPartners.getAll()
+        ]);
+        let data: any[] = [];
+        if (Array.isArray(ordersRes.data)) {
+            data = ordersRes.data;
+        } else if (ordersRes.data?.data) {
+            data = Array.isArray(ordersRes.data.data) ? ordersRes.data.data : [];
+        }
+        historyOrders.value = data
+            .slice()
+            .sort((a: any, b: any) => {
+                const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return db - da;
+            });
+        const partnersList = partnersRes?.data || (Array.isArray(partnersRes) ? partnersRes : []);
+        historyPartners.value = Array.isArray(partnersList) ? partnersList : [];
+    } catch (e) {
+        console.error('Erro ao carregar historico de notas:', e);
+        historyOrders.value = [];
+    } finally {
+        historyLoading.value = false;
+    }
+};
+
+const getHistoryPartnerName = (partnerId: string | undefined): string => {
+    if (!partnerId) return '-';
+    const partner = historyPartners.value.find((p: any) => p.id === partnerId);
+    return partner?.name || partnerId;
+};
+
+const closeHistoryModal = () => {
+    showHistoryModal.value = false;
+    historyCostCenter.value = null;
+    historyOrders.value = [];
+    historyPartners.value = [];
+    historyPage.value = 1;
+};
+
+const paginatedHistoryOrders = computed(() => {
+    const start = (historyPage.value - 1) * HISTORY_PAGE_SIZE;
+    return historyOrders.value.slice(start, start + HISTORY_PAGE_SIZE);
+});
+
+const totalHistoryPages = computed(() => Math.ceil(historyOrders.value.length / HISTORY_PAGE_SIZE));
+
+const formatHistoryAmount = (value: number | undefined, currency: string) => {
+    if (value == null) return '-';
+    const c = (currency || 'BRL').toUpperCase();
+    if (c === 'BRL') return 'R$ ' + Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `${c} ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const formatHistoryDate = (dateStr: string | undefined) => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
 // Abrir dialog de adicionar
 const openAddDialog = () => {
     isEditing.value = false;
@@ -358,7 +564,7 @@ const openAddDialog = () => {
     form.value = {
         identifier: '',
         name: '',
-        paymentMethods: [{ method: '', details: '' }],
+        paymentMethods: [{ method: '', details: '', wallet: '', currency: '' }],
         active: true
     };
     formErrors.value = {};
@@ -375,7 +581,12 @@ const editItem = (item: any) => {
     form.value = {
         identifier: item.identifier || '',
         name: item.name || '',
-        paymentMethods: paymentMethods.length > 0 ? paymentMethods : [{ method: '', details: '' }],
+        paymentMethods: paymentMethods.length > 0 ? paymentMethods.map((m: any) => ({
+            method: m.method || '',
+            details: m.details ?? '',
+            wallet: m.wallet ?? '',
+            currency: m.currency ?? ''
+        })) : [{ method: '', details: '', wallet: '', currency: '' }],
         active: item.active !== undefined ? item.active : true
     };
     formErrors.value = {};
@@ -400,7 +611,7 @@ const closeDialog = () => {
     form.value = {
         identifier: '',
         name: '',
-        paymentMethods: [{ method: '', details: '' }],
+        paymentMethods: [{ method: '', details: '', wallet: '', currency: '' }],
         active: true
     };
     formErrors.value = {};
@@ -432,6 +643,14 @@ const saveCostCenter = async () => {
             if (method.method === 'Outro' && (!method.details || method.details.trim() === '')) {
                 formErrors.value[`paymentDetails_${index}`] = 'Detalhes são obrigatórios quando o método é "Outro"';
             }
+            if (method.method === 'Crypto') {
+                if (!method.wallet || !method.wallet.trim()) {
+                    formErrors.value[`paymentWallet_${index}`] = 'Código da wallet é obrigatório para Crypto';
+                }
+                if (!method.currency || !method.currency.trim()) {
+                    formErrors.value[`paymentCurrency_${index}`] = 'Sigla da moeda é obrigatória para Crypto';
+                }
+            }
         });
     }
 
@@ -442,10 +661,16 @@ const saveCostCenter = async () => {
     saving.value = true;
 
     try {
+        const serializedMethods = form.value.paymentMethods.map((m) => {
+            if (m.method === 'Crypto') {
+                return { method: 'Crypto', wallet: (m.wallet || '').trim(), currency: (m.currency || '').trim().toUpperCase() };
+            }
+            return { method: m.method, details: (m.details || '').trim() };
+        });
         const data = {
             identifier: form.value.identifier.replace(/\D/g, ''), // Salvar apenas números
             name: form.value.name.trim(),
-            paymentMethods: JSON.stringify(form.value.paymentMethods),
+            paymentMethods: JSON.stringify(serializedMethods),
             active: form.value.active
         };
 
