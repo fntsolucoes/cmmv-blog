@@ -693,7 +693,7 @@ export class TicketsService {
         if (filters.limit) {
             queryParams.limit = filters.limit;
         } else {
-            queryParams.limit = 50;
+            queryParams.limit = 300;
         }
 
         if (filters.offset) {

@@ -47,7 +47,7 @@
                     <input
                         v-model="filters.search"
                         type="text"
-                        placeholder="Número do ticket..."
+                        placeholder="Nome da campanha..."
                         class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
@@ -64,10 +64,30 @@
 
         <!-- Tickets em Aberto -->
         <div class="bg-neutral-800 rounded-lg overflow-hidden">
-            <div class="bg-neutral-700 px-6 py-4 border-b border-neutral-600">
-                <h2 class="text-lg font-semibold text-white">Tickets em Aberto</h2>
-                <p class="text-sm text-neutral-400 mt-1">Tickets não iniciados, em andamento, com pendência ou concluídos há menos de 5 dias</p>
+            <div class="bg-neutral-700 px-6 py-4 border-b border-neutral-600 flex items-center justify-between cursor-pointer" @click="showOpenTickets = !showOpenTickets">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-lg font-semibold text-white">Tickets em Aberto</h2>
+                        <span v-if="!loading && openTickets.length > 0" class="px-2 py-0.5 bg-neutral-600 text-neutral-300 text-xs rounded-full">
+                            {{ openTickets.length }}
+                        </span>
+                    </div>
+                    <p class="text-sm text-neutral-400 mt-1">Tickets não iniciados, em andamento, com pendência ou concluídos há menos de 1 dia</p>
+                </div>
+                <button class="text-neutral-400 hover:text-white transition-colors p-1">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 transition-transform duration-200"
+                        :class="{ 'rotate-180': showOpenTickets }"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
             </div>
+            <div v-show="showOpenTickets">
             <div v-if="loading" class="p-8 text-center text-neutral-400">
                 Carregando tickets...
             </div>
@@ -148,6 +168,7 @@
                     </div>
                 </div>
             </div>
+            </div>
         </div>
 
         <!-- Tickets Concluídos -->
@@ -160,7 +181,7 @@
                             {{ closedTickets.length }}
                         </span>
                     </div>
-                    <p class="text-sm text-neutral-400 mt-1">Tickets fechados há mais de 5 dias</p>
+                    <p class="text-sm text-neutral-400 mt-1">Tickets fechados há mais de 1 dia</p>
                 </div>
                 <button class="text-neutral-400 hover:text-white transition-colors p-1">
                     <svg 
@@ -667,6 +688,7 @@ const ticketPartners = ref<any[]>([]);
 const loading = ref(false);
 const showCreateDialog = ref(false);
 const saving = ref(false);
+const showOpenTickets = ref(true); // Começa expandida
 const showClosedTickets = ref(false); // Começa minimizada
 
 // Paginação
@@ -706,8 +728,8 @@ const filters = ref({
     search: ''
 });
 
-// Função auxiliar para verificar se um ticket foi concluído há mais de 5 dias
-const isTicketClosedMoreThan5Days = (ticket: any): boolean => {
+// Função auxiliar para verificar se um ticket foi concluído há mais de 1 dia
+const isTicketClosedMoreThan1Day = (ticket: any): boolean => {
     if (ticket.status !== 'Feito') {
         return false;
     }
@@ -715,7 +737,7 @@ const isTicketClosedMoreThan5Days = (ticket: any): boolean => {
     // Usar resolvedAt, closedAt ou updatedAt como referência
     const resolvedDate = ticket.resolvedAt || ticket.closedAt || ticket.updatedAt;
     if (!resolvedDate) {
-        // Se não tem data de resolução, considerar como não concluído há mais de 5 dias
+        // Se não tem data de resolução, considerar como não concluído há mais de 1 dia
         return false;
     }
     
@@ -724,10 +746,10 @@ const isTicketClosedMoreThan5Days = (ticket: any): boolean => {
     const diffInMs = now.getTime() - resolved.getTime();
     const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
     
-    return diffInDays >= 5;
+    return diffInDays >= 1;
 };
 
-// Tickets em Aberto: não iniciados, em andamento, com pendência ou concluídos há menos de 5 dias
+// Tickets em Aberto: não iniciados, em andamento, com pendência ou concluídos há menos de 1 dia
 const openTickets = computed(() => {
     let result = tickets.value;
 
@@ -741,9 +763,9 @@ const openTickets = computed(() => {
     }
 
     if (filters.value.search) {
-        const search = filters.value.search.toLowerCase();
+        const search = filters.value.search.toLowerCase().trim();
         result = result.filter(t => 
-            t.ticketNumber?.toLowerCase().includes(search)
+            (getCampaignName(t.campaignId) || '').toLowerCase().includes(search)
         );
     }
 
@@ -754,12 +776,12 @@ const openTickets = computed(() => {
             return true;
         }
         
-        // Se está concluído mas há menos de 5 dias, ainda está em aberto
-        return !isTicketClosedMoreThan5Days(ticket);
+        // Se está concluído mas há menos de 1 dia, ainda está em aberto
+        return !isTicketClosedMoreThan1Day(ticket);
     });
 });
 
-// Tickets Concluídos: apenas tickets "Feito" há mais de 5 dias
+// Tickets Concluídos: apenas tickets "Feito" há mais de 1 dia
 const closedTickets = computed(() => {
     let result = tickets.value;
 
@@ -773,14 +795,14 @@ const closedTickets = computed(() => {
     }
 
     if (filters.value.search) {
-        const search = filters.value.search.toLowerCase();
+        const search = filters.value.search.toLowerCase().trim();
         result = result.filter(t => 
-            t.ticketNumber?.toLowerCase().includes(search)
+            (getCampaignName(t.campaignId) || '').toLowerCase().includes(search)
         );
     }
 
-    // Filtrar apenas tickets concluídos há mais de 5 dias
-    return result.filter(ticket => isTicketClosedMoreThan5Days(ticket));
+    // Filtrar apenas tickets concluídos há mais de 1 dia
+    return result.filter(ticket => isTicketClosedMoreThan1Day(ticket));
 });
 
 // Tickets paginados
