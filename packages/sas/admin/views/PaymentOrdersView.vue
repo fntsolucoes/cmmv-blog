@@ -584,8 +584,8 @@
 
         <!-- Modal: Marcar como Pago -->
         <div v-if="showMarkAsPaidModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
-            <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-md mx-auto">
-                <div class="p-6 border-b border-neutral-700 flex justify-between items-center">
+            <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-xs mx-auto">
+                <div class="p-4 border-b border-neutral-700 flex justify-between items-center">
                     <h3 class="text-lg font-medium text-white">Marcar como Pago</h3>
                     <button @click="closeMarkAsPaidModal" class="text-neutral-400 hover:text-white">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -593,9 +593,9 @@
                         </svg>
                     </button>
                 </div>
-                <form @submit.prevent="confirmMarkAsPaid" class="p-6 space-y-4">
+                <form @submit.prevent="confirmMarkAsPaid" class="p-4 space-y-3">
                     <div>
-                        <label class="block text-sm font-medium text-neutral-300 mb-2">
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">
                             Data de Pagamento <span class="text-red-500">*</span>
                         </label>
                         <input
@@ -603,35 +603,82 @@
                             type="date"
                             required
                             :max="todayDate"
-                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                            class="w-full max-w-[180px] px-2 py-1.5 text-sm bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                            @change="loadMarkAsPaidExchangeRate"
                         />
+                        <p v-if="markAsPaidItem?.currency && markAsPaidItem.currency !== 'BRL'" class="mt-1 text-xs text-neutral-400">
+                            <span v-if="markAsPaidRateLoading">Carregando cotacao...</span>
+                            <template v-else-if="markAsPaidExchangeRate">
+                                Cotacao {{ markAsPaidItem.currency }}-BRL {{ markAsPaidRateIsFromDate ? '(data do pagamento)' : '(ultima no sistema)' }}: 1 {{ markAsPaidItem.currency }} = R$ {{ formatRateNumber(markAsPaidExchangeRate.rate) }}
+                            </template>
+                            <span v-else class="text-yellow-500">Sem cotacao cadastrada</span>
+                        </p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-neutral-300 mb-2">
-                            Valor Pago (BRL) <span class="text-red-500">*</span>
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">Centro de custo da nota</label>
+                        <select
+                            v-model="markAsPaidForm.costCenterId"
+                            required
+                            class="w-full max-w-[180px] px-2 py-1.5 text-sm bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                        >
+                            <option value="">Selecione</option>
+                            <option v-for="cc in costCenters" :key="cc.id" :value="cc.id">{{ truncateCostCenterName(cc.name) }}</option>
+                        </select>
+                        <p class="mt-0.5 text-xs text-neutral-400">Confirme ou altere o centro de custo</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">
+                            Percentual de imposto (%) <span class="text-red-500">*</span>
                         </label>
                         <input
-                            v-model.number="markAsPaidForm.paidValue"
+                            v-model.number="markAsPaidForm.taxPercentage"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            required
+                            placeholder="0"
+                            class="w-full max-w-[180px] px-2 py-1.5 text-sm bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                        />
+                        <p class="mt-0.5 text-xs text-neutral-400">Confirme a % de imposto aplicada na nota</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">
+                            Valor bruto da nota
+                            <strong v-if="markAsPaidItem?.currency && markAsPaidItem.currency !== 'BRL'" class="text-white ml-1">({{ markAsPaidItem.currency }})</strong>
+                            <span class="text-red-500"> *</span>
+                        </label>
+                        <input
+                            v-model.number="markAsPaidForm.grossValue"
                             type="number"
                             step="0.01"
                             min="0"
                             required
                             placeholder="0.00"
-                            class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                            class="w-full max-w-[180px] px-2 py-1.5 text-sm bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
                     </div>
-                    <div class="flex justify-end gap-3 pt-4 border-t border-neutral-700">
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">Valor liquido <span class="text-neutral-400 font-normal">(em Real)</span></label>
+                        <div
+                            class="w-full max-w-[180px] px-2 py-1.5 text-sm bg-neutral-600 border border-neutral-500 rounded-md text-white font-medium"
+                        >
+                            {{ formatMarkAsPaidNetValueInBRL(markAsPaidForm.grossValue, markAsPaidForm.taxPercentage, markAsPaidItem?.currency) }}
+                        </div>
+                        <p class="mt-0.5 text-xs text-neutral-400">Atualiza ao alterar imposto ou valor bruto</p>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-3 border-t border-neutral-700">
                         <button
                             type="button"
                             @click="closeMarkAsPaidModal"
-                            class="px-4 py-2 text-sm font-medium text-neutral-300 bg-neutral-700 hover:bg-neutral-600 rounded-md transition-colors"
+                            class="px-3 py-1.5 text-sm font-medium text-neutral-300 bg-neutral-700 hover:bg-neutral-600 rounded-md transition-colors"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             :disabled="saving"
-                            class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                            class="px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                         >
                             <svg v-if="saving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -1020,8 +1067,14 @@ const markAsPaidForm = ref({
         const day = String(today.getUTCDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     })(),
-    paidValue: 0
+    costCenterId: '',
+    taxPercentage: 0,
+    grossValue: 0 as number
 });
+
+const markAsPaidExchangeRate = ref<{ rate: number } | null>(null);
+const markAsPaidRateIsFromDate = ref(false);
+const markAsPaidRateLoading = ref(false);
 
 const taxPercentage = ref(0);
 const taxPercentageInput = ref('0');
@@ -1864,30 +1917,50 @@ const closeDialog = () => {
     };
 };
 
+const loadMarkAsPaidExchangeRate = async () => {
+    const item = markAsPaidItem.value;
+    const currency = item?.currency;
+    if (!currency || currency === 'BRL') {
+        markAsPaidExchangeRate.value = null;
+        markAsPaidRateIsFromDate.value = false;
+        return;
+    }
+    markAsPaidRateLoading.value = true;
+    markAsPaidExchangeRate.value = null;
+    try {
+        const dateStr = markAsPaidForm.value.effectivePaymentDate;
+        const dateKey = dateStr ? dateStr : null;
+        const currencyPair = `${currency}-BRL`;
+        let rate = null;
+        let isFromDate = false;
+        if (dateKey) {
+            try {
+                const res = await client.exchangeRates.getByDate(currencyPair, dateKey);
+                rate = res?.data;
+                if (rate) isFromDate = true;
+            } catch (_) {}
+        }
+        if (!rate) {
+            const latestRes = await client.exchangeRates.getLatest(currencyPair);
+            rate = latestRes?.data;
+        }
+        markAsPaidExchangeRate.value = rate && typeof rate.rate !== 'undefined' ? { rate: Number(rate.rate) } : null;
+        markAsPaidRateIsFromDate.value = isFromDate;
+    } catch (e) {
+        console.error('Erro ao carregar cotacao:', e);
+        markAsPaidExchangeRate.value = null;
+    } finally {
+        markAsPaidRateLoading.value = false;
+    }
+};
+
 const markAsPaid = async (item: any) => {
     markAsPaidItem.value = item;
     
-    // Calcular valor líquido padrão (fatura - imposto - desconto)
-    const discountAmount = item.discountAmount || 0;
-    const netValue = item.invoiceAmount - item.taxAmount - discountAmount;
-    let defaultPaidValue = netValue;
+    const invoiceAmount = Number(item.invoiceAmount) || 0;
+    const taxAmount = Number(item.taxAmount) || 0;
+    const taxPct = invoiceAmount > 0 ? (taxAmount / invoiceAmount) * 100 : 0;
     
-    if (item.currency !== 'BRL') {
-        const currencyPair = `${item.currency}-BRL`;
-        // Tentar buscar taxa da data atual, senão usar a mais recente
-        const rate = await getExchangeRate(currencyPair, new Date());
-        if (rate) {
-            defaultPaidValue = netValue * Number(rate.rate);
-        } else {
-            // Se não encontrou para hoje, buscar a mais recente
-            const latestRate = await getExchangeRate(currencyPair);
-            if (latestRate) {
-                defaultPaidValue = netValue * Number(latestRate.rate);
-            }
-        }
-    }
-    
-    // Usar UTC para criar a data de hoje
     const today = new Date();
     const todayYear = today.getUTCFullYear();
     const todayMonth = String(today.getUTCMonth() + 1).padStart(2, '0');
@@ -1896,14 +1969,21 @@ const markAsPaid = async (item: any) => {
     
     markAsPaidForm.value = {
         effectivePaymentDate: todayStr,
-        paidValue: Number(defaultPaidValue.toFixed(2))
+        costCenterId: item.costCenterId || '',
+        taxPercentage: Number(taxPct.toFixed(2)),
+        grossValue: invoiceAmount
     };
+    markAsPaidExchangeRate.value = null;
+    markAsPaidRateIsFromDate.value = false;
     showMarkAsPaidModal.value = true;
+    loadMarkAsPaidExchangeRate();
 };
 
 const closeMarkAsPaidModal = () => {
     showMarkAsPaidModal.value = false;
     markAsPaidItem.value = null;
+    markAsPaidExchangeRate.value = null;
+    markAsPaidRateIsFromDate.value = false;
 };
 
 const viewObservations = (observations: string) => {
@@ -1916,15 +1996,68 @@ const closeObservationsModal = () => {
     observationsText.value = '';
 };
 
+const MAX_COST_CENTER_DISPLAY_LENGTH = 40;
+const truncateCostCenterName = (name: string | undefined): string => {
+    if (!name || !name.trim()) return '-';
+    const s = name.trim();
+    if (s.length <= MAX_COST_CENTER_DISPLAY_LENGTH) return s;
+    return s.slice(0, MAX_COST_CENTER_DISPLAY_LENGTH - 3) + '...';
+};
+
+const formatRateNumber = (rate: number): string => {
+    return Number(rate).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+};
+
+const formatMarkAsPaidNetValue = (gross: number, taxPct: number, currency?: string): string => {
+    const g = Number(gross) || 0;
+    const p = Number(taxPct) || 0;
+    const net = g - (g * (p / 100));
+    const num = Number(net).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const c = (currency || 'BRL').toUpperCase();
+    if (c === 'BRL') return 'R$ ' + num;
+    return c + ' ' + num;
+};
+
+const formatMarkAsPaidNetValueInBRL = (gross: number, taxPct: number, currency?: string): string => {
+    const g = Number(gross) || 0;
+    const p = Number(taxPct) || 0;
+    const net = g - (g * (p / 100));
+    const c = (currency || 'BRL').toUpperCase();
+    if (c === 'BRL') {
+        return 'R$ ' + Number(net).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    if (markAsPaidRateLoading.value) return 'Carregando...';
+    if (!markAsPaidExchangeRate.value) return formatMarkAsPaidNetValue(g, p, c) + ' (sem cotacao para R$)';
+    const netBRL = net * Number(markAsPaidExchangeRate.value.rate);
+    return 'R$ ' + Number(netBRL).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 const confirmMarkAsPaid = async () => {
     if (!markAsPaidItem.value) return;
     
+    const currency = (markAsPaidItem.value.currency || 'BRL').toUpperCase();
+    if (currency !== 'BRL' && !markAsPaidExchangeRate.value) {
+        alert('Para moeda estrangeira e necessario ter cotacao carregada. Altere a data de pagamento ou cadastre a cotacao.');
+        return;
+    }
+    
+    const gross = Number(markAsPaidForm.value.grossValue) || 0;
+    const taxPct = Number(markAsPaidForm.value.taxPercentage) || 0;
+    let paidValue = gross - (gross * (taxPct / 100));
+    if (currency !== 'BRL' && markAsPaidExchangeRate.value) {
+        paidValue = paidValue * Number(markAsPaidExchangeRate.value.rate);
+    }
+    const orderId = markAsPaidItem.value.id;
+    
     saving.value = true;
     try {
-        await client.paymentOrders.updateStatus(markAsPaidItem.value.id, {
+        if (markAsPaidForm.value.costCenterId && markAsPaidForm.value.costCenterId !== markAsPaidItem.value.costCenterId) {
+            await client.paymentOrders.update(orderId, { costCenterId: markAsPaidForm.value.costCenterId });
+        }
+        await client.paymentOrders.updateStatus(orderId, {
             status: 'Pago',
             effectivePaymentDate: markAsPaidForm.value.effectivePaymentDate,
-            paidValue: markAsPaidForm.value.paidValue
+            paidValue: Number(paidValue.toFixed(2))
         });
         await loadData();
         closeMarkAsPaidModal();

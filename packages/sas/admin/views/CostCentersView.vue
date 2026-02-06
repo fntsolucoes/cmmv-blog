@@ -146,6 +146,143 @@
                         <p v-if="formErrors.name" class="mt-1 text-sm text-red-400">{{ formErrors.name }}</p>
                     </div>
 
+                    <!-- Informações tributárias (apenas CNPJ) -->
+                    <div v-if="isCNPJ" class="p-4 bg-neutral-700/50 rounded-lg border border-neutral-600 space-y-4">
+                        <h4 class="text-sm font-medium text-white border-b border-neutral-600 pb-2">Informacoes tributarias (CNPJ)</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-300 mb-1">Regime tributario</label>
+                                <select
+                                    v-model="form.cnpjTaxRegime"
+                                    @change="onCnpjTaxRegimeChange"
+                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">Selecione</option>
+                                    <option value="Simples Nacional">Simples Nacional</option>
+                                    <option value="Lucro Presumido">Lucro Presumido</option>
+                                    <option value="Lucro Real">Lucro Real</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-300 mb-1">Regime de apuracao</label>
+                                <select
+                                    v-model="form.cnpjAccrualRegime"
+                                    :disabled="form.cnpjTaxRegime === 'Simples Nacional'"
+                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    <option value="">Selecione</option>
+                                    <option value="Caixa">Caixa</option>
+                                    <option value="Competencia">Competencia</option>
+                                </select>
+                                <p v-if="form.cnpjTaxRegime === 'Simples Nacional'" class="mt-1 text-xs text-neutral-400">No Simples Nacional o regime de apuracao e sempre Competencia.</p>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-medium text-neutral-300 mb-1">CNAE principal</label>
+                                <input
+                                    v-model="form.cnpjCnaePrincipal"
+                                    type="text"
+                                    placeholder="Ex: 62.01-5-00"
+                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                            <div class="sm:col-span-2">
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="block text-sm font-medium text-neutral-300">CNAEs secundarios</label>
+                                    <button
+                                        type="button"
+                                        @click="addCnpjCnaeSecundario"
+                                        class="px-2 py-1 bg-neutral-600 hover:bg-neutral-500 text-white text-xs rounded-md transition-colors"
+                                    >
+                                        + Adicionar CNAE
+                                    </button>
+                                </div>
+                                <div v-for="(cnae, idx) in form.cnpjCnaeSecundarios" :key="idx" class="flex gap-2 items-center mt-2">
+                                    <input
+                                        v-model="form.cnpjCnaeSecundarios[idx]"
+                                        type="text"
+                                        placeholder="Ex: 62.02-3-00"
+                                        class="flex-1 px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <button
+                                        type="button"
+                                        @click="removeCnpjCnaeSecundario(idx)"
+                                        class="text-red-400 hover:text-red-300 p-1.5"
+                                        title="Remover"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <p v-if="form.cnpjCnaeSecundarios.length === 0" class="mt-1 text-xs text-neutral-500">Nenhum CNAE secundario. Clique em "Adicionar CNAE" se precisar.</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-300 mb-1">Municipio</label>
+                                <input
+                                    v-model="form.cnpjMunicipio"
+                                    type="text"
+                                    placeholder="Nome do municipio"
+                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-300 mb-1">Estado</label>
+                                <select
+                                    v-model="form.cnpjEstado"
+                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">Selecione</option>
+                                    <option v-for="uf in ufList" :key="uf" :value="uf">{{ uf }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-300 mb-1">Data de inicio do regime</label>
+                                <input
+                                    v-model="form.cnpjRegimeStartDate"
+                                    type="date"
+                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-300 mb-1">Optante por MEI?</label>
+                                <select
+                                    v-model="form.cnpjMeiOptant"
+                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">Selecione</option>
+                                    <option value="Sim">Sim</option>
+                                    <option value="Nao">Nao</option>
+                                </select>
+                            </div>
+                            <div v-if="form.cnpjTaxRegime === 'Simples Nacional'">
+                                <label class="block text-sm font-medium text-neutral-300 mb-1">Anexo do Simples (se aplicavel)</label>
+                                <select
+                                    v-model="form.cnpjSimplesAnexo"
+                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">Selecione</option>
+                                    <option value="Anexo I">Anexo I</option>
+                                    <option value="Anexo II">Anexo II</option>
+                                    <option value="Anexo III">Anexo III</option>
+                                    <option value="Anexo IV">Anexo IV</option>
+                                    <option value="Anexo V">Anexo V</option>
+                                </select>
+                            </div>
+                            <div v-if="form.cnpjTaxRegime && form.cnpjTaxRegime !== 'Simples Nacional'">
+                                <label class="block text-sm font-medium text-neutral-300 mb-1">Percentual de ISS (se nao Simples)</label>
+                                <input
+                                    v-model.number="form.cnpjIssPercentage"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                    placeholder="Ex: 5"
+                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Métodos de Recebimento -->
                     <div>
                         <div class="flex justify-between items-center mb-2">
@@ -379,12 +516,26 @@ const historyLoading = ref(false);
 const historyPage = ref(1);
 const HISTORY_PAGE_SIZE = 50;
 
+const ufList = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+
 const form = ref({
     identifier: '',
     name: '',
     paymentMethods: [] as Array<{ method: string; details: string; wallet?: string; currency?: string }>,
-    active: true
+    active: true,
+    cnpjTaxRegime: '',
+    cnpjAccrualRegime: '',
+    cnpjCnaePrincipal: '',
+    cnpjCnaeSecundarios: [] as string[],
+    cnpjMunicipio: '',
+    cnpjEstado: '',
+    cnpjRegimeStartDate: '',
+    cnpjSimplesAnexo: '',
+    cnpjIssPercentage: null as number | null,
+    cnpjMeiOptant: ''
 });
+
+const isCNPJ = computed(() => (form.value.identifier || '').replace(/\D/g, '').length === 14);
 
 // Função para formatar CNPJ ou CPF
 const formatIdentifier = (identifier: string): string => {
@@ -557,6 +708,33 @@ const formatHistoryDate = (dateStr: string | undefined) => {
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
+const getEmptyCnpjFields = () => ({
+    cnpjTaxRegime: '',
+    cnpjAccrualRegime: '',
+    cnpjCnaePrincipal: '',
+    cnpjCnaeSecundarios: [] as string[],
+    cnpjMunicipio: '',
+    cnpjEstado: '',
+    cnpjRegimeStartDate: '',
+    cnpjSimplesAnexo: '',
+    cnpjIssPercentage: null as number | null,
+    cnpjMeiOptant: ''
+});
+
+const onCnpjTaxRegimeChange = () => {
+    if (form.value.cnpjTaxRegime === 'Simples Nacional') {
+        form.value.cnpjAccrualRegime = 'Competencia';
+    }
+};
+
+const addCnpjCnaeSecundario = () => {
+    form.value.cnpjCnaeSecundarios.push('');
+};
+
+const removeCnpjCnaeSecundario = (index: number) => {
+    form.value.cnpjCnaeSecundarios.splice(index, 1);
+};
+
 // Abrir dialog de adicionar
 const openAddDialog = () => {
     isEditing.value = false;
@@ -565,7 +743,8 @@ const openAddDialog = () => {
         identifier: '',
         name: '',
         paymentMethods: [{ method: '', details: '', wallet: '', currency: '' }],
-        active: true
+        active: true,
+        ...getEmptyCnpjFields()
     };
     formErrors.value = {};
     showDialog.value = true;
@@ -577,6 +756,25 @@ const editItem = (item: any) => {
     editingItem.value = item;
     
     const paymentMethods = getPaymentMethods(item);
+    let cnpjFields = getEmptyCnpjFields();
+    if (item.cnpjDetails) {
+        try {
+            const d = typeof item.cnpjDetails === 'string' ? JSON.parse(item.cnpjDetails) : item.cnpjDetails;
+            const taxRegime = d.taxRegime ?? '';
+            cnpjFields = {
+                cnpjTaxRegime: taxRegime,
+                cnpjAccrualRegime: taxRegime === 'Simples Nacional' ? 'Competencia' : (d.accrualRegime ?? ''),
+                cnpjCnaePrincipal: d.cnaePrincipal ?? '',
+                cnpjCnaeSecundarios: Array.isArray(d.cnaeSecundarios) ? d.cnaeSecundarios : [],
+                cnpjMunicipio: d.municipality ?? '',
+                cnpjEstado: d.state ?? '',
+                cnpjRegimeStartDate: d.regimeStartDate ?? '',
+                cnpjSimplesAnexo: d.simplesAnexo ?? '',
+                cnpjIssPercentage: d.issPercentage != null ? d.issPercentage : null,
+                cnpjMeiOptant: d.meiOptant ?? ''
+            };
+        } catch (_) {}
+    }
     
     form.value = {
         identifier: item.identifier || '',
@@ -587,7 +785,8 @@ const editItem = (item: any) => {
             wallet: m.wallet ?? '',
             currency: m.currency ?? ''
         })) : [{ method: '', details: '', wallet: '', currency: '' }],
-        active: item.active !== undefined ? item.active : true
+        active: item.active !== undefined ? item.active : true,
+        ...cnpjFields
     };
     formErrors.value = {};
     showDialog.value = true;
@@ -612,7 +811,8 @@ const closeDialog = () => {
         identifier: '',
         name: '',
         paymentMethods: [{ method: '', details: '', wallet: '', currency: '' }],
-        active: true
+        active: true,
+        ...getEmptyCnpjFields()
     };
     formErrors.value = {};
 };
@@ -667,12 +867,26 @@ const saveCostCenter = async () => {
             }
             return { method: m.method, details: (m.details || '').trim() };
         });
-        const data = {
-            identifier: form.value.identifier.replace(/\D/g, ''), // Salvar apenas números
+        const data: Record<string, unknown> = {
+            identifier: form.value.identifier.replace(/\D/g, ''),
             name: form.value.name.trim(),
             paymentMethods: JSON.stringify(serializedMethods),
             active: form.value.active
         };
+        if (isCNPJ.value) {
+            data.cnpjDetails = JSON.stringify({
+                taxRegime: form.value.cnpjTaxRegime || null,
+                accrualRegime: form.value.cnpjAccrualRegime || null,
+                cnaePrincipal: form.value.cnpjCnaePrincipal?.trim() || null,
+                cnaeSecundarios: (form.value.cnpjCnaeSecundarios || []).map((c: string) => (c || '').trim()).filter(Boolean),
+                municipality: form.value.cnpjMunicipio?.trim() || null,
+                state: form.value.cnpjEstado || null,
+                regimeStartDate: form.value.cnpjRegimeStartDate || null,
+                simplesAnexo: form.value.cnpjSimplesAnexo || null,
+                issPercentage: form.value.cnpjIssPercentage != null ? form.value.cnpjIssPercentage : null,
+                meiOptant: form.value.cnpjMeiOptant || null
+            });
+        }
 
         if (isEditing.value && editingItem.value) {
             await client.costCenters.update(editingItem.value.id, data);

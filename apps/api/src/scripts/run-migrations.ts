@@ -35,6 +35,13 @@ const migrations: Migration[] = [
         tableName: 'sas_payment_orders',
         columnName: 'finalized_for_profit_sharing_at',
         type: 'schema'
+    },
+    {
+        name: 'Adicionar coluna cnpj_details em sas_cost_centers',
+        file: 'add-cost-centers-cnpj-details.sql',
+        tableName: 'sas_cost_centers',
+        columnName: 'cnpj_details',
+        type: 'schema'
     }
 ];
 

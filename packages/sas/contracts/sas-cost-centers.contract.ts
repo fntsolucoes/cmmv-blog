@@ -48,5 +48,12 @@ export class SasCostCentersContract extends AbstractContract {
         index: true
     })
     active!: boolean;
+
+    /** JSON com dados tributarios quando identificador e CNPJ: taxRegime, accrualRegime, cnaePrincipal, municipality, state, regimeStartDate, simplesAnexo, issPercentage, meiOptant */
+    @ContractField({
+        protoType: 'text',
+        nullable: true,
+    })
+    cnpjDetails?: string;
 }
 
