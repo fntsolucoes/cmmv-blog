@@ -42,6 +42,37 @@ const migrations: Migration[] = [
         tableName: 'sas_cost_centers',
         columnName: 'cnpj_details',
         type: 'schema'
+    },
+    {
+        name: 'Criar tabelas fiscais (tax_regimes, tax_rules, tax_iss_municipality)',
+        file: 'add-tax-fiscal-tables.sql',
+        tableName: 'sas_tax_regimes',
+        columnName: 'id',
+        type: 'schema'
+    },
+    {
+        name: 'Seed regimes e regras fiscais iniciais',
+        file: 'seed-tax-fiscal-initial.sql',
+        type: 'data'
+    },
+    {
+        name: 'Adicionar colunas fiscais em sas_cost_centers',
+        file: 'add-cost-centers-fiscal-columns.sql',
+        tableName: 'sas_cost_centers',
+        columnName: 'tax_regime_id',
+        type: 'schema'
+    },
+    {
+        name: 'Adicionar colunas fiscais em sas_payment_orders',
+        file: 'add-payment-orders-fiscal-columns.sql',
+        tableName: 'sas_payment_orders',
+        columnName: 'natureza_rendimento',
+        type: 'schema'
+    },
+    {
+        name: 'Seed regra Adicional IRPJ (10% acima de R$ 20.000/mes)',
+        file: 'seed-adicional-irpj-rule.sql',
+        type: 'data'
     }
 ];
 
@@ -127,13 +158,18 @@ async function executeMigration(dataSource: DataSource, migrationFile: string): 
         console.log(`📝 Executando migração: ${migrationFile}`);
 
         // Ler o conteúdo do arquivo SQL
-        const sqlContent = fs.readFileSync(migrationPath, 'utf-8');
-        
+        let sqlContent = fs.readFileSync(migrationPath, 'utf-8');
+        // Remover apenas linhas que sao comentario inteiro (evita descartar CREATE TABLE apos comentarios
+        // e evita que ";" dentro de comentario quebre o split)
+        sqlContent = sqlContent
+            .split('\n')
+            .filter(line => !line.trim().startsWith('--'))
+            .join('\n');
         // Dividir em comandos individuais (separados por ;)
         const commands = sqlContent
             .split(';')
             .map(cmd => cmd.trim())
-            .filter(cmd => cmd.length > 0 && !cmd.startsWith('--'));
+            .filter(cmd => cmd.length > 0);
 
         const queryRunner = dataSource.createQueryRunner();
         

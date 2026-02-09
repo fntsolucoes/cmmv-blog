@@ -883,6 +883,48 @@
                                 class="w-full px-3 py-2 bg-neutral-600 border border-neutral-600 rounded-md text-neutral-300 cursor-not-allowed"
                             />
                         </div>
+                        <div class="col-span-2 p-3 bg-neutral-700/50 rounded-lg border border-neutral-600">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium text-neutral-300">Motor tributario</span>
+                                <button
+                                    type="button"
+                                    :disabled="!form.costCenterId || taxCalcLoading || parseCurrencyValue(form.invoiceAmount) <= 0"
+                                    @click="runTaxCalc"
+                                    class="px-2 py-1 text-xs bg-amber-600 hover:bg-amber-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {{ taxCalcLoading ? 'Calculando...' : 'Calcular impostos' }}
+                                </button>
+                            </div>
+                            <p v-if="taxCalcResult" class="text-xs text-neutral-400 space-y-0.5">
+                                <span class="block">Bruto: {{ formatCurrency(taxCalcResult.gross, form.currency) }}</span>
+                                <span v-for="d in taxCalcResult.deductions" :key="d.name" class="block">- {{ d.name }}<template v-if="d.percent != null"> ({{ d.percent.toFixed(2).replace('.', ',') }}%)</template>: {{ formatCurrency(d.amount, form.currency) }}</span>
+                                <span class="block font-medium text-white">Liquido: {{ formatCurrency(taxCalcResult.liquid, form.currency) }}</span>
+                            </p>
+                            <p v-else class="text-xs text-neutral-500">Selecione empresa e valor e clique em Calcular impostos.</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-300 mb-2">
+                                Natureza do Rendimento (Reinf)
+                            </label>
+                            <input
+                                v-model="form.natureza_rendimento"
+                                type="text"
+                                placeholder="Ex: 13001 (servicos TI)"
+                                class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <p class="mt-1 text-xs text-neutral-400">Codigo exigido pelo governo para envio Reinf.</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-300 mb-2">
+                                Data do Fato Gerador (emissao nota)
+                            </label>
+                            <input
+                                v-model="form.data_emissao_nota"
+                                type="date"
+                                class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <p class="mt-1 text-xs text-neutral-400">Regime de Caixa: conta no pagamento; Competencia: na emissao.</p>
+                        </div>
                         <div>
                             <label class="block text-sm font-medium text-neutral-300 mb-2">
                                 Data de Saque
@@ -1056,8 +1098,13 @@ const form = ref({
     status: 'Pendente',
     paidValue: null as number | null,
     paymentMethod: '' as string | null,
-    observations: '' as string | null
+    observations: '' as string | null,
+    natureza_rendimento: '' as string | null,
+    data_emissao_nota: '' as string | null
 });
+
+const taxCalcResult = ref<{ gross: number; deductions: Array<{ name: string; amount: number; percent?: number }>; totalDeductions: number; liquid: number } | null>(null);
+const taxCalcLoading = ref(false);
 
 const markAsPaidForm = ref({
     effectivePaymentDate: (() => {
@@ -1831,8 +1878,11 @@ const openAddDialog = () => {
         status: 'Pendente',
         paidValue: null,
         paymentMethod: null,
-        observations: null
+        observations: null,
+        natureza_rendimento: null,
+        data_emissao_nota: null
     };
+    taxCalcResult.value = null;
     showDialog.value = true;
 };
 
@@ -1886,8 +1936,17 @@ const editItem = (item: any) => {
         status: item.status || 'Pendente',
         paidValue: item.paidValue || null,
         paymentMethod: item.paymentMethod || null,
-        observations: item.observations || null
+        observations: item.observations || null,
+        natureza_rendimento: item.natureza_rendimento ?? null,
+        data_emissao_nota: item.data_emissao_nota ? (() => {
+            const d = new Date(item.data_emissao_nota);
+            const y = d.getUTCFullYear();
+            const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(d.getUTCDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        })() : null
     };
+    taxCalcResult.value = null;
     showDialog.value = true;
 };
 
@@ -1913,8 +1972,11 @@ const closeDialog = () => {
         status: 'Pendente',
         paidValue: null,
         paymentMethod: null,
-        observations: null
+        observations: null,
+        natureza_rendimento: null,
+        data_emissao_nota: null
     };
+    taxCalcResult.value = null;
 };
 
 const loadMarkAsPaidExchangeRate = async () => {
@@ -2483,6 +2545,13 @@ const saveOrder = async () => {
             payload.observations = form.value.observations || null;
         }
 
+        if (form.value.natureza_rendimento != null && form.value.natureza_rendimento !== '') {
+            payload.natureza_rendimento = form.value.natureza_rendimento.trim() || null;
+        }
+        if (form.value.data_emissao_nota != null && form.value.data_emissao_nota !== '') {
+            payload.data_emissao_nota = form.value.data_emissao_nota || null;
+        }
+
         if (isEditing.value && editingItem.value) {
             await client.paymentOrders.update(editingItem.value.id, payload);
         } else {
@@ -2529,7 +2598,37 @@ watch(() => filters.value.paymentMonthYear, () => {
 // Resetar método de pagamento quando centro de custos mudar
 watch(() => form.value.costCenterId, () => {
     form.value.paymentMethod = null;
+    taxCalcResult.value = null;
 });
+
+const runTaxCalc = async () => {
+    const costCenterId = form.value.costCenterId;
+    const gross = parseCurrencyValue(form.value.invoiceAmount);
+    if (!costCenterId || gross <= 0) return;
+    taxCalcLoading.value = true;
+    taxCalcResult.value = null;
+    try {
+        const refMonth = `${form.value.expectedPaymentYear}-${String(form.value.expectedPaymentMonth).padStart(2, '0')}`;
+        const res = await client.taxCalc.calculate({
+            costCenterId,
+            grossAmount: gross,
+            referenceMonth: refMonth,
+            orderId: isEditing.value && editingItem.value ? editingItem.value.id : undefined
+        });
+        const data = res?.data ?? res;
+        if (data && typeof data.gross === 'number') {
+            taxCalcResult.value = data;
+            form.value.taxAmount = data.totalDeductions ?? 0;
+            taxPercentage.value = gross > 0 ? ((data.totalDeductions ?? 0) / gross) * 100 : 0;
+            taxPercentageInput.value = taxPercentage.value.toFixed(2).replace('.', ',');
+        }
+    } catch (e) {
+        console.error('Erro ao calcular impostos:', e);
+        taxCalcResult.value = null;
+    } finally {
+        taxCalcLoading.value = false;
+    }
+};
 
 // O CurrencyInput atualiza automaticamente quando a moeda muda através das opções
 

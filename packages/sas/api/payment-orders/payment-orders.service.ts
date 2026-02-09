@@ -68,6 +68,8 @@ export class PaymentOrdersService {
         paidValue?: number | null;
         paymentMethod?: string | null;
         observations?: string | null;
+        natureza_rendimento?: string | null;
+        data_emissao_nota?: string | Date | null;
     }) {
         const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
         const CommercialPartnersEntity = Repository.getEntity("SasCommercialPartnersEntity");
@@ -183,6 +185,18 @@ export class PaymentOrdersService {
             paymentMethod: data.paymentMethod ?? null,
             observations: data.observations ?? null
         };
+        if (data.natureza_rendimento != null && data.natureza_rendimento !== "") {
+            payload.natureza_rendimento = data.natureza_rendimento;
+        }
+        if (data.data_emissao_nota != null && data.data_emissao_nota !== "") {
+            const str = typeof data.data_emissao_nota === "string" ? data.data_emissao_nota : (data.data_emissao_nota as Date).toISOString().slice(0, 10);
+            if (str.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                const [y, m, d] = str.split("-").map(Number);
+                payload.data_emissao_nota = new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0));
+            } else {
+                payload.data_emissao_nota = new Date(data.data_emissao_nota);
+            }
+        }
 
         // Se status for Pago, exigir data de pagamento
         if (payload.status === "Pago") {
@@ -241,6 +255,8 @@ export class PaymentOrdersService {
         paidValue: number | null;
         paymentMethod: string | null;
         observations: string | null;
+        natureza_rendimento: string | null;
+        data_emissao_nota: string | Date | null;
     }>) {
         const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
         const CommercialPartnersEntity = Repository.getEntity("SasCommercialPartnersEntity");
@@ -434,6 +450,23 @@ export class PaymentOrdersService {
 
         if (data.observations !== undefined) {
             payload.observations = data.observations;
+        }
+
+        if (data.natureza_rendimento !== undefined) {
+            payload.natureza_rendimento = data.natureza_rendimento === null || data.natureza_rendimento === "" ? null : data.natureza_rendimento;
+        }
+        if (data.data_emissao_nota !== undefined) {
+            if (data.data_emissao_nota === null || data.data_emissao_nota === "") {
+                payload.data_emissao_nota = null;
+            } else {
+                const str = typeof data.data_emissao_nota === "string" ? data.data_emissao_nota : (data.data_emissao_nota as Date).toISOString().slice(0, 10);
+                if (str.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    const [y, m, d] = str.split("-").map(Number);
+                    payload.data_emissao_nota = new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0));
+                } else {
+                    payload.data_emissao_nota = new Date(data.data_emissao_nota);
+                }
+            }
         }
 
         const result = await Repository.update(PaymentOrdersEntity, id, payload);

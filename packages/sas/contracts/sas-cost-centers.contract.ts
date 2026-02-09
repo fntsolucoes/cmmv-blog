@@ -55,5 +55,15 @@ export class SasCostCentersContract extends AbstractContract {
         nullable: true,
     })
     cnpjDetails?: string;
+
+    @ContractField({ protoType: 'string', nullable: true, index: true })
+    tax_regime_id?: string;
+
+    @ContractField({ protoType: 'boolean', nullable: false, defaultValue: false, index: true })
+    is_mei_optant!: boolean;
+
+    /** JSON: personType (PF|PJ|EXTERIOR), issRetentionIndicator, presumptionRate (PJ Lucro Presumido %), inssRate, irrfProgressiveTable (PF), exteriorInvoice, exteriorIof (Exterior) */
+    @ContractField({ protoType: 'text', nullable: true })
+    fiscal_profile?: string;
 }
 

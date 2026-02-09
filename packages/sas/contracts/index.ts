@@ -15,7 +15,9 @@ export * from "./sas-ticket-comments.contract";
 export * from "./sas-ticket-attachments.contract";
 export * from "./sas-ticket-history.contract";
 export * from "./sas-ticket-partners.contract";
-
+export * from "./sas-tax-regimes.contract";
+export * from "./sas-tax-rules.contract";
+export * from "./sas-tax-iss-municipality.contract";
 
 
 

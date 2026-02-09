@@ -329,6 +329,39 @@ export const useSasClient = () => {
         }
     };
 
+    const taxRegimes = {
+        get: async (filters: Record<string, string> = {}) => {
+            const query = new URLSearchParams(filters).toString();
+            return api.authRequest(`affiliation-manager/tax-regimes/v2?${query}`, "GET");
+        },
+        getById: async (id: string) => api.authRequest(`affiliation-manager/tax-regimes/v2/${id}`, "GET")
+    };
+
+    const taxRules = {
+        get: async (filters: Record<string, string> = {}) => {
+            const query = new URLSearchParams(filters).toString();
+            return api.authRequest(`affiliation-manager/tax-rules/v2?${query}`, "GET");
+        },
+        getById: async (id: string) => api.authRequest(`affiliation-manager/tax-rules/v2/${id}`, "GET"),
+        update: async (id: string, data: any) => api.authRequest(`affiliation-manager/tax-rules/v2/${id}`, "PUT", data)
+    };
+
+    const taxIssMunicipality = {
+        get: async (filters: Record<string, string> = {}) => {
+            const query = new URLSearchParams(filters).toString();
+            return api.authRequest(`affiliation-manager/tax-iss-municipality/v2?${query}`, "GET");
+        },
+        getById: async (id: string) => api.authRequest(`affiliation-manager/tax-iss-municipality/v2/${id}`, "GET"),
+        insert: async (data: any) => api.authRequest("affiliation-manager/tax-iss-municipality/v2", "POST", data),
+        update: async (id: string, data: any) => api.authRequest(`affiliation-manager/tax-iss-municipality/v2/${id}`, "PUT", data),
+        delete: async (id: string) => api.authRequest(`affiliation-manager/tax-iss-municipality/v2/${id}`, "DELETE")
+    };
+
+    const taxCalc = {
+        calculate: async (data: { costCenterId: string; grossAmount: number; referenceMonth?: string; orderId?: string }) =>
+            api.authRequest("affiliation-manager/tax-calc", "POST", data)
+    };
+
     return {
         costCenters,
         commercialPartners,
@@ -342,7 +375,11 @@ export const useSasClient = () => {
         scriptSettings,
         tickets,
         ticketComments,
-        ticketPartners
+        ticketPartners,
+        taxRegimes,
+        taxRules,
+        taxIssMunicipality,
+        taxCalc
     };
 };
 

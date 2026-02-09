@@ -17,6 +17,7 @@ import TicketsView from './views/TicketsView.vue';
 import ActivationTicketsView from './views/ActivationTicketsView.vue';
 import ScriptCreationTicketsView from './views/ScriptCreationTicketsView.vue';
 import TicketSettingsView from './views/TicketSettingsView.vue';
+import TaxMatrixView from './views/TaxMatrixView.vue';
 
 export const sasRoutes: RouteRecordRaw[] = [
     {
@@ -92,6 +93,11 @@ export const sasRoutes: RouteRecordRaw[] = [
                 path: 'tickets/settings',
                 component: TicketSettingsView,
                 name: 'affiliation-manager.tickets.settings'
+            },
+            {
+                path: 'tax-matrix',
+                component: TaxMatrixView,
+                name: 'affiliation-manager.tax-matrix'
             }
         ]
     },
@@ -146,6 +152,12 @@ useNavbar().addItems([
         label: 'Checklist de Pagamentos',
         icon: 'fas fa-clipboard-check',
         to: '/affiliation-manager/payment-checklist',
+        group: 'FINANCEIRO'
+    },
+    {
+        label: 'Matriz de Impostos',
+        icon: 'fas fa-percentage',
+        to: '/affiliation-manager/tax-matrix',
         group: 'FINANCEIRO'
     },
     // Grupo TAGS

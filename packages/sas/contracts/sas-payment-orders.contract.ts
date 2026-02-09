@@ -120,6 +120,15 @@ export class SasPaymentOrdersContract extends AbstractContract {
         index: true,
     })
     finalizedForProfitSharingAt?: Date; // Data/hora em que foi finalizada para divisão de lucros (preenchido automaticamente ao confirmar pagamento)
+
+    @ContractField({ protoType: 'string', nullable: true, index: true })
+    natureza_rendimento?: string; // Codigo Reinf (ex: 13001 servicos TI)
+
+    @ContractField({ protoType: 'date', nullable: true, index: true })
+    data_emissao_nota?: Date; // Data do fato gerador (emissao) - regime competencia
+
+    @ContractField({ protoType: 'string', nullable: true, index: true })
+    id_imposto_reforma?: string; // Preparacao split payment IBS/CBS
 }
 
 

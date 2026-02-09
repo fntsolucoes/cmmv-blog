@@ -16,7 +16,10 @@ import {
     SasTicketCommentsContract,
     SasTicketAttachmentsContract,
     SasTicketHistoryContract,
-    SasTicketPartnersContract
+    SasTicketPartnersContract,
+    SasTaxRegimesContract,
+    SasTaxRulesContract,
+    SasTaxIssMunicipalityContract
 } from '../contracts';
 
 import { SasCostCentersModule } from './cost-centers/cost-centers.module';
@@ -34,6 +37,10 @@ import { SasTicketsModule } from './tickets/tickets.module';
 import { SasTicketCommentsModule } from './ticket-comments/ticket-comments.module';
 import { SasTicketPartnersModule } from './ticket-partners/ticket-partners.module';
 import { SasUsersModule } from './users/users.module';
+import { SasTaxRegimesModule } from './tax-regimes/tax-regimes.module';
+import { SasTaxRulesModule } from './tax-rules/tax-rules.module';
+import { SasTaxIssMunicipalityModule } from './tax-iss-municipality/tax-iss-municipality.module';
+import { SasTaxCalcModule } from './tax-calc/tax-calc.module';
 
 export const SasModule = new Module('sas', {
     contracts: [
@@ -51,7 +58,10 @@ export const SasModule = new Module('sas', {
         SasTicketCommentsContract,
         SasTicketAttachmentsContract,
         SasTicketHistoryContract,
-        SasTicketPartnersContract
+        SasTicketPartnersContract,
+        SasTaxRegimesContract,
+        SasTaxRulesContract,
+        SasTaxIssMunicipalityContract
     ],
     submodules: [
         SasCostCentersModule,
@@ -68,7 +78,11 @@ export const SasModule = new Module('sas', {
         SasUsersModule,
         SasTicketsModule,
         SasTicketCommentsModule,
-        SasTicketPartnersModule
+        SasTicketPartnersModule,
+        SasTaxRegimesModule,
+        SasTaxRulesModule,
+        SasTaxIssMunicipalityModule,
+        SasTaxCalcModule
     ]
 });
 

@@ -146,35 +146,150 @@
                         <p v-if="formErrors.name" class="mt-1 text-sm text-red-400">{{ formErrors.name }}</p>
                     </div>
 
+                    <!-- Perfil Fiscal (DNA tributario) - todos os centros -->
+                    <div class="p-4 bg-neutral-700/50 rounded-lg border border-neutral-600 space-y-4">
+                        <h4 class="text-sm font-medium text-white border-b border-neutral-600 pb-2">Perfil Fiscal</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-medium text-neutral-300 mb-1">Tipo de personalidade</label>
+                                <select
+                                    v-model="form.personType"
+                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">Selecione</option>
+                                    <option value="PF">Pessoa Fisica</option>
+                                    <option value="PJ">Pessoa Juridica</option>
+                                    <option value="EXTERIOR">Exterior</option>
+                                </select>
+                            </div>
+                            <template v-if="form.personType === 'PJ'">
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-300 mb-1">Regime tributario</label>
+                                    <select
+                                        v-model="form.taxRegimeId"
+                                        class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">Selecione</option>
+                                        <option v-for="r in taxRegimesList" :key="r.id" :value="r.id">{{ r.name }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-300 mb-1">Optante MEI?</label>
+                                    <select
+                                        v-model="form.isMeiOptant"
+                                        :disabled="meiOptantForcedToNo"
+                                        class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
+                                    >
+                                        <option value="false">Nao</option>
+                                        <option value="true">Sim</option>
+                                    </select>
+                                    <p v-if="meiOptantForcedToNo" class="mt-1 text-xs text-neutral-400">No Lucro Presumido ou Lucro Real o optante por MEI nao se aplica.</p>
+                                </div>
+                                <div v-if="selectedTaxRegime?.code === 'LUCRO_PRESUMIDO'" class="sm:col-span-2">
+                                    <label class="block text-sm font-medium text-neutral-300 mb-1">Valor da presuncao (%)</label>
+                                    <input
+                                        v-model.number="form.presumptionRate"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        max="100"
+                                        placeholder="32"
+                                        class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <p class="mt-1 text-xs text-neutral-400">Percentual de presuncao de lucro sobre a receita (ex.: 32% para servicos). Usado no calculo de IRPJ e CSLL.</p>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label class="block text-sm font-medium text-neutral-300 mb-1">Indicador retencao ISS</label>
+                                    <select
+                                        v-model="form.issRetentionIndicator"
+                                        class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">Selecione</option>
+                                        <option value="RETEM_NA_FONTE">Retem na Fonte</option>
+                                        <option value="NAO_RETEM">Nao Retem</option>
+                                        <option value="ISENTO">Isento</option>
+                                    </select>
+                                    <p class="mt-1 text-xs text-neutral-400">Depende se o servico e no municipio do tomador ou do prestador.</p>
+                                </div>
+                            </template>
+                            <template v-if="form.personType === 'PF'">
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-300 mb-1">Aliquota INSS (%)</label>
+                                    <input
+                                        v-model.number="form.inssRate"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        max="20"
+                                        placeholder="11"
+                                        class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm"
+                                    />
+                                    <p class="mt-1 text-xs text-neutral-400">Ex.: 11% (limitado ao teto).</p>
+                                </div>
+                                <div class="flex items-center pt-6">
+                                    <input v-model="form.irrfProgressiveTable" type="checkbox" id="irrfProgressive" class="w-4 h-4 text-blue-600 rounded" />
+                                    <label for="irrfProgressive" class="ml-2 text-sm text-neutral-300">Aplicar tabela progressiva IRRF (Receita Federal)</label>
+                                </div>
+                            </template>
+                            <template v-if="form.personType === 'EXTERIOR'">
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-300 mb-1">Invoice / Fatura</label>
+                                    <input
+                                        v-model="form.exteriorInvoice"
+                                        type="text"
+                                        placeholder="Referencia da invoice"
+                                        class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-300 mb-1">IOF (%)</label>
+                                    <input
+                                        v-model.number="form.exteriorIof"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        max="100"
+                                        placeholder="0"
+                                        class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm"
+                                    />
+                                </div>
+                                <p class="sm:col-span-2 text-xs text-amber-400">Impostos nacionais desabilitados para centro no exterior.</p>
+                            </template>
+                        </div>
+                    </div>
+
                     <!-- Informações tributárias (apenas CNPJ) -->
                     <div v-if="isCNPJ" class="p-4 bg-neutral-700/50 rounded-lg border border-neutral-600 space-y-4">
                         <h4 class="text-sm font-medium text-white border-b border-neutral-600 pb-2">Informacoes tributarias (CNPJ)</h4>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-neutral-300 mb-1">Regime tributario</label>
-                                <select
-                                    v-model="form.cnpjTaxRegime"
-                                    @change="onCnpjTaxRegimeChange"
-                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    <option value="">Selecione</option>
-                                    <option value="Simples Nacional">Simples Nacional</option>
-                                    <option value="Lucro Presumido">Lucro Presumido</option>
-                                    <option value="Lucro Real">Lucro Real</option>
-                                </select>
-                            </div>
+                            <p v-if="form.personType === 'PJ'" class="sm:col-span-2 text-xs text-neutral-400">Regime tributario e optante MEI definidos no Perfil Fiscal acima.</p>
+                            <template v-if="form.personType !== 'PJ'">
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-300 mb-1">Regime tributario</label>
+                                    <select
+                                        v-model="form.cnpjTaxRegime"
+                                        @change="onCnpjTaxRegimeChange"
+                                        class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">Selecione</option>
+                                        <option value="Simples Nacional">Simples Nacional</option>
+                                        <option value="Lucro Presumido">Lucro Presumido</option>
+                                        <option value="Lucro Real">Lucro Real</option>
+                                    </select>
+                                </div>
+                            </template>
                             <div>
                                 <label class="block text-sm font-medium text-neutral-300 mb-1">Regime de apuracao</label>
                                 <select
                                     v-model="form.cnpjAccrualRegime"
-                                    :disabled="form.cnpjTaxRegime === 'Simples Nacional'"
+                                    :disabled="displayRegimeForCnpjSection === 'Simples Nacional'"
                                     class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
                                 >
                                     <option value="">Selecione</option>
                                     <option value="Caixa">Caixa</option>
                                     <option value="Competencia">Competencia</option>
                                 </select>
-                                <p v-if="form.cnpjTaxRegime === 'Simples Nacional'" class="mt-1 text-xs text-neutral-400">No Simples Nacional o regime de apuracao e sempre Competencia.</p>
+                                <p v-if="displayRegimeForCnpjSection === 'Simples Nacional'" class="mt-1 text-xs text-neutral-400">No Simples Nacional o regime de apuracao e sempre Competencia.</p>
                             </div>
                             <div class="sm:col-span-2">
                                 <label class="block text-sm font-medium text-neutral-300 mb-1">CNAE principal</label>
@@ -216,24 +331,16 @@
                                 </div>
                                 <p v-if="form.cnpjCnaeSecundarios.length === 0" class="mt-1 text-xs text-neutral-500">Nenhum CNAE secundario. Clique em "Adicionar CNAE" se precisar.</p>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-neutral-300 mb-1">Municipio</label>
-                                <input
-                                    v-model="form.cnpjMunicipio"
-                                    type="text"
-                                    placeholder="Nome do municipio"
-                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-neutral-300 mb-1">Estado</label>
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-medium text-neutral-300 mb-1">Municipio (com aliquota ISS na matriz tributaria)</label>
                                 <select
-                                    v-model="form.cnpjEstado"
+                                    v-model="form.cnpjIssMunicipalityId"
                                     class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
-                                    <option value="">Selecione</option>
-                                    <option v-for="uf in ufList" :key="uf" :value="uf">{{ uf }}</option>
+                                    <option value="">Selecione municipio</option>
+                                    <option v-for="m in issMunicipalityList" :key="m.id" :value="m.id">{{ m.municipality }} - {{ m.uf }} (ISS {{ m.percent }}%)</option>
                                 </select>
+                                <p v-if="issMunicipalityList.length === 0" class="mt-1 text-xs text-amber-400">Cadastre municipios na pagina Matriz Tributaria para selecionar aqui.</p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-neutral-300 mb-1">Data de inicio do regime</label>
@@ -243,18 +350,7 @@
                                     class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-neutral-300 mb-1">Optante por MEI?</label>
-                                <select
-                                    v-model="form.cnpjMeiOptant"
-                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    <option value="">Selecione</option>
-                                    <option value="Sim">Sim</option>
-                                    <option value="Nao">Nao</option>
-                                </select>
-                            </div>
-                            <div v-if="form.cnpjTaxRegime === 'Simples Nacional'">
+                            <div v-if="displayRegimeForCnpjSection === 'Simples Nacional'">
                                 <label class="block text-sm font-medium text-neutral-300 mb-1">Anexo do Simples (se aplicavel)</label>
                                 <select
                                     v-model="form.cnpjSimplesAnexo"
@@ -268,17 +364,12 @@
                                     <option value="Anexo V">Anexo V</option>
                                 </select>
                             </div>
-                            <div v-if="form.cnpjTaxRegime && form.cnpjTaxRegime !== 'Simples Nacional'">
-                                <label class="block text-sm font-medium text-neutral-300 mb-1">Percentual de ISS (se nao Simples)</label>
-                                <input
-                                    v-model.number="form.cnpjIssPercentage"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    max="100"
-                                    placeholder="Ex: 5"
-                                    class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
+                            <div v-if="displayRegimeForCnpjSection && displayRegimeForCnpjSection !== 'Simples Nacional'" class="sm:col-span-2">
+                                <label class="block text-sm font-medium text-neutral-300 mb-1">ISS (conforme matriz tributaria)</label>
+                                <p v-if="selectedIssMunicipality" class="px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm">
+                                    {{ selectedIssMunicipality.percent }}%
+                                </p>
+                                <p v-else class="px-3 py-2 bg-neutral-700/50 border border-neutral-600 rounded-md text-neutral-400 text-sm">Selecione o municipio acima para exibir a aliquota de ISS.</p>
                             </div>
                         </div>
                     </div>
@@ -496,7 +587,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useSasClient } from '../client';
 
 const client = useSasClient();
@@ -518,24 +609,77 @@ const HISTORY_PAGE_SIZE = 50;
 
 const ufList = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
+const taxRegimesList = ref<any[]>([]);
+const issMunicipalityList = ref<any[]>([]);
+
+const getEmptyFiscalFields = () => ({
+    personType: '' as string,
+    taxRegimeId: '' as string,
+    isMeiOptant: 'false' as string,
+    issRetentionIndicator: '' as string,
+    presumptionRate: null as number | null,
+    inssRate: null as number | null,
+    irrfProgressiveTable: false as boolean,
+    exteriorInvoice: '' as string,
+    exteriorIof: null as number | null
+});
+
 const form = ref({
     identifier: '',
     name: '',
     paymentMethods: [] as Array<{ method: string; details: string; wallet?: string; currency?: string }>,
     active: true,
+    ...getEmptyFiscalFields(),
     cnpjTaxRegime: '',
     cnpjAccrualRegime: '',
     cnpjCnaePrincipal: '',
     cnpjCnaeSecundarios: [] as string[],
     cnpjMunicipio: '',
     cnpjEstado: '',
+    cnpjIssMunicipalityId: '',
     cnpjRegimeStartDate: '',
     cnpjSimplesAnexo: '',
-    cnpjIssPercentage: null as number | null,
     cnpjMeiOptant: ''
 });
 
 const isCNPJ = computed(() => (form.value.identifier || '').replace(/\D/g, '').length === 14);
+
+// Regime tributario selecionado (perfil fiscal): quando for Presumido ou Real, MEI deve ser Nao
+const selectedTaxRegime = computed(() => {
+    const id = form.value.taxRegimeId;
+    if (!id) return null;
+    return taxRegimesList.value.find((r: any) => r.id === id) ?? null;
+});
+const meiOptantForcedToNo = computed(() => {
+    const code = selectedTaxRegime.value?.code;
+    return code === 'LUCRO_PRESUMIDO' || code === 'LUCRO_REAL';
+});
+
+// Regime exibido na secao CNPJ: quando PJ usa o Perfil Fiscal (evita duplicacao)
+const cnpjTaxRegimeFromProfile = computed(() => selectedTaxRegime.value?.name ?? '');
+const displayRegimeForCnpjSection = computed(() =>
+    form.value.personType === 'PJ' ? cnpjTaxRegimeFromProfile.value : form.value.cnpjTaxRegime
+);
+
+// Municipio selecionado da matriz de ISS: preenche municipio/UF e exibe aliquota
+const selectedIssMunicipality = computed(() => {
+    const id = form.value.cnpjIssMunicipalityId;
+    if (!id) return null;
+    return issMunicipalityList.value.find((m: any) => m.id === id) ?? null;
+});
+
+// Forcar Optante MEI = Nao quando regime for Presumido ou Real (perfil fiscal)
+watch(() => form.value.taxRegimeId, () => {
+    if (meiOptantForcedToNo.value) form.value.isMeiOptant = 'false';
+    if (selectedTaxRegime.value?.code === 'SIMPLES_NACIONAL') form.value.cnpjAccrualRegime = 'Competencia';
+});
+watch(() => form.value.cnpjIssMunicipalityId, (id) => {
+    const m = issMunicipalityList.value.find((x: any) => x.id === id);
+    if (m) {
+        form.value.cnpjMunicipio = m.municipality ?? '';
+        form.value.cnpjEstado = m.uf ?? '';
+    }
+});
 
 // Função para formatar CNPJ ou CPF
 const formatIdentifier = (identifier: string): string => {
@@ -715,9 +859,9 @@ const getEmptyCnpjFields = () => ({
     cnpjCnaeSecundarios: [] as string[],
     cnpjMunicipio: '',
     cnpjEstado: '',
+    cnpjIssMunicipalityId: '',
     cnpjRegimeStartDate: '',
     cnpjSimplesAnexo: '',
-    cnpjIssPercentage: null as number | null,
     cnpjMeiOptant: ''
 });
 
@@ -744,6 +888,7 @@ const openAddDialog = () => {
         name: '',
         paymentMethods: [{ method: '', details: '', wallet: '', currency: '' }],
         active: true,
+        ...getEmptyFiscalFields(),
         ...getEmptyCnpjFields()
     };
     formErrors.value = {};
@@ -768,11 +913,32 @@ const editItem = (item: any) => {
                 cnpjCnaeSecundarios: Array.isArray(d.cnaeSecundarios) ? d.cnaeSecundarios : [],
                 cnpjMunicipio: d.municipality ?? '',
                 cnpjEstado: d.state ?? '',
+                cnpjIssMunicipalityId: '',
                 cnpjRegimeStartDate: d.regimeStartDate ?? '',
                 cnpjSimplesAnexo: d.simplesAnexo ?? '',
-                cnpjIssPercentage: d.issPercentage != null ? d.issPercentage : null,
                 cnpjMeiOptant: d.meiOptant ?? ''
             };
+        } catch (_) {}
+    }
+    
+    let fiscalFields = getEmptyFiscalFields();
+    if (item.tax_regime_id) fiscalFields.taxRegimeId = String(item.tax_regime_id);
+    fiscalFields.isMeiOptant = item.is_mei_optant === true || item.is_mei_optant === 1 ? 'true' : 'false';
+    if (item.fiscal_profile) {
+        try {
+            const fp = typeof item.fiscal_profile === 'string' ? JSON.parse(item.fiscal_profile) : item.fiscal_profile;
+            fiscalFields = {
+                ...fiscalFields,
+                personType: fp.personType ?? '',
+                issRetentionIndicator: fp.issRetentionIndicator ?? '',
+                presumptionRate: fp.presumptionRate != null ? fp.presumptionRate : null,
+                inssRate: fp.inssRate != null ? fp.inssRate : null,
+                irrfProgressiveTable: fp.irrfProgressiveTable === true,
+                exteriorInvoice: fp.exteriorInvoice ?? '',
+                exteriorIof: fp.exteriorIof != null ? fp.exteriorIof : null
+            };
+            if (fp.taxRegimeId) fiscalFields.taxRegimeId = String(fp.taxRegimeId);
+            if (item.tax_regime_id) fiscalFields.taxRegimeId = String(item.tax_regime_id);
         } catch (_) {}
     }
     
@@ -786,8 +952,18 @@ const editItem = (item: any) => {
             currency: m.currency ?? ''
         })) : [{ method: '', details: '', wallet: '', currency: '' }],
         active: item.active !== undefined ? item.active : true,
+        ...fiscalFields,
         ...cnpjFields
     };
+    const mun = (form.value.cnpjMunicipio || '').trim();
+    const uf = (form.value.cnpjEstado || '').trim();
+    if (mun && uf) {
+        const found = issMunicipalityList.value.find((m: any) => (m.municipality || '').trim() === mun && (m.uf || '').trim() === uf);
+        if (found) form.value.cnpjIssMunicipalityId = found.id;
+    }
+    // Forcar MEI = Nao quando regime for Presumido ou Real (ao abrir edicao)
+    const regime = taxRegimesList.value.find((r: any) => r.id === form.value.taxRegimeId);
+    if (regime?.code === 'LUCRO_PRESUMIDO' || regime?.code === 'LUCRO_REAL') form.value.isMeiOptant = 'false';
     formErrors.value = {};
     showDialog.value = true;
 };
@@ -812,6 +988,7 @@ const closeDialog = () => {
         name: '',
         paymentMethods: [{ method: '', details: '', wallet: '', currency: '' }],
         active: true,
+        ...getEmptyFiscalFields(),
         ...getEmptyCnpjFields()
     };
     formErrors.value = {};
@@ -873,9 +1050,27 @@ const saveCostCenter = async () => {
             paymentMethods: JSON.stringify(serializedMethods),
             active: form.value.active
         };
+        if (form.value.taxRegimeId) data.tax_regime_id = form.value.taxRegimeId;
+        data.is_mei_optant = form.value.isMeiOptant === 'true';
+        data.fiscal_profile = JSON.stringify({
+            personType: form.value.personType || null,
+            issRetentionIndicator: form.value.issRetentionIndicator || null,
+            presumptionRate: form.value.presumptionRate != null ? form.value.presumptionRate : null,
+            inssRate: form.value.inssRate != null ? form.value.inssRate : null,
+            irrfProgressiveTable: form.value.irrfProgressiveTable === true,
+            exteriorInvoice: form.value.exteriorInvoice?.trim() || null,
+            exteriorIof: form.value.exteriorIof != null ? form.value.exteriorIof : null
+        });
         if (isCNPJ.value) {
+            const taxRegimeForCnpj = form.value.personType === 'PJ' && selectedTaxRegime.value
+                ? selectedTaxRegime.value.name
+                : form.value.cnpjTaxRegime || null;
+            const meiOptantForCnpj = form.value.personType === 'PJ'
+                ? (form.value.isMeiOptant === 'true' ? 'Sim' : 'Nao')
+                : (form.value.cnpjMeiOptant || null);
+            const issPct = selectedIssMunicipality.value?.percent != null ? selectedIssMunicipality.value.percent : null;
             data.cnpjDetails = JSON.stringify({
-                taxRegime: form.value.cnpjTaxRegime || null,
+                taxRegime: taxRegimeForCnpj,
                 accrualRegime: form.value.cnpjAccrualRegime || null,
                 cnaePrincipal: form.value.cnpjCnaePrincipal?.trim() || null,
                 cnaeSecundarios: (form.value.cnpjCnaeSecundarios || []).map((c: string) => (c || '').trim()).filter(Boolean),
@@ -883,8 +1078,8 @@ const saveCostCenter = async () => {
                 state: form.value.cnpjEstado || null,
                 regimeStartDate: form.value.cnpjRegimeStartDate || null,
                 simplesAnexo: form.value.cnpjSimplesAnexo || null,
-                issPercentage: form.value.cnpjIssPercentage != null ? form.value.cnpjIssPercentage : null,
-                meiOptant: form.value.cnpjMeiOptant || null
+                issPercentage: issPct,
+                meiOptant: meiOptantForCnpj
             });
         }
 
@@ -930,7 +1125,19 @@ const deleteItem = async (id: string) => {
     }
 };
 
-onMounted(() => {
+onMounted(async () => {
     loadData();
+    try {
+        const res = await client.taxRegimes.get({});
+        taxRegimesList.value = Array.isArray(res?.data) ? res.data : (res?.items ?? []) || [];
+    } catch (_) {
+        taxRegimesList.value = [];
+    }
+    try {
+        const issRes = await client.taxIssMunicipality.get({});
+        issMunicipalityList.value = Array.isArray(issRes?.data) ? issRes.data : (issRes?.items ?? []) || [];
+    } catch (_) {
+        issMunicipalityList.value = [];
+    }
 });
 </script>
