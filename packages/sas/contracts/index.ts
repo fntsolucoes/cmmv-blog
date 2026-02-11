@@ -18,6 +18,10 @@ export * from "./sas-ticket-partners.contract";
 export * from "./sas-tax-regimes.contract";
 export * from "./sas-tax-rules.contract";
 export * from "./sas-tax-iss-municipality.contract";
+export * from "./sas-cost-center-tax-rules.contract";
+export * from "./sas-cost-center-monthly-revenue.contract";
+export * from "./sas-cost-center-monthly-fator-r.contract";
+export * from "./sas-simples-nacional-annex-brackets.contract";
 
 
 

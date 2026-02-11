@@ -73,6 +73,64 @@ const migrations: Migration[] = [
         name: 'Seed regra Adicional IRPJ (10% acima de R$ 20.000/mes)',
         file: 'seed-adicional-irpj-rule.sql',
         type: 'data'
+    },
+    {
+        name: 'Criar tabela sas_cost_center_tax_rules (regras por centro de custo)',
+        file: 'add-cost-center-tax-rules.sql',
+        tableName: 'sas_cost_center_tax_rules',
+        type: 'schema'
+    },
+    {
+        name: 'Adicionar flag tax_engine_used em sas_payment_orders',
+        file: 'add-payment-orders-tax-engine-flag.sql',
+        tableName: 'sas_payment_orders',
+        columnName: 'tax_engine_used',
+        type: 'schema'
+    },
+    {
+        name: 'Adicionar tax_calc_details em sas_payment_orders',
+        file: 'add-payment-orders-tax-calc-details.sql',
+        tableName: 'sas_payment_orders',
+        columnName: 'tax_calc_details',
+        type: 'schema'
+    },
+    {
+        name: 'Criar tabela sas_simples_nacional_annex_brackets (faixas Simples Nacional)',
+        file: 'add-simples-nacional-annex-brackets.sql',
+        tableName: 'sas_simples_nacional_annex_brackets',
+        columnName: 'id',
+        type: 'schema'
+    },
+    {
+        name: 'Seed faixas dos Anexos I a V do Simples Nacional',
+        file: 'seed-simples-nacional-annex-brackets.sql',
+        type: 'data'
+    },
+    {
+        name: 'Criar tabela sas_simples_nacional_cnae (CNAEs por anexo)',
+        file: 'add-simples-nacional-cnae.sql',
+        tableName: 'sas_simples_nacional_cnae',
+        columnName: 'id',
+        type: 'schema'
+    },
+    {
+        name: 'Seed CNAEs Simples Nacional',
+        file: 'seed-simples-nacional-cnae.sql',
+        type: 'data'
+    },
+    {
+        name: 'Criar tabela sas_cost_center_monthly_revenue (faturamento mensal para RBT12)',
+        file: 'add-cost-center-monthly-revenue.sql',
+        tableName: 'sas_cost_center_monthly_revenue',
+        columnName: 'id',
+        type: 'schema'
+    },
+    {
+        name: 'Criar tabela sas_cost_center_monthly_fator_r (Fator R mensal)',
+        file: 'add-cost-center-monthly-fator-r.sql',
+        tableName: 'sas_cost_center_monthly_fator_r',
+        columnName: 'id',
+        type: 'schema'
     }
 ];
 

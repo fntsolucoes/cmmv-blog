@@ -7,9 +7,12 @@ import {
 } from "@cmmv/repository";
 
 import { parse } from "csv-parse/sync";
+import { TaxCalcService } from "../tax-calc/tax-calc.service";
 
 @Service()
 export class PaymentOrdersService {
+    constructor(private readonly taxCalcService: TaxCalcService) {}
+
     /**
      * Validar mês (1-12)
      */
@@ -70,6 +73,8 @@ export class PaymentOrdersService {
         observations?: string | null;
         natureza_rendimento?: string | null;
         data_emissao_nota?: string | Date | null;
+        tax_engine_used?: number | boolean | null;
+        tax_calc_details?: string | object | null;
     }) {
         const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
         const CommercialPartnersEntity = Repository.getEntity("SasCommercialPartnersEntity");
@@ -80,12 +85,30 @@ export class PaymentOrdersService {
             throw new Error("Invoice value must be greater than zero");
         }
 
-        // taxAmount calculado pelo sistema (usuario nao envia)
-        const taxAmount = this.calculateTaxAmount(data.invoiceAmount, data.taxPercentage ?? 0);
+        // taxAmount: motor de tributos (Simples, Lucro Presumido, etc.) ou percentual manual
+        let taxAmount: number;
+        let taxEngineUsed = false;
+        let taxCalcDetails: string | null = null;
+        const referenceMonth = this.buildExpectedPaymentMonth(data.expectedPaymentYear, data.expectedPaymentMonth);
+        try {
+            const calcResult = await this.taxCalcService.calculate({
+                costCenterId: data.costCenterId,
+                grossAmount: data.invoiceAmount,
+                referenceMonth
+            });
+            if (calcResult != null && typeof calcResult.totalDeductions === "number" && calcResult.totalDeductions >= 0) {
+                taxAmount = Math.round(calcResult.totalDeductions * 100) / 100;
+                taxEngineUsed = true;
+                taxCalcDetails = JSON.stringify(calcResult);
+            } else {
+                taxAmount = this.calculateTaxAmount(data.invoiceAmount, data.taxPercentage ?? 0);
+            }
+        } catch (_) {
+            taxAmount = this.calculateTaxAmount(data.invoiceAmount, data.taxPercentage ?? 0);
+        }
         if (taxAmount < 0) {
             throw new Error("Tax value cannot be negative");
         }
-
         if (taxAmount > data.invoiceAmount) {
             throw new Error("Tax value cannot exceed invoice value");
         }
@@ -185,6 +208,10 @@ export class PaymentOrdersService {
             paymentMethod: data.paymentMethod ?? null,
             observations: data.observations ?? null
         };
+        payload.tax_engine_used = data.tax_engine_used !== undefined && data.tax_engine_used !== null ? !!data.tax_engine_used : taxEngineUsed;
+        payload.tax_calc_details = data.tax_calc_details !== undefined
+            ? (typeof data.tax_calc_details === 'string' ? data.tax_calc_details : data.tax_calc_details != null ? JSON.stringify(data.tax_calc_details) : null)
+            : taxCalcDetails;
         if (data.natureza_rendimento != null && data.natureza_rendimento !== "") {
             payload.natureza_rendimento = data.natureza_rendimento;
         }
@@ -257,6 +284,8 @@ export class PaymentOrdersService {
         observations: string | null;
         natureza_rendimento: string | null;
         data_emissao_nota: string | Date | null;
+        tax_engine_used: number | boolean | null;
+        tax_calc_details: string | object | null;
     }>) {
         const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
         const CommercialPartnersEntity = Repository.getEntity("SasCommercialPartnersEntity");
@@ -277,7 +306,7 @@ export class PaymentOrdersService {
             payload.invoiceAmount = data.invoiceAmount;
         }
 
-        // taxAmount calculado pelo sistema a partir de taxPercentage (usuario nao envia taxAmount)
+        // taxAmount: percentual manual ou motor de tributos (recalculo quando valor/mes mudam)
         if (data.taxPercentage !== undefined) {
             const invoiceAmount = data.invoiceAmount ?? existing.invoiceAmount;
             const taxAmount = this.calculateTaxAmount(invoiceAmount, data.taxPercentage);
@@ -288,6 +317,29 @@ export class PaymentOrdersService {
                 throw new Error("Tax value cannot exceed invoice value");
             }
             payload.taxAmount = taxAmount;
+        } else if (data.invoiceAmount !== undefined || data.expectedPaymentMonth !== undefined || data.expectedPaymentYear !== undefined) {
+            const invoiceAmount = data.invoiceAmount ?? existing.invoiceAmount;
+            const referenceMonth = (data.expectedPaymentMonth !== undefined || data.expectedPaymentYear !== undefined)
+                ? this.buildExpectedPaymentMonth(
+                    data.expectedPaymentYear ?? this.extractYear(existing.expectedPaymentMonth),
+                    data.expectedPaymentMonth ?? this.extractMonth(existing.expectedPaymentMonth)
+                )
+                : existing.expectedPaymentMonth;
+            try {
+                const calcResult = await this.taxCalcService.calculate({
+                    costCenterId: existing.costCenterId,
+                    grossAmount: invoiceAmount,
+                    referenceMonth,
+                    orderId: id
+                });
+                if (calcResult != null && typeof calcResult.totalDeductions === "number" && calcResult.totalDeductions >= 0) {
+                    payload.taxAmount = Math.round(calcResult.totalDeductions * 100) / 100;
+                    payload.tax_engine_used = true;
+                    payload.tax_calc_details = JSON.stringify(calcResult);
+                }
+            } catch (_) {
+                // mantem valores atuais
+            }
         }
 
         if (data.discountAmount !== undefined) {
@@ -452,6 +504,15 @@ export class PaymentOrdersService {
             payload.observations = data.observations;
         }
 
+        // Gravar como boolean para compatibilidade com TypeORM (@Column type: "boolean")
+        if (data.tax_engine_used !== undefined) {
+            payload.tax_engine_used = !!data.tax_engine_used;
+        }
+        if (data.tax_calc_details !== undefined) {
+            payload.tax_calc_details = typeof data.tax_calc_details === 'string'
+                ? data.tax_calc_details
+                : data.tax_calc_details != null ? JSON.stringify(data.tax_calc_details) : null;
+        }
         if (data.natureza_rendimento !== undefined) {
             payload.natureza_rendimento = data.natureza_rendimento === null || data.natureza_rendimento === "" ? null : data.natureza_rendimento;
         }
@@ -469,8 +530,17 @@ export class PaymentOrdersService {
             }
         }
 
-        const result = await Repository.update(PaymentOrdersEntity, id, payload);
-        return result;
+        const affected = await Repository.update(PaymentOrdersEntity, id, payload);
+
+        // Retornar objeto para compatibilidade com o framework CMMV
+        // (Repository.update retorna um numero, mas o framework espera um objeto)
+        if (affected === 0) {
+            return { success: false, message: 'No rows updated' };
+        }
+
+        // Buscar registro atualizado
+        const updated = await Repository.findOne(PaymentOrdersEntity, { id });
+        return { data: updated, success: true, affected };
     }
 
     /**
@@ -564,8 +634,14 @@ export class PaymentOrdersService {
 
         payload.status = status;
 
-        const result = await Repository.update(PaymentOrdersEntity, id, payload);
-        return result;
+        const affected = await Repository.update(PaymentOrdersEntity, id, payload);
+
+        if (affected === 0) {
+            return { success: false, message: 'No rows updated' };
+        }
+
+        const updated = await Repository.findOne(PaymentOrdersEntity, { id });
+        return { data: updated, success: true, affected };
     }
 
     /**
@@ -618,7 +694,8 @@ export class PaymentOrdersService {
      */
     async delete(id: string) {
         const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
-        return await Repository.delete(PaymentOrdersEntity, id);
+        const affected = await Repository.delete(PaymentOrdersEntity, id);
+        return { success: affected > 0, affected };
     }
 
     /**

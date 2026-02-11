@@ -357,9 +357,47 @@ export const useSasClient = () => {
         delete: async (id: string) => api.authRequest(`affiliation-manager/tax-iss-municipality/v2/${id}`, "DELETE")
     };
 
+    const costCenterTaxRules = {
+        get: async (filters: Record<string, string> = {}) => {
+            const query = new URLSearchParams(filters).toString();
+            return api.authRequest(`affiliation-manager/cost-center-tax-rules/v2?${query}`, "GET");
+        },
+        getById: async (id: string) => api.authRequest(`affiliation-manager/cost-center-tax-rules/v2/${id}`, "GET"),
+        insert: async (data: any) => api.authRequest("affiliation-manager/cost-center-tax-rules/v2", "POST", data),
+        update: async (id: string, data: any) => api.authRequest(`affiliation-manager/cost-center-tax-rules/v2/${id}`, "PUT", data),
+        delete: async (id: string) => api.authRequest(`affiliation-manager/cost-center-tax-rules/v2/${id}`, "DELETE"),
+        initForCostCenter: async (costCenterId: string) => api.authRequest(`affiliation-manager/cost-center-tax-rules/v2/init/${costCenterId}`, "POST", {})
+    };
+
     const taxCalc = {
         calculate: async (data: { costCenterId: string; grossAmount: number; referenceMonth?: string; orderId?: string }) =>
             api.authRequest("affiliation-manager/tax-calc", "POST", data)
+    };
+
+    const costCenterMonthlyRevenue = {
+        get: async (filters: Record<string, string> = {}) => {
+            const query = new URLSearchParams(filters).toString();
+            return api.authRequest(`affiliation-manager/cost-center-monthly-revenue?${query}`, "GET");
+        },
+        getById: async (id: string) => api.authRequest(`affiliation-manager/cost-center-monthly-revenue/${id}`, "GET"),
+        insert: async (data: any) => api.authRequest("affiliation-manager/cost-center-monthly-revenue", "POST", data),
+        update: async (id: string, data: any) => api.authRequest(`affiliation-manager/cost-center-monthly-revenue/${id}`, "PUT", data),
+        delete: async (id: string) => api.authRequest(`affiliation-manager/cost-center-monthly-revenue/${id}`, "DELETE"),
+        upsertMonth: async (data: { cost_center_id: string; year: number; month: number; gross_revenue: number }) =>
+            api.authRequest("affiliation-manager/cost-center-monthly-revenue/by-month", "POST", data)
+    };
+
+    const costCenterMonthlyFatorR = {
+        get: async (filters: Record<string, string> = {}) => {
+            const query = new URLSearchParams(filters).toString();
+            return api.authRequest(`affiliation-manager/cost-center-monthly-fator-r?${query}`, "GET");
+        },
+        getById: async (id: string) => api.authRequest(`affiliation-manager/cost-center-monthly-fator-r/${id}`, "GET"),
+        insert: async (data: any) => api.authRequest("affiliation-manager/cost-center-monthly-fator-r", "POST", data),
+        update: async (id: string, data: any) => api.authRequest(`affiliation-manager/cost-center-monthly-fator-r/${id}`, "PUT", data),
+        delete: async (id: string) => api.authRequest(`affiliation-manager/cost-center-monthly-fator-r/${id}`, "DELETE"),
+        upsertMonth: async (data: { cost_center_id: string; year: number; month: number; fator_r: number }) =>
+            api.authRequest("affiliation-manager/cost-center-monthly-fator-r/by-month", "POST", data)
     };
 
     return {
@@ -379,6 +417,9 @@ export const useSasClient = () => {
         taxRegimes,
         taxRules,
         taxIssMunicipality,
+        costCenterTaxRules,
+        costCenterMonthlyRevenue,
+        costCenterMonthlyFatorR,
         taxCalc
     };
 };

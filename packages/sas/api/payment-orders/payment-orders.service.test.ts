@@ -46,7 +46,7 @@ describe('PaymentOrdersService', () => {
             const result = await service.findAllForExport();
 
             expect(Repository.getEntity).toHaveBeenCalledWith('SasPaymentOrdersEntity');
-            expect(Repository.findAll).toHaveBeenCalledWith(mockEntity, {});
+            expect(Repository.findAll).toHaveBeenCalledWith(mockEntity, { limit: 1000000 });
             expect(result).toEqual(mockOrders);
         });
 
@@ -55,7 +55,7 @@ describe('PaymentOrdersService', () => {
 
             const result = await service.findAllForExport();
 
-            expect(Repository.findAll).toHaveBeenCalledWith(mockEntity, {});
+            expect(Repository.findAll).toHaveBeenCalledWith(mockEntity, { limit: 1000000 });
             expect(result).toEqual([]);
         });
     });
@@ -72,6 +72,7 @@ describe('PaymentOrdersService', () => {
                     if (name === 'SasCostCentersEntity') return mockCostCentersEntity;
                     return {};
                 });
+            service = new PaymentOrdersService({} as any);
         });
 
         it('deve retornar erro quando CSV e invalido', async () => {
@@ -104,11 +105,13 @@ describe('PaymentOrdersService', () => {
 
         it('deve atualizar registro quando CSV valido e ordem existe', async () => {
             const csv = 'id,commercialPartnerId,currency,costCenterId,invoiceAmount,taxAmount,discountAmount,withdrawalDate,expectedPaymentMonth,effectivePaymentDate,paidValue,status,paymentMethod,observations,finalizedForProfitSharingAt,createdAt,updatedAt\n' +
-                'ord-1,partner-1,BRL,cc-1,1000,100,0,2025-01-15,2025-01,,,Pendente,,,\n';
-            (Repository.findOne as ReturnType<typeof vi.fn>)
-                .mockResolvedValueOnce({ id: 'ord-1' })
-                .mockResolvedValueOnce({ id: 'partner-1' })
-                .mockResolvedValueOnce({ id: 'cc-1' });
+                'ord-1,partner-1,BRL,cc-1,1000,100,0,2025-01-15,2025-01,,,Pendente,,,,,\n';
+            (Repository.findOne as ReturnType<typeof vi.fn>).mockImplementation((_entity: unknown, criteria: { id?: string }) => {
+                if (criteria?.id === 'ord-1') return Promise.resolve({ id: 'ord-1' });
+                if (criteria?.id === 'partner-1') return Promise.resolve({ id: 'partner-1' });
+                if (criteria?.id === 'cc-1') return Promise.resolve({ id: 'cc-1' });
+                return Promise.resolve(null);
+            });
             (Repository.update as ReturnType<typeof vi.fn>).mockResolvedValue({});
 
             const result = await service.updateFromExportCSV(csv);

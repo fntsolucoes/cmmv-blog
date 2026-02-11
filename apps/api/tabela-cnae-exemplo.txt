@@ -1,0 +1,20 @@
+0111-3/01 Cultivo de arroz I 4,00%
+0111-3/02 Cultivo de milho I 4,00%
+0111-3/03 Cultivo de trigo I 4,00%
+0111-3/99 Cultivo de outros cereais não especificados anteriormente I 4,00%
+0112-1/01 Cultivo de algodão herbáceo I 4,00%
+0112-1/02 Cultivo de juta I 4,00%
+0113-0/00 Cultivo de cana-de-açúcar I 4,00%
+0114-8/00 Cultivo de fumo I 4,00%
+0115-6/00 Cultivo de soja I 4,00%
+0161-0/01 Serviço de pulverização e controle de pragas agrícolas III 6,00%
+0161-0/02 Serviço de poda de árvores para lavouras III 6,00%
+0710-3/01 Extração de minério de ferro I 4,00%
+0710-3/02 Pelotização, sinterização e outros beneficiamentos de minério de ferro II 4,50%
+1011-2/01 Frigorífico - abate de bovinos II 4,50%
+1011-2/02 Frigorífico - abate de eqüinos II 4,50%
+6201-5/00 Desenvolvimento de programas de computador sob encomenda V 19,5%
+6202-3/00 Desenvolvimento e licenciamento de programas de computador customizáveis V 19,5%
+4611-7/00 Representantes VI 16,93%
+1830-4/13 Serviços advocatícios IV 4,50%
+9700-5/00 Serviços domésticos IV 4,50%

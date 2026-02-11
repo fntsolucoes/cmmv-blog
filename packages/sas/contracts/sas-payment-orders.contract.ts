@@ -129,6 +129,12 @@ export class SasPaymentOrdersContract extends AbstractContract {
 
     @ContractField({ protoType: 'string', nullable: true, index: true })
     id_imposto_reforma?: string; // Preparacao split payment IBS/CBS
+
+    @ContractField({ protoType: 'boolean', nullable: true, defaultValue: false, index: true })
+    tax_engine_used?: boolean; // true se o imposto foi calculado pelo motor tributario
+
+    @ContractField({ protoType: 'string', nullable: true, index: false })
+    tax_calc_details?: string; // JSON com o detalhamento do calculo do motor tributario (deductions, gross, liquid, totalDeductions)
 }
 
 

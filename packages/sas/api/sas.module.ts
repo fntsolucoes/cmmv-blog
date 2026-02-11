@@ -19,7 +19,11 @@ import {
     SasTicketPartnersContract,
     SasTaxRegimesContract,
     SasTaxRulesContract,
-    SasTaxIssMunicipalityContract
+    SasTaxIssMunicipalityContract,
+    SasCostCenterTaxRulesContract,
+    SasCostCenterMonthlyRevenueContract,
+    SasCostCenterMonthlyFatorRContract,
+    SasSimplesNacionalAnnexBracketsContract
 } from '../contracts';
 
 import { SasCostCentersModule } from './cost-centers/cost-centers.module';
@@ -41,6 +45,9 @@ import { SasTaxRegimesModule } from './tax-regimes/tax-regimes.module';
 import { SasTaxRulesModule } from './tax-rules/tax-rules.module';
 import { SasTaxIssMunicipalityModule } from './tax-iss-municipality/tax-iss-municipality.module';
 import { SasTaxCalcModule } from './tax-calc/tax-calc.module';
+import { SasCostCenterTaxRulesModule } from './cost-center-tax-rules/cost-center-tax-rules.module';
+import { SasCostCenterMonthlyRevenueModule } from './cost-center-monthly-revenue/cost-center-monthly-revenue.module';
+import { SasCostCenterMonthlyFatorRModule } from './cost-center-monthly-fator-r/cost-center-monthly-fator-r.module';
 
 export const SasModule = new Module('sas', {
     contracts: [
@@ -61,7 +68,11 @@ export const SasModule = new Module('sas', {
         SasTicketPartnersContract,
         SasTaxRegimesContract,
         SasTaxRulesContract,
-        SasTaxIssMunicipalityContract
+        SasTaxIssMunicipalityContract,
+        SasCostCenterTaxRulesContract,
+        SasCostCenterMonthlyRevenueContract,
+        SasCostCenterMonthlyFatorRContract,
+        SasSimplesNacionalAnnexBracketsContract
     ],
     submodules: [
         SasCostCentersModule,
@@ -82,7 +93,10 @@ export const SasModule = new Module('sas', {
         SasTaxRegimesModule,
         SasTaxRulesModule,
         SasTaxIssMunicipalityModule,
-        SasTaxCalcModule
+        SasTaxCalcModule,
+        SasCostCenterTaxRulesModule,
+        SasCostCenterMonthlyRevenueModule,
+        SasCostCenterMonthlyFatorRModule
     ]
 });
 

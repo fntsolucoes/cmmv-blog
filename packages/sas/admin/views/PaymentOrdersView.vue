@@ -638,9 +638,12 @@
                             max="100"
                             required
                             placeholder="0"
-                            class="w-full max-w-[180px] px-2 py-1.5 text-sm bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                            :disabled="markAsPaidTaxLocked"
+                            :class="markAsPaidTaxLocked ? 'bg-neutral-600 border-neutral-500 cursor-not-allowed opacity-70' : 'bg-neutral-700 border-neutral-600'"
+                            class="w-full max-w-[180px] px-2 py-1.5 text-sm rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
-                        <p class="mt-0.5 text-xs text-neutral-400">Confirme a % de imposto aplicada na nota</p>
+                        <p v-if="markAsPaidTaxLocked" class="mt-0.5 text-xs text-amber-400">Imposto calculado pelo motor tributario.</p>
+                        <p v-else class="mt-0.5 text-xs text-neutral-400">Confirme a % de imposto aplicada na nota</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-neutral-300 mb-1">
@@ -1117,6 +1120,15 @@ const markAsPaidForm = ref({
     costCenterId: '',
     taxPercentage: 0,
     grossValue: 0 as number
+});
+
+const markAsPaidTaxLocked = computed(() => {
+    const engineUsed = markAsPaidItem.value?.tax_engine_used === true || markAsPaidItem.value?.tax_engine_used === 1;
+    if (!engineUsed) return false;
+    // Destrava se o usuario escolheu outro centro de custo
+    const originalCc = markAsPaidItem.value?.costCenterId || '';
+    const currentCc = markAsPaidForm.value.costCenterId || '';
+    return currentCc === originalCc;
 });
 
 const markAsPaidExchangeRate = ref<{ rate: number } | null>(null);
@@ -1946,7 +1958,25 @@ const editItem = (item: any) => {
             return `${y}-${m}-${day}`;
         })() : null
     };
-    taxCalcResult.value = null;
+
+    // Restaurar dados do motor tributario se existirem
+    if (item.tax_calc_details) {
+        try {
+            const parsed = typeof item.tax_calc_details === 'string'
+                ? JSON.parse(item.tax_calc_details)
+                : item.tax_calc_details;
+            if (parsed && typeof parsed.gross === 'number') {
+                taxCalcResult.value = parsed;
+            } else {
+                taxCalcResult.value = null;
+            }
+        } catch (_) {
+            taxCalcResult.value = null;
+        }
+    } else {
+        taxCalcResult.value = null;
+    }
+
     showDialog.value = true;
 };
 
@@ -2526,7 +2556,9 @@ const saveOrder = async () => {
             withdrawalDate: form.value.withdrawalDate || null,
             expectedPaymentMonth: Number(form.value.expectedPaymentMonth),
             expectedPaymentYear: Number(form.value.expectedPaymentYear),
-            status: form.value.status
+            status: form.value.status,
+            tax_engine_used: taxCalcResult.value != null ? 1 : 0,
+            tax_calc_details: taxCalcResult.value != null ? JSON.stringify(taxCalcResult.value) : null
         };
 
         if (form.value.effectivePaymentDate) {
@@ -2595,10 +2627,13 @@ watch(() => filters.value.paymentMonthYear, () => {
     currentPage2.value = 1;
 });
 
-// Resetar método de pagamento quando centro de custos mudar
-watch(() => form.value.costCenterId, () => {
+// Resetar método de pagamento quando centro de custos mudar (so limpa motor se nao estiver carregando edicao)
+watch(() => form.value.costCenterId, (newVal, oldVal) => {
     form.value.paymentMethod = null;
-    taxCalcResult.value = null;
+    // So limpa o motor tributario se o usuario mudou manualmente o CC (nao na abertura da edicao)
+    if (oldVal && oldVal !== newVal) {
+        taxCalcResult.value = null;
+    }
 });
 
 const runTaxCalc = async () => {

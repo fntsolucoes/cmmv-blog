@@ -43,7 +43,8 @@ describe('LinkValidatorService', () => {
         it('deve retornar "OK" para link válido (status 301)', async () => {
             (global.fetch as any).mockResolvedValueOnce({
                 ok: true,
-                status: 301
+                status: 301,
+                headers: { get: () => null }
             });
 
             const result = await service.validateLink('https://example.com');

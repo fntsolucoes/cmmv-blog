@@ -8,9 +8,12 @@ import {
     PaymentOrdersBusinessController
 } from "./payment-orders.controller";
 
+import { SasTaxCalcModule } from '../tax-calc/tax-calc.module';
+
 export const SasPaymentOrdersModule = new Module('sas-payment-orders', {
     providers: [PaymentOrdersService],
-    controllers: [PaymentOrdersBusinessController]
+    controllers: [PaymentOrdersBusinessController],
+    imports: [SasTaxCalcModule]
 });
 
 
