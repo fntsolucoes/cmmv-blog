@@ -11,7 +11,8 @@ export class TaxCalcController {
             costCenterId: body.costCenterId || "",
             grossAmount: Number(body.grossAmount) || 0,
             referenceMonth: body.referenceMonth,
-            orderId: body.orderId
+            orderId: body.orderId,
+            invoiceCnae: body.invoiceCnae ?? undefined
         });
     }
 }

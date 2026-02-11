@@ -6,6 +6,8 @@ export interface TaxCalcInput {
     grossAmount: number;
     referenceMonth?: string; // YYYY-MM
     orderId?: string; // exclude this order from monthly sum when editing
+    /** CNAE da nota (codigo). Define o anexo para esta ordem no calculo multi-anexo do Simples. */
+    invoiceCnae?: string;
 }
 
 export interface DeductionItem {
@@ -167,9 +169,21 @@ export class TaxCalcService {
                 let dasResult: { amount: number; percent: number } | null = null;
                 let dasHint = "";
                 try {
-                    dasResult = await this.getSimplesNacionalDas(costCenter, input.costCenterId, gross, referenceMonth);
+                    dasResult = await this.getSimplesNacionalDas(
+                        costCenter,
+                        input.costCenterId,
+                        gross,
+                        referenceMonth,
+                        input.orderId,
+                        input.invoiceCnae
+                    );
                     if (!dasResult) {
-                        dasHint = await this.getSimplesNacionalDasHint(costCenter, input.costCenterId, referenceMonth);
+                        dasHint = await this.getSimplesNacionalDasHint(
+                            costCenter,
+                            input.costCenterId,
+                            referenceMonth,
+                            input.invoiceCnae
+                        );
                     }
                 } catch (_) {
                     dasHint = "Erro ao calcular DAS. Verifique anexo e faturamento na Matriz Tributaria.";
@@ -415,17 +429,116 @@ export class TaxCalcService {
         return this.extractAnnexCode(d.simplesAnexo);
     }
 
+    /** Busca CNAE por codigo na tabela sas_simples_nacional_cnae. Retorna annex_code e se possui fator_r. */
+    private async getCnaeByCode(code: string): Promise<{ annex_code: string; fator_r: boolean } | null> {
+        if (!code || !String(code).trim()) return null;
+        try {
+            const CnaeEntity = Repository.getEntity("SasSimplesNacionalCnaeEntity");
+            const list = await Repository.findAll(CnaeEntity, {}, []);
+            const items = Array.isArray(list?.data) ? list.data : Array.isArray(list?.items) ? list.items : Array.isArray(list) ? list : [];
+            const cnae = items.find((c: any) => (c.code || "").trim() === String(code).trim());
+            if (!cnae || !cnae.annex_code) return null;
+            const annex = this.extractAnnexCode(cnae.annex_code);
+            const fatorR = cnae.fator_r === true || cnae.fator_r === 1;
+            return { annex_code: annex, fator_r: fatorR };
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /** Fator R (folha/receita) do centro de custo no mes de referencia. Retorna 0-1 ou null se nao cadastrado. */
+    private async getFatorRForMonth(costCenterId: string, referenceMonth: string): Promise<number | null> {
+        try {
+            const [y, m] = referenceMonth.split("-").map(Number);
+            if (!y || !m) return null;
+            const FatorREntity = Repository.getEntity("SasCostCenterMonthlyFatorREntity");
+            const list = await Repository.findAll(FatorREntity, { cost_center_id: costCenterId }, []);
+            const items = Array.isArray(list?.data) ? list.data : Array.isArray(list?.items) ? list.items : Array.isArray(list) ? list : [];
+            const row = items.find((r: any) => Number(r.year) === y && Number(r.month) === m);
+            if (row && row.fator_r != null) return Math.min(1, Math.max(0, Number(row.fator_r)));
+            return null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * Anexo efetivo para um CNAE com Fator R:
+     * - Anexo V + fator_r: se Fator R do mes >= 28% -> tributa no Anexo III; senao permanece V.
+     * - Anexo III + fator_r: se Fator R do mes < 28% -> tributa no Anexo V; senao permanece III.
+     */
+    private async getEffectiveAnnexForCnae(
+        cnaeCode: string,
+        costCenterId: string,
+        referenceMonth: string
+    ): Promise<string> {
+        const cnae = await this.getCnaeByCode(cnaeCode);
+        if (!cnae) return "";
+        const annex = cnae.annex_code.toUpperCase();
+        if (!cnae.fator_r) return annex;
+
+        const fatorR = await this.getFatorRForMonth(costCenterId, referenceMonth);
+        if (fatorR == null) return annex;
+
+        if (annex === "V" && fatorR >= 0.28) return "III";
+        if (annex === "III" && fatorR < 0.28) return "V";
+        return annex;
+    }
+
+    /**
+     * Receita do mes agrupada por anexo efetivo (I, II, III, IV, V).
+     * Inclui a ordem atual (currentOrderGross + currentOrderCnaeCode) no anexo correspondente.
+     */
+    private async getMonthlyRevenueByAnnex(
+        costCenterId: string,
+        referenceMonth: string,
+        excludeOrderId?: string,
+        currentOrderGross?: number,
+        currentOrderCnaeCode?: string
+    ): Promise<Map<string, number>> {
+        const byAnnex = new Map<string, number>();
+        const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
+        const list = await Repository.findAll(PaymentOrdersEntity, { costCenterId, expectedPaymentMonth: referenceMonth }, []);
+        const items = Array.isArray(list?.data) ? list.data : Array.isArray(list?.items) ? list.items : Array.isArray(list) ? list : [];
+
+        for (const o of items) {
+            if (excludeOrderId && o.id === excludeOrderId) continue;
+            const amount = Number(o.invoiceAmount) || 0;
+            if (amount <= 0) continue;
+            const cnaeCode = (o.invoice_cnae ?? o.invoiceCnae ?? "").trim();
+            const annex = cnaeCode
+                ? await this.getEffectiveAnnexForCnae(cnaeCode, costCenterId, referenceMonth)
+                : "";
+            const key = annex || "UNKNOWN";
+            byAnnex.set(key, (byAnnex.get(key) || 0) + amount);
+        }
+
+        if (currentOrderGross != null && currentOrderGross > 0 && currentOrderCnaeCode) {
+            const annex = await this.getEffectiveAnnexForCnae(currentOrderCnaeCode, costCenterId, referenceMonth);
+            const key = annex || "UNKNOWN";
+            byAnnex.set(key, (byAnnex.get(key) || 0) + currentOrderGross);
+        }
+
+        return byAnnex;
+    }
+
     /**
      * Retorna mensagem explicando por que o DAS nao foi calculado (para exibir na ordem de pagamento).
+     * Se invoiceCnae informado, o anexo e resolvido pelo CNAE da nota (multi-anexo).
      */
     private async getSimplesNacionalDasHint(
         costCenter: any,
         costCenterId: string,
-        referenceMonth: string
+        referenceMonth: string,
+        invoiceCnae?: string
     ): Promise<string> {
-        const annexCode = this.getSimplesAnnex(costCenter);
+        const annexCode = invoiceCnae
+            ? await this.getEffectiveAnnexForCnae(invoiceCnae, costCenterId, referenceMonth)
+            : this.getSimplesAnnex(costCenter);
         if (!annexCode) {
-            return "Cadastre o Anexo (I a V) no centro de custo (editar empresa > dados CNPJ).";
+            return invoiceCnae
+                ? "CNAE da nota nao encontrado ou sem anexo. Informe um CNAE valido do Simples Nacional."
+                : "Cadastre o Anexo (I a V) no centro de custo (editar empresa > dados CNPJ).";
         }
         const rbt12 = await this.getRBT12(costCenterId, referenceMonth);
         if (rbt12 <= 0) {
@@ -439,33 +552,64 @@ export class TaxCalcService {
     }
 
     /**
-     * Calculo do DAS (Simples Nacional) em 4 etapas:
-     * 1) RBT12 = soma da receita bruta dos ultimos 12 meses (excl. mes de referencia)
-     * 2) Anexo = atividade (I a V) cadastrado no centro de custo
-     * 3) Faixa = tabela do anexo (RBT12 ate o limite da faixa)
-     * 4) Aliquota Efetiva = ((RBT12 x Aliquota Nominal) - Parcela a Deduzir) / RBT12
-     *    Imposto do mes = Receita do mes x Aliquota Efetiva
+     * Calculo do DAS (Simples Nacional) multi-anexo:
+     * - RBT12 unico (empresa inteira).
+     * - Receita do mes agrupada por anexo efetivo (CNAE da nota; Fator R pode levar V -> III).
+     * - Para cada anexo com receita: aliquota efetiva = (RBT12 x Aliquota - Parcela) / RBT12.
+     * - DAS desta ordem = valor bruto da ordem x aliquota efetiva do anexo desta ordem.
      */
     private async getSimplesNacionalDas(
         costCenter: any,
         costCenterId: string,
         gross: number,
-        referenceMonth: string
+        referenceMonth: string,
+        orderId?: string,
+        invoiceCnae?: string
     ): Promise<{ amount: number; percent: number } | null> {
-        const annexCode = this.getSimplesAnnex(costCenter);
+        const orderAnnex = invoiceCnae
+            ? await this.getEffectiveAnnexForCnae(invoiceCnae, costCenterId, referenceMonth)
+            : this.getSimplesAnnex(costCenter);
+        const fallbackAnnex = this.getSimplesAnnex(costCenter);
+        const annexCode = orderAnnex || fallbackAnnex;
         if (!annexCode) return null;
 
         const rbt12 = await this.getRBT12(costCenterId, referenceMonth);
         if (rbt12 <= 0) return null;
 
-        const bracket = await this.getSimplesBracket(annexCode, rbt12);
-        if (!bracket) return null;
+        const revenueByAnnex = await this.getMonthlyRevenueByAnnex(
+            costCenterId,
+            referenceMonth,
+            orderId,
+            gross,
+            invoiceCnae ?? undefined
+        );
 
-        const nominalPct = bracket.nominal_rate_percent / 100;
-        const pd = bracket.parcel_to_deduct;
-        const effectiveRate = ((rbt12 * nominalPct) - pd) / rbt12;
-        const effectivePct = Math.max(0, Math.min(1, effectiveRate)) * 100;
-        const amount = Math.round(gross * (effectivePct / 100) * 100) / 100;
+        const effectiveRateByAnnex = new Map<string, number>();
+        for (const [annex, revenue] of revenueByAnnex) {
+            if (annex === "UNKNOWN" || revenue <= 0) continue;
+            const bracket = await this.getSimplesBracket(annex, rbt12);
+            if (!bracket) continue;
+            const nominalPct = bracket.nominal_rate_percent / 100;
+            const pd = bracket.parcel_to_deduct;
+            const effectiveRate = ((rbt12 * nominalPct) - pd) / rbt12;
+            const effectivePct = Math.max(0, Math.min(1, effectiveRate));
+            effectiveRateByAnnex.set(annex, effectivePct);
+        }
+
+        let orderRate = effectiveRateByAnnex.get(annexCode);
+        if (orderRate == null && fallbackAnnex) {
+            const bracket = await this.getSimplesBracket(fallbackAnnex, rbt12);
+            if (bracket) {
+                const nominalPct = bracket.nominal_rate_percent / 100;
+                const pd = bracket.parcel_to_deduct;
+                const effectiveRate = ((rbt12 * nominalPct) - pd) / rbt12;
+                orderRate = Math.max(0, Math.min(1, effectiveRate));
+            }
+        }
+        if (orderRate == null) return null;
+
+        const effectivePct = orderRate * 100;
+        const amount = Math.round(gross * orderRate * 100) / 100;
         return { amount, percent: Math.round(effectivePct * 100) / 100 };
     }
 

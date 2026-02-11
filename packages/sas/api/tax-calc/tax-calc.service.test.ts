@@ -244,12 +244,13 @@ describe("TaxCalcService", () => {
                 });
             }
 
-            // findAll e chamado 2 vezes: Revenue (getRBT12), Brackets (getSimplesBracket)
+            // findAll: 1 = Revenue (getRBT12), 2 = Payment orders (getMonthlyRevenueByAnnex), 3 = Brackets (getSimplesBracket fallback)
             let callCount = 0;
             mockFindAll.mockImplementation(async () => {
                 callCount++;
                 if (callCount === 1) return { data: revenueData }; // Revenue
-                if (callCount === 2) return { data: BRACKETS_ANEXO_III }; // Brackets
+                if (callCount === 2) return { data: [] }; // Payment orders (vazio)
+                if (callCount === 3) return { data: BRACKETS_ANEXO_III }; // Brackets
                 return { data: [] };
             });
 
@@ -283,7 +284,8 @@ describe("TaxCalcService", () => {
             mockFindAll.mockImplementation(async () => {
                 callCount++;
                 if (callCount === 1) return { data: revenueData }; // Revenue
-                if (callCount === 2) return { data: BRACKETS_ANEXO_III }; // Brackets
+                if (callCount === 2) return { data: [] }; // Payment orders
+                if (callCount === 3) return { data: BRACKETS_ANEXO_III }; // Brackets
                 return { data: [] };
             });
 
@@ -334,7 +336,8 @@ describe("TaxCalcService", () => {
             mockFindAll.mockImplementation(async () => {
                 callCount++;
                 if (callCount === 1) return { data: revenueData }; // Revenue
-                if (callCount === 2) return { data: BRACKETS_ANEXO_V }; // Brackets
+                if (callCount === 2) return { data: [] }; // Payment orders
+                if (callCount === 3) return { data: BRACKETS_ANEXO_V }; // Brackets
                 return { data: [] };
             });
 
@@ -380,12 +383,13 @@ describe("TaxCalcService", () => {
                 return null;
             });
 
-            // findAll chamado para: Revenue, Brackets
+            // findAll: Revenue, Payment orders, Brackets
             let findAllCallIndex = 0;
             mockFindAll.mockImplementation(async () => {
                 findAllCallIndex++;
                 if (findAllCallIndex === 1) return { data: revenueItems }; // Revenue
-                if (findAllCallIndex === 2) return { data: BRACKETS_ANEXO_III }; // Brackets
+                if (findAllCallIndex === 2) return { data: [] }; // Payment orders
+                if (findAllCallIndex === 3) return { data: BRACKETS_ANEXO_III }; // Brackets
                 return { data: [] };
             });
 
@@ -502,7 +506,8 @@ describe("TaxCalcService", () => {
             mockFindAll.mockImplementation(async () => {
                 findAllCallIdx++;
                 if (findAllCallIdx === 1) return { data: revenueItems }; // Revenue
-                if (findAllCallIdx === 2) return { data: BRACKETS_ANEXO_I }; // Brackets
+                if (findAllCallIdx === 2) return { data: [] }; // Payment orders
+                if (findAllCallIdx === 3) return { data: BRACKETS_ANEXO_I }; // Brackets
                 return { data: [] };
             });
 
@@ -551,7 +556,8 @@ describe("TaxCalcService", () => {
             mockFindAll.mockImplementation(async () => {
                 findAllIdx++;
                 if (findAllIdx === 1) return { data: revenueItems }; // Revenue
-                if (findAllIdx === 2) return { data: BRACKETS_ANEXO_III }; // Brackets
+                if (findAllIdx === 2) return { data: [] }; // Payment orders
+                if (findAllIdx === 3) return { data: BRACKETS_ANEXO_III }; // Brackets
                 return { data: [] };
             });
 

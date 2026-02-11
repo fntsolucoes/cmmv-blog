@@ -40,7 +40,6 @@
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Nome</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Tipo</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Rede de Afiliação</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Empresa de Recebimento</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Moeda Padrão</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase tracking-wider">Status</th>
@@ -51,16 +50,13 @@
                 </thead>
                 <tbody class="bg-neutral-800 divide-y divide-neutral-700">
                     <tr v-if="paginatedItems.length === 0">
-                        <td colspan="9" class="px-6 py-4 text-center text-sm text-neutral-400">
+                        <td colspan="8" class="px-6 py-4 text-center text-sm text-neutral-400">
                             Nenhum parceiro comercial cadastrado
                         </td>
                     </tr>
                     <tr v-for="item in paginatedItems" :key="item.id" class="hover:bg-neutral-700">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.name }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.partnerType }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-300">
-                            {{ item.affiliateNetworkId ? getAffiliateNetworkName(item.affiliateNetworkId) : '-' }}
-                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ getCostCenterName(item.costCenterId) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-white">{{ item.defaultCurrency }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">

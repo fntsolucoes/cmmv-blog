@@ -627,6 +627,16 @@
                         <p class="mt-0.5 text-xs text-neutral-400">Confirme ou altere o centro de custo</p>
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">CNAE da nota</label>
+                        <select
+                            v-model="markAsPaidForm.invoiceCnae"
+                            class="w-full max-w-[180px] px-2 py-1.5 text-sm bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                        >
+                            <option value="">Selecione (principal)</option>
+                            <option v-for="c in cnaeList" :key="c.id" :value="c.code">{{ truncateCnaeLabel(c) }}</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-neutral-300 mb-1">
                             Percentual de imposto (%) <span class="text-red-500">*</span>
                         </label>
@@ -767,6 +777,17 @@
                                 <option value="">Selecione uma empresa</option>
                                 <option v-for="costCenter in costCenters" :key="costCenter.id" :value="costCenter.id">{{ costCenter.name }}</option>
                             </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-300 mb-2">CNAE da nota</label>
+                            <select
+                                v-model="form.invoiceCnae"
+                                class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="">Selecione (default: principal)</option>
+                                <option v-for="c in cnaeList" :key="c.id" :value="c.code">{{ c.code }} - {{ c.denominacao }}</option>
+                            </select>
+                            <p class="mt-1 text-xs text-neutral-400">Default: CNAE principal da empresa. Altere se a nota for de outro CNAE.</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-neutral-300 mb-2">
@@ -1042,6 +1063,7 @@ const client = useSasClient();
 const items = ref<any[]>([]);
 const partners = ref<any[]>([]);
 const costCenters = ref<any[]>([]);
+const cnaeList = ref<Array<{ id: string; code: string; denominacao: string; annex_code?: string }>>([]);
 const exchangeRatesCache = ref<Map<string, any>>(new Map());
 
 const csvFileInput = ref<HTMLInputElement | null>(null);
@@ -1103,7 +1125,8 @@ const form = ref({
     paymentMethod: '' as string | null,
     observations: '' as string | null,
     natureza_rendimento: '' as string | null,
-    data_emissao_nota: '' as string | null
+    data_emissao_nota: '' as string | null,
+    invoiceCnae: '' as string
 });
 
 const taxCalcResult = ref<{ gross: number; deductions: Array<{ name: string; amount: number; percent?: number }>; totalDeductions: number; liquid: number } | null>(null);
@@ -1118,6 +1141,7 @@ const markAsPaidForm = ref({
         return `${year}-${month}-${day}`;
     })(),
     costCenterId: '',
+    invoiceCnae: '' as string,
     taxPercentage: 0,
     grossValue: 0 as number
 });
@@ -1681,6 +1705,32 @@ const loadCostCenters = async () => {
     }
 };
 
+const loadCnaeList = async () => {
+    try {
+        const res = await client.simplesNacionalCnae.get({});
+        cnaeList.value = Array.isArray(res?.data) ? res.data : (res?.items ?? []) || [];
+    } catch (_) {
+        cnaeList.value = [];
+    }
+};
+
+const getCnaePrincipalFromCostCenter = (cc: any): string => {
+    if (!cc?.cnpjDetails) return '';
+    try {
+        const d = typeof cc.cnpjDetails === 'string' ? JSON.parse(cc.cnpjDetails) : cc.cnpjDetails;
+        return (d?.cnaePrincipal ?? '').trim();
+    } catch (_) {
+        return '';
+    }
+};
+
+const MAX_CNAE_LABEL_LENGTH = 32;
+const truncateCnaeLabel = (c: { code: string; denominacao: string }, maxLen: number = MAX_CNAE_LABEL_LENGTH): string => {
+    const part = `${c.code} - ${c.denominacao || ''}`.trim();
+    if (part.length <= maxLen) return part;
+    return part.slice(0, maxLen - 3) + '...';
+};
+
 // Filtros
 const clearFilters = () => {
     filters.value = {
@@ -1956,7 +2006,8 @@ const editItem = (item: any) => {
             const m = String(d.getUTCMonth() + 1).padStart(2, '0');
             const day = String(d.getUTCDate()).padStart(2, '0');
             return `${y}-${m}-${day}`;
-        })() : null
+        })() : null,
+        invoiceCnae: (item.invoice_cnae && String(item.invoice_cnae).trim()) || getCnaePrincipalFromCostCenter(costCenters.value.find((c: any) => c.id === (item.costCenterId || ''))) || ''
     };
 
     // Restaurar dados do motor tributario se existirem
@@ -2004,7 +2055,8 @@ const closeDialog = () => {
         paymentMethod: null,
         observations: null,
         natureza_rendimento: null,
-        data_emissao_nota: null
+        data_emissao_nota: null,
+        invoiceCnae: ''
     };
     taxCalcResult.value = null;
 };
@@ -2059,9 +2111,14 @@ const markAsPaid = async (item: any) => {
     const todayDay = String(today.getUTCDate()).padStart(2, '0');
     const todayStr = `${todayYear}-${todayMonth}-${todayDay}`;
     
+    const ccId = item.costCenterId || '';
+    const cc = costCenters.value.find(c => c.id === ccId);
+    const defaultCnae = (item.invoice_cnae && String(item.invoice_cnae).trim()) || getCnaePrincipalFromCostCenter(cc) || '';
+    
     markAsPaidForm.value = {
         effectivePaymentDate: todayStr,
-        costCenterId: item.costCenterId || '',
+        costCenterId: ccId,
+        invoiceCnae: defaultCnae,
         taxPercentage: Number(taxPct.toFixed(2)),
         grossValue: invoiceAmount
     };
@@ -2077,6 +2134,15 @@ const closeMarkAsPaidModal = () => {
     markAsPaidExchangeRate.value = null;
     markAsPaidRateIsFromDate.value = false;
 };
+
+watch(() => markAsPaidForm.value.costCenterId, (newVal) => {
+    if (!showMarkAsPaidModal.value) return;
+    const cc = costCenters.value.find(c => c.id === newVal);
+    if (cc) {
+        const principal = getCnaePrincipalFromCostCenter(cc);
+        if (principal) markAsPaidForm.value.invoiceCnae = principal;
+    }
+});
 
 const viewObservations = (observations: string) => {
     observationsText.value = observations || '';
@@ -2143,8 +2209,17 @@ const confirmMarkAsPaid = async () => {
     
     saving.value = true;
     try {
+        const updates: Record<string, any> = {};
         if (markAsPaidForm.value.costCenterId && markAsPaidForm.value.costCenterId !== markAsPaidItem.value.costCenterId) {
-            await client.paymentOrders.update(orderId, { costCenterId: markAsPaidForm.value.costCenterId });
+            updates.costCenterId = markAsPaidForm.value.costCenterId;
+        }
+        const newCnae = (markAsPaidForm.value.invoiceCnae || '').trim() || null;
+        const oldCnae = (markAsPaidItem.value.invoice_cnae || '').trim() || null;
+        if (newCnae !== oldCnae) {
+            updates.invoice_cnae = newCnae;
+        }
+        if (Object.keys(updates).length > 0) {
+            await client.paymentOrders.update(orderId, updates);
         }
         await client.paymentOrders.updateStatus(orderId, {
             status: 'Pago',
@@ -2583,6 +2658,9 @@ const saveOrder = async () => {
         if (form.value.data_emissao_nota != null && form.value.data_emissao_nota !== '') {
             payload.data_emissao_nota = form.value.data_emissao_nota || null;
         }
+        if (form.value.invoiceCnae != null && form.value.invoiceCnae !== '') {
+            payload.invoice_cnae = form.value.invoiceCnae.trim() || null;
+        }
 
         if (isEditing.value && editingItem.value) {
             await client.paymentOrders.update(editingItem.value.id, payload);
@@ -2627,10 +2705,17 @@ watch(() => filters.value.paymentMonthYear, () => {
     currentPage2.value = 1;
 });
 
-// Resetar método de pagamento quando centro de custos mudar (so limpa motor se nao estiver carregando edicao)
+// Resetar método de pagamento e default CNAE quando centro de custos mudar (nao sobrescrever ao abrir edicao)
 watch(() => form.value.costCenterId, (newVal, oldVal) => {
     form.value.paymentMethod = null;
-    // So limpa o motor tributario se o usuario mudou manualmente o CC (nao na abertura da edicao)
+    const userChangedCc = newVal && (!isEditing.value || (oldVal && oldVal !== newVal));
+    if (userChangedCc) {
+        const cc = costCenters.value.find(c => c.id === newVal);
+        if (cc) {
+            const principal = getCnaePrincipalFromCostCenter(cc);
+            if (principal) form.value.invoiceCnae = principal;
+        }
+    }
     if (oldVal && oldVal !== newVal) {
         taxCalcResult.value = null;
     }
@@ -2648,7 +2733,8 @@ const runTaxCalc = async () => {
             costCenterId,
             grossAmount: gross,
             referenceMonth: refMonth,
-            orderId: isEditing.value && editingItem.value ? editingItem.value.id : undefined
+            orderId: isEditing.value && editingItem.value ? editingItem.value.id : undefined,
+            invoiceCnae: (form.value.invoiceCnae && String(form.value.invoiceCnae).trim()) || undefined
         });
         const data = res?.data ?? res;
         if (data && typeof data.gross === 'number') {
@@ -2667,7 +2753,7 @@ const runTaxCalc = async () => {
 
 // O CurrencyInput atualiza automaticamente quando a moeda muda através das opções
 
-// Sincronizar campo de busca e centro de custo quando o parceiro mudar
+// Sincronizar campo de busca quando o parceiro mudar; preencher empresa so quando estiver vazia (nao sobrescrever escolha manual ou ordem em edicao)
 watch(() => form.value.commercialPartnerId, (newId) => {
     if (!newId) {
         if (partnerSearchText.value) partnerSearchText.value = '';
@@ -2675,7 +2761,7 @@ watch(() => form.value.commercialPartnerId, (newId) => {
         const partner = partners.value.find(p => p.id === newId);
         if (partner) {
             if (!partnerSearchText.value) partnerSearchText.value = partner.name;
-            if (partner.costCenterId) form.value.costCenterId = partner.costCenterId;
+            if (partner.costCenterId && !form.value.costCenterId) form.value.costCenterId = partner.costCenterId;
         }
     }
 });
@@ -2684,6 +2770,7 @@ onMounted(async () => {
     loadData();
     loadPartners();
     loadCostCenters();
+    loadCnaeList();
     try {
         const res = await client.paymentOrders.canBulkUpdate();
         const data = res?.data ?? res?.result ?? res;

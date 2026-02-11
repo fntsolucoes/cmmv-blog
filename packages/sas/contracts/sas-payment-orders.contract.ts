@@ -135,6 +135,9 @@ export class SasPaymentOrdersContract extends AbstractContract {
 
     @ContractField({ protoType: 'string', nullable: true, index: false })
     tax_calc_details?: string; // JSON com o detalhamento do calculo do motor tributario (deductions, gross, liquid, totalDeductions)
+
+    @ContractField({ protoType: 'string', nullable: true, index: true })
+    invoice_cnae?: string; // CNAE da nota (codigo da tabela sas_simples_nacional_cnae). Default: CNAE principal do centro de custo.
 }
 
 

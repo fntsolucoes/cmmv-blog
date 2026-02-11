@@ -95,6 +95,13 @@ const migrations: Migration[] = [
         type: 'schema'
     },
     {
+        name: 'Adicionar coluna invoice_cnae em sas_payment_orders',
+        file: 'add-payment-orders-invoice-cnae.sql',
+        tableName: 'sas_payment_orders',
+        columnName: 'invoice_cnae',
+        type: 'schema'
+    },
+    {
         name: 'Criar tabela sas_simples_nacional_annex_brackets (faixas Simples Nacional)',
         file: 'add-simples-nacional-annex-brackets.sql',
         tableName: 'sas_simples_nacional_annex_brackets',

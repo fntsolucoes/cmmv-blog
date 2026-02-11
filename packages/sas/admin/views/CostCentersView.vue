@@ -303,36 +303,36 @@
                                 <p v-if="cnaeList.length === 0" class="mt-1 text-xs text-amber-400">Lista de CNAEs do Simples Nacional nao carregada. Verifique a tabela sas_simples_nacional_cnae.</p>
                             </div>
                             <div class="sm:col-span-2">
-                                <div class="flex justify-between items-center mb-1">
-                                    <label class="block text-sm font-medium text-neutral-300">CNAEs secundarios</label>
+                                <label class="block text-sm font-medium text-neutral-300 mb-2">CNAEs secundarios</label>
+                                <div class="rounded-lg border border-neutral-600 bg-neutral-700/50 p-3 space-y-2">
+                                    <div v-for="(cnaeCode, idx) in form.cnpjCnaeSecundarios" :key="idx" class="flex gap-2 items-center rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2">
+                                        <select
+                                            v-model="form.cnpjCnaeSecundarios[idx]"
+                                            class="flex-1 min-w-0 px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="">Selecione um CNAE</option>
+                                            <option v-for="c in cnaeList" :key="c.id" :value="c.code">{{ c.code }} - {{ c.denominacao }}</option>
+                                        </select>
+                                        <button
+                                            type="button"
+                                            @click="removeCnpjCnaeSecundario(idx)"
+                                            class="shrink-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2 rounded-md transition-colors"
+                                            title="Remover"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                     <button
                                         type="button"
                                         @click="addCnpjCnaeSecundario"
-                                        class="px-2 py-1 bg-neutral-600 hover:bg-neutral-500 text-white text-xs rounded-md transition-colors"
+                                        class="w-full py-2 border border-dashed border-neutral-500 rounded-md text-neutral-400 hover:text-neutral-300 hover:border-neutral-400 hover:bg-neutral-700/50 text-sm font-medium transition-colors"
                                     >
                                         + Adicionar CNAE
                                     </button>
+                                    <p v-if="form.cnpjCnaeSecundarios.length === 0" class="text-xs text-neutral-500 text-center py-2">Nenhum CNAE secundario. Clique em "Adicionar CNAE" acima.</p>
                                 </div>
-                                <div v-for="(cnaeCode, idx) in form.cnpjCnaeSecundarios" :key="idx" class="flex gap-2 items-center mt-2">
-                                    <select
-                                        v-model="form.cnpjCnaeSecundarios[idx]"
-                                        class="flex-1 px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="">Selecione um CNAE</option>
-                                        <option v-for="c in cnaeList" :key="c.id" :value="c.code">{{ c.code }} - {{ c.denominacao }}</option>
-                                    </select>
-                                    <button
-                                        type="button"
-                                        @click="removeCnpjCnaeSecundario(idx)"
-                                        class="text-red-400 hover:text-red-300 p-1.5"
-                                        title="Remover"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
-                                </div>
-                                <p v-if="form.cnpjCnaeSecundarios.length === 0" class="mt-1 text-xs text-neutral-500">Nenhum CNAE secundario. Clique em "Adicionar CNAE" se precisar.</p>
                             </div>
                             <div class="sm:col-span-2">
                                 <label class="block text-sm font-medium text-neutral-300 mb-1">Municipio (com aliquota ISS na matriz tributaria)</label>

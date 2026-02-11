@@ -224,6 +224,9 @@ export class PaymentOrdersService {
                 payload.data_emissao_nota = new Date(data.data_emissao_nota);
             }
         }
+        if (data.invoice_cnae != null && data.invoice_cnae !== "") {
+            payload.invoice_cnae = String(data.invoice_cnae).trim();
+        }
 
         // Se status for Pago, exigir data de pagamento
         if (payload.status === "Pago") {
@@ -528,6 +531,9 @@ export class PaymentOrdersService {
                     payload.data_emissao_nota = new Date(data.data_emissao_nota);
                 }
             }
+        }
+        if (data.invoice_cnae !== undefined) {
+            payload.invoice_cnae = data.invoice_cnae === null || data.invoice_cnae === "" ? null : String(data.invoice_cnae).trim();
         }
 
         const affected = await Repository.update(PaymentOrdersEntity, id, payload);

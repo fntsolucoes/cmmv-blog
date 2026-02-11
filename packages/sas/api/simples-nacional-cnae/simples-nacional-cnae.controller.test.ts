@@ -8,7 +8,7 @@ vi.mock('@cmmv/repository', () => ({
         findAll: vi.fn(),
         findOne: vi.fn(),
         insert: vi.fn(),
-        update: vi.fn(),
+        updateById: vi.fn(),
         delete: vi.fn()
     }
 }));
@@ -68,5 +68,31 @@ describe('SimplesNacionalCnaeController', () => {
 
         expect(Repository.findOne).toHaveBeenCalledWith(mockEntity, { id: 'cnae-0111-3-01' });
         expect(result).toEqual(mockCnae);
+    });
+
+    it('update deve chamar Repository.updateById com id e payload com fator_r boolean', async () => {
+        (Repository.updateById as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+        (Repository.findOne as ReturnType<typeof vi.fn>).mockResolvedValue({
+            id: 'cnae-7319-0-03',
+            code: '7319-0/03',
+            denominacao: 'Atividade teste',
+            annex_code: 'III',
+            fator_r: true
+        });
+
+        const result = await controller.update('cnae-7319-0-03', {
+            code: '7319-0/03',
+            denominacao: 'Atividade teste',
+            annex_code: 'III',
+            fator_r: true
+        });
+
+        expect(Repository.updateById).toHaveBeenCalledWith(mockEntity, 'cnae-7319-0-03', expect.objectContaining({
+            code: '7319-0/03',
+            denominacao: 'Atividade teste',
+            annex_code: 'III',
+            fator_r: true
+        }));
+        expect(result).toEqual(expect.objectContaining({ code: '7319-0/03', fator_r: true }));
     });
 });
