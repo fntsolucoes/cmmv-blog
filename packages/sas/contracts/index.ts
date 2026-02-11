@@ -22,6 +22,6 @@ export * from "./sas-cost-center-tax-rules.contract";
 export * from "./sas-cost-center-monthly-revenue.contract";
 export * from "./sas-cost-center-monthly-fator-r.contract";
 export * from "./sas-simples-nacional-annex-brackets.contract";
-
+export * from "./sas-simples-nacional-cnae.contract";
 
 

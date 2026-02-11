@@ -346,6 +346,17 @@ export const useSasClient = () => {
         update: async (id: string, data: any) => api.authRequest(`affiliation-manager/tax-rules/v2/${id}`, "PUT", data)
     };
 
+    const simplesNacionalCnae = {
+        get: async (filters: Record<string, string> = {}) => {
+            const query = new URLSearchParams(filters).toString();
+            return api.authRequest(`affiliation-manager/simples-nacional-cnae?${query}`, "GET");
+        },
+        getById: async (id: string) => api.authRequest(`affiliation-manager/simples-nacional-cnae/${id}`, "GET"),
+        insert: async (data: any) => api.authRequest("affiliation-manager/simples-nacional-cnae", "POST", data),
+        update: async (id: string, data: any) => api.authRequest(`affiliation-manager/simples-nacional-cnae/${id}`, "PUT", data),
+        delete: async (id: string) => api.authRequest(`affiliation-manager/simples-nacional-cnae/${id}`, "DELETE")
+    };
+
     const taxIssMunicipality = {
         get: async (filters: Record<string, string> = {}) => {
             const query = new URLSearchParams(filters).toString();
@@ -416,6 +427,7 @@ export const useSasClient = () => {
         ticketPartners,
         taxRegimes,
         taxRules,
+        simplesNacionalCnae,
         taxIssMunicipality,
         costCenterTaxRules,
         costCenterMonthlyRevenue,

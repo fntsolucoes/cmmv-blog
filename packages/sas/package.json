@@ -1,6 +1,6 @@
 {
     "name": "@cmmv/sas",
-    "version": "0.1.175",
+    "version": "0.1.176",
     "description": "Sistema de Administração de Saques package for CMMV",
     "scripts": {
         "build": "tsup",

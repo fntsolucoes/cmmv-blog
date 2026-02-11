@@ -23,7 +23,8 @@ import {
     SasCostCenterTaxRulesContract,
     SasCostCenterMonthlyRevenueContract,
     SasCostCenterMonthlyFatorRContract,
-    SasSimplesNacionalAnnexBracketsContract
+    SasSimplesNacionalAnnexBracketsContract,
+    SasSimplesNacionalCnaeContract
 } from '../contracts';
 
 import { SasCostCentersModule } from './cost-centers/cost-centers.module';
@@ -48,6 +49,7 @@ import { SasTaxCalcModule } from './tax-calc/tax-calc.module';
 import { SasCostCenterTaxRulesModule } from './cost-center-tax-rules/cost-center-tax-rules.module';
 import { SasCostCenterMonthlyRevenueModule } from './cost-center-monthly-revenue/cost-center-monthly-revenue.module';
 import { SasCostCenterMonthlyFatorRModule } from './cost-center-monthly-fator-r/cost-center-monthly-fator-r.module';
+import { SasSimplesNacionalCnaeModule } from './simples-nacional-cnae/simples-nacional-cnae.module';
 
 export const SasModule = new Module('sas', {
     contracts: [
@@ -72,7 +74,8 @@ export const SasModule = new Module('sas', {
         SasCostCenterTaxRulesContract,
         SasCostCenterMonthlyRevenueContract,
         SasCostCenterMonthlyFatorRContract,
-        SasSimplesNacionalAnnexBracketsContract
+        SasSimplesNacionalAnnexBracketsContract,
+        SasSimplesNacionalCnaeContract
     ],
     submodules: [
         SasCostCentersModule,
@@ -96,7 +99,8 @@ export const SasModule = new Module('sas', {
         SasTaxCalcModule,
         SasCostCenterTaxRulesModule,
         SasCostCenterMonthlyRevenueModule,
-        SasCostCenterMonthlyFatorRModule
+        SasCostCenterMonthlyFatorRModule,
+        SasSimplesNacionalCnaeModule
     ]
 });
 

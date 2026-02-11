@@ -119,6 +119,13 @@ const migrations: Migration[] = [
         type: 'data'
     },
     {
+        name: 'Adicionar coluna fator_r em sas_simples_nacional_cnae',
+        file: 'add-simples-nacional-cnae-fator-r.sql',
+        tableName: 'sas_simples_nacional_cnae',
+        columnName: 'fator_r',
+        type: 'schema'
+    },
+    {
         name: 'Criar tabela sas_cost_center_monthly_revenue (faturamento mensal para RBT12)',
         file: 'add-cost-center-monthly-revenue.sql',
         tableName: 'sas_cost_center_monthly_revenue',

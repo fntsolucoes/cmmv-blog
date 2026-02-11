@@ -293,12 +293,14 @@
                             </div>
                             <div class="sm:col-span-2">
                                 <label class="block text-sm font-medium text-neutral-300 mb-1">CNAE principal</label>
-                                <input
+                                <select
                                     v-model="form.cnpjCnaePrincipal"
-                                    type="text"
-                                    placeholder="Ex: 62.01-5-00"
                                     class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
+                                >
+                                    <option value="">Selecione um CNAE</option>
+                                    <option v-for="c in cnaeList" :key="c.id" :value="c.code">{{ c.code }} - {{ c.denominacao }}</option>
+                                </select>
+                                <p v-if="cnaeList.length === 0" class="mt-1 text-xs text-amber-400">Lista de CNAEs do Simples Nacional nao carregada. Verifique a tabela sas_simples_nacional_cnae.</p>
                             </div>
                             <div class="sm:col-span-2">
                                 <div class="flex justify-between items-center mb-1">
@@ -311,13 +313,14 @@
                                         + Adicionar CNAE
                                     </button>
                                 </div>
-                                <div v-for="(cnae, idx) in form.cnpjCnaeSecundarios" :key="idx" class="flex gap-2 items-center mt-2">
-                                    <input
+                                <div v-for="(cnaeCode, idx) in form.cnpjCnaeSecundarios" :key="idx" class="flex gap-2 items-center mt-2">
+                                    <select
                                         v-model="form.cnpjCnaeSecundarios[idx]"
-                                        type="text"
-                                        placeholder="Ex: 62.02-3-00"
                                         class="flex-1 px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
+                                    >
+                                        <option value="">Selecione um CNAE</option>
+                                        <option v-for="c in cnaeList" :key="c.id" :value="c.code">{{ c.code }} - {{ c.denominacao }}</option>
+                                    </select>
                                     <button
                                         type="button"
                                         @click="removeCnpjCnaeSecundario(idx)"
@@ -611,6 +614,7 @@ const ufList = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT'
 
 const taxRegimesList = ref<any[]>([]);
 const issMunicipalityList = ref<any[]>([]);
+const cnaeList = ref<Array<{ id: string; code: string; denominacao: string; annex_code?: string }>>([]);
 
 const getEmptyFiscalFields = () => ({
     personType: '' as string,
@@ -679,6 +683,13 @@ watch(() => form.value.cnpjIssMunicipalityId, (id) => {
         form.value.cnpjMunicipio = m.municipality ?? '';
         form.value.cnpjEstado = m.uf ?? '';
     }
+});
+
+// Ao selecionar CNAE principal (Simples Nacional), preencher anexo automaticamente
+watch(() => form.value.cnpjCnaePrincipal, (code) => {
+    if (displayRegimeForCnpjSection.value !== 'Simples Nacional' || !code) return;
+    const cnae = cnaeList.value.find((c: any) => (c.code || '') === code);
+    if (cnae?.annex_code) form.value.cnpjSimplesAnexo = `Anexo ${cnae.annex_code}`;
 });
 
 // Função para formatar CNPJ ou CPF
@@ -1138,6 +1149,12 @@ onMounted(async () => {
         issMunicipalityList.value = Array.isArray(issRes?.data) ? issRes.data : (issRes?.items ?? []) || [];
     } catch (_) {
         issMunicipalityList.value = [];
+    }
+    try {
+        const cnaeRes = await client.simplesNacionalCnae.get({});
+        cnaeList.value = Array.isArray(cnaeRes?.data) ? cnaeRes.data : (cnaeRes?.items ?? []) || [];
+    } catch (_) {
+        cnaeList.value = [];
     }
 });
 </script>

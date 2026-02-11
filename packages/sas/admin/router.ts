@@ -18,6 +18,7 @@ import ActivationTicketsView from './views/ActivationTicketsView.vue';
 import ScriptCreationTicketsView from './views/ScriptCreationTicketsView.vue';
 import TicketSettingsView from './views/TicketSettingsView.vue';
 import TaxMatrixView from './views/TaxMatrixView.vue';
+import SimplesNacionalCnaeView from './views/SimplesNacionalCnaeView.vue';
 
 export const sasRoutes: RouteRecordRaw[] = [
     {
@@ -98,6 +99,11 @@ export const sasRoutes: RouteRecordRaw[] = [
                 path: 'tax-matrix',
                 component: TaxMatrixView,
                 name: 'affiliation-manager.tax-matrix'
+            },
+            {
+                path: 'simples-nacional-cnae',
+                component: SimplesNacionalCnaeView,
+                name: 'affiliation-manager.simples-nacional-cnae'
             }
         ]
     },
@@ -154,11 +160,18 @@ useNavbar().addItems([
         to: '/affiliation-manager/payment-checklist',
         group: 'FINANCEIRO'
     },
+    // Grupo TRIBUTOS
     {
         label: 'Matriz de Impostos',
         icon: 'fas fa-percentage',
         to: '/affiliation-manager/tax-matrix',
-        group: 'FINANCEIRO'
+        group: 'TRIBUTOS'
+    },
+    {
+        label: 'Cadastro de CNAEs',
+        icon: 'fas fa-list-alt',
+        to: '/affiliation-manager/simples-nacional-cnae',
+        group: 'TRIBUTOS'
     },
     // Grupo TAGS
     {
