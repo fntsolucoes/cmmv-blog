@@ -1997,7 +1997,7 @@ const editItem = (item: any) => {
         })() : '',
         status: item.status || 'Pendente',
         paidValue: item.paidValue || null,
-        paymentMethod: item.paymentMethod || null,
+        paymentMethod: (item.paymentMethod ?? item.payment_method ?? null) || null,
         observations: item.observations || null,
         natureza_rendimento: item.natureza_rendimento ?? null,
         data_emissao_nota: item.data_emissao_nota ? (() => {
@@ -2705,19 +2705,17 @@ watch(() => filters.value.paymentMonthYear, () => {
     currentPage2.value = 1;
 });
 
-// Resetar método de pagamento e default CNAE quando centro de custos mudar (nao sobrescrever ao abrir edicao)
+// Resetar método de pagamento e default CNAE só quando o usuario trocar de empresa (nao ao abrir edicao/criar)
 watch(() => form.value.costCenterId, (newVal, oldVal) => {
-    form.value.paymentMethod = null;
-    const userChangedCc = newVal && (!isEditing.value || (oldVal && oldVal !== newVal));
-    if (userChangedCc) {
+    const userSwitchedCc = oldVal && newVal && oldVal !== newVal;
+    if (userSwitchedCc) {
+        form.value.paymentMethod = null;
+        taxCalcResult.value = null;
         const cc = costCenters.value.find(c => c.id === newVal);
         if (cc) {
             const principal = getCnaePrincipalFromCostCenter(cc);
             if (principal) form.value.invoiceCnae = principal;
         }
-    }
-    if (oldVal && oldVal !== newVal) {
-        taxCalcResult.value = null;
     }
 });
 
