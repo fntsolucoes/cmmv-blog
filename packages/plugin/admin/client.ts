@@ -107,6 +107,7 @@ export const useAdminClient = () => {
             selectedIds?: string[];
         } = {}) => api.authRequest('medias/cloud-migration/start', 'POST', options),
         deleteLocalFilesForMigratedMedias: (mediaIds: string[]) => api.authRequest('medias/cloud-migration/delete-local', 'POST', { mediaIds }),
+        uploadPdf: (data: { pdf: string; alt?: string; caption?: string }) => api.authRequest('media/pdfs', 'POST', data),
     };
 
     const members = {

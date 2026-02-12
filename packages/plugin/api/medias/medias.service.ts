@@ -2266,4 +2266,102 @@ export class MediasService extends AbstractService {
             total: mediaIds.length
         };
     }
+
+    /**
+     * Upload a PDF file (e.g. for payment order invoice).
+     * @param pdf - Base64 encoded PDF data (data:application/pdf;base64,...)
+     * @param alt - Alt text / description
+     * @param caption - Caption / notes
+     * @returns The uploaded PDF info with url
+     */
+    async uploadPdf(pdf: string, alt: string = "", caption: string = "") {
+        if (!pdf) throw new Error("No PDF provided");
+
+        const mediasPath = path.resolve(process.cwd(), "medias", "pdfs");
+        const blogStorageService = Application.resolveProvider(BlogStorageService);
+
+        if (!fs.existsSync(mediasPath)) {
+            fs.mkdirSync(mediasPath, { recursive: true });
+        }
+
+        const isValidPdf = /^data:application\/pdf;base64,/.test(pdf);
+        if (!isValidPdf) throw new Error("Invalid PDF format. Please provide a valid PDF file.");
+
+        let apiUrl = process.env.API_URL || Config.get<string>("blog.url");
+        if (apiUrl && apiUrl.endsWith("/")) apiUrl = apiUrl.slice(0, -1);
+
+        const base64Data = pdf.replace(/^data:application\/pdf;base64,/, "");
+        const buffer = Buffer.from(base64Data, "base64");
+        const pdfHash = crypto.createHash("sha1").update(buffer).digest("hex");
+        const pdfFullpath = path.join(mediasPath, `${pdfHash}.pdf`);
+        const pdfUrl = `${apiUrl}/media/pdfs/${pdfHash}.pdf`;
+
+        const MediasEntity = Repository.getEntity("MediasEntity");
+        const existingMedia = await Repository.findOne(MediasEntity, { sha1: pdfHash });
+        if (existingMedia) {
+            const url = existingMedia.filepath && existingMedia.filepath.startsWith("http")
+                ? existingMedia.filepath
+                : pdfUrl;
+            return { success: true, url, message: "PDF already exists" };
+        }
+
+        const storageType = Config.get<string>("blog.storageType");
+        const uploadedFile = await blogStorageService.uploadFile({
+            buffer: Buffer.from(buffer),
+            originalname: `${pdfHash}.pdf`,
+            mimetype: "application/pdf"
+        });
+
+        const finalUrl = uploadedFile ? uploadedFile.url : pdfUrl;
+
+        await Repository.insert(MediasEntity, {
+            sha1: pdfHash,
+            filepath: uploadedFile ? uploadedFile.url : pdfFullpath,
+            format: "pdf",
+            width: 0,
+            height: 0,
+            alt: alt || pdfHash,
+            caption: caption,
+            size: buffer.length,
+            thumbnail: null
+        });
+
+        if (!uploadedFile) {
+            await fs.promises.writeFile(pdfFullpath, buffer);
+        } else {
+            await Repository.update(MediasEntity, { sha1: pdfHash }, { filepath: uploadedFile.url });
+        }
+
+        return { success: true, url: finalUrl, message: "PDF uploaded successfully" };
+    }
+
+    /**
+     * Get PDF file by hash (filename with or without .pdf).
+     */
+    async getPdf(hash: string): Promise<Buffer | null> {
+        const mediasPath = path.resolve(process.cwd(), "medias", "pdfs");
+        const normalizedHash = hash.endsWith(".pdf") ? hash : `${hash}.pdf`;
+        const pdfFullpath = path.join(mediasPath, normalizedHash);
+
+        if (!fs.existsSync(pdfFullpath)) {
+            const MediasEntity = Repository.getEntity("MediasEntity");
+            const hashWithoutExt = hash.replace(".pdf", "");
+            const media = await Repository.findOne(MediasEntity, { sha1: hashWithoutExt });
+            if (media?.filepath?.startsWith("http")) {
+                try {
+                    const response = await fetch(media.filepath);
+                    if (response.ok) {
+                        const arrayBuffer = await response.arrayBuffer();
+                        return Buffer.from(arrayBuffer);
+                    }
+                } catch (_) {}
+            }
+            return null;
+        }
+        try {
+            return fs.readFileSync(pdfFullpath);
+        } catch (_) {
+            return null;
+        }
+    }
 }

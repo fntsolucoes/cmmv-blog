@@ -227,6 +227,9 @@ export class PaymentOrdersService {
         if (data.invoice_cnae != null && data.invoice_cnae !== "") {
             payload.invoice_cnae = String(data.invoice_cnae).trim();
         }
+        if (data.invoice_attachment != null && data.invoice_attachment !== "") {
+            payload.invoice_attachment = String(data.invoice_attachment).trim();
+        }
 
         // Se status for Pago, exigir data de pagamento
         if (payload.status === "Pago") {
@@ -535,6 +538,9 @@ export class PaymentOrdersService {
         if (data.invoice_cnae !== undefined) {
             payload.invoice_cnae = data.invoice_cnae === null || data.invoice_cnae === "" ? null : String(data.invoice_cnae).trim();
         }
+        if (data.invoice_attachment !== undefined) {
+            payload.invoice_attachment = data.invoice_attachment === null || data.invoice_attachment === "" ? null : String(data.invoice_attachment).trim();
+        }
 
         const affected = await Repository.update(PaymentOrdersEntity, id, payload);
 
@@ -552,7 +558,13 @@ export class PaymentOrdersService {
     /**
      * Atualizar status da ordem de pagamento
      */
-    async updateStatus(id: string, status: string, effectivePaymentDate?: string | Date | null, paidValue?: number | null) {
+    async updateStatus(
+        id: string,
+        status: string,
+        effectivePaymentDate?: string | Date | null,
+        paidValue?: number | null,
+        invoiceAttachment?: string | null
+    ) {
         const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
 
         const existing = await Repository.findOne(PaymentOrdersEntity, { id });
@@ -565,6 +577,9 @@ export class PaymentOrdersService {
         if (status === "Pago") {
             if (!effectivePaymentDate) {
                 throw new Error('Effective payment date is required when status is "Pago"');
+            }
+            if (invoiceAttachment && String(invoiceAttachment).trim()) {
+                payload.invoice_attachment = String(invoiceAttachment).trim();
             }
 
             // Normalizar data para UTC com meio-dia para evitar problemas de timezone

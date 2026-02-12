@@ -138,6 +138,9 @@ export class SasPaymentOrdersContract extends AbstractContract {
 
     @ContractField({ protoType: 'string', nullable: true, index: true })
     invoice_cnae?: string; // CNAE da nota (codigo da tabela sas_simples_nacional_cnae). Default: CNAE principal do centro de custo.
+
+    @ContractField({ protoType: 'string', nullable: true, index: false })
+    invoice_attachment?: string; // URL do PDF da nota fiscal (obrigatorio ao marcar como Pago).
 }
 
 

@@ -280,6 +280,28 @@
                             <td class="px-4 py-3 text-sm text-white">{{ formatDate(item.effectivePaymentDate) }}</td>
                             <td class="px-4 py-3 text-sm font-medium">
                                 <div class="flex items-center gap-2">
+                                    <a
+                                        v-if="(item.invoice_attachment || item.invoiceAttachment)"
+                                        :href="(item.invoice_attachment || item.invoiceAttachment)"
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="text-red-400 hover:text-red-300 transition-colors p-1 rounded hover:bg-red-400/10"
+                                        title="Abrir nota fiscal (PDF)"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                    </a>
+                                    <button
+                                        v-else
+                                        @click="openAttachPdfModal(item)"
+                                        class="text-amber-400 hover:text-amber-300 transition-colors p-1 rounded hover:bg-amber-400/10"
+                                        title="Upload pendente - anexar PDF"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                    </button>
                                     <button
                                         v-if="item.status === 'Pendente'"
                                         @click="markAsPaid(item)"
@@ -520,6 +542,28 @@
                             <td class="px-4 py-3 text-sm text-white">{{ formatDate(item.effectivePaymentDate) }}</td>
                             <td class="px-4 py-3 text-sm font-medium">
                                 <div class="flex items-center gap-2">
+                                    <a
+                                        v-if="(item.invoice_attachment || item.invoiceAttachment)"
+                                        :href="(item.invoice_attachment || item.invoiceAttachment)"
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="text-red-400 hover:text-red-300 transition-colors p-1 rounded hover:bg-red-400/10"
+                                        title="Abrir nota fiscal (PDF)"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                    </a>
+                                    <button
+                                        v-else
+                                        @click="openAttachPdfModal(item)"
+                                        class="text-amber-400 hover:text-amber-300 transition-colors p-1 rounded hover:bg-amber-400/10"
+                                        title="Upload pendente - anexar PDF"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                    </button>
                                     <button
                                         @click="editItem(item)"
                                         class="text-blue-400 hover:text-blue-300 transition-colors p-1 rounded hover:bg-blue-400/10"
@@ -640,18 +684,30 @@
                         <label class="block text-sm font-medium text-neutral-300 mb-1">
                             Percentual de imposto (%) <span class="text-red-500">*</span>
                         </label>
-                        <input
-                            v-model.number="markAsPaidForm.taxPercentage"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="100"
-                            required
-                            placeholder="0"
-                            :disabled="markAsPaidTaxLocked"
-                            :class="markAsPaidTaxLocked ? 'bg-neutral-600 border-neutral-500 cursor-not-allowed opacity-70' : 'bg-neutral-700 border-neutral-600'"
-                            class="w-full max-w-[180px] px-2 py-1.5 text-sm rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                        />
+                        <div class="flex items-center gap-2">
+                            <input
+                                v-model.number="markAsPaidForm.taxPercentage"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                required
+                                placeholder="0"
+                                :disabled="markAsPaidTaxLocked"
+                                :class="markAsPaidTaxLocked ? 'bg-neutral-600 border-neutral-500 cursor-not-allowed opacity-70' : 'bg-neutral-700 border-neutral-600'"
+                                class="w-full max-w-[180px] px-2 py-1.5 text-sm rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                            />
+                            <button
+                                v-if="markAsPaidNeedsTaxRecalc"
+                                type="button"
+                                @click="runMarkAsPaidTaxCalc"
+                                :disabled="markAsPaidTaxCalcLoading || !markAsPaidForm.costCenterId || (Number(markAsPaidForm.grossValue) || 0) <= 0"
+                                class="px-2 py-1 text-xs bg-amber-600 hover:bg-amber-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Recalcular imposto pelo motor tributario"
+                            >
+                                {{ markAsPaidTaxCalcLoading ? '...' : 'Recalcular' }}
+                            </button>
+                        </div>
                         <p v-if="markAsPaidTaxLocked" class="mt-0.5 text-xs text-amber-400">Imposto calculado pelo motor tributario.</p>
                         <p v-else class="mt-0.5 text-xs text-neutral-400">Confirme a % de imposto aplicada na nota</p>
                     </div>
@@ -680,6 +736,41 @@
                         </div>
                         <p class="mt-0.5 text-xs text-neutral-400">Atualiza ao alterar imposto ou valor bruto</p>
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">Nota Fiscal (PDF)</label>
+                        <input ref="invoicePdfFileInput" type="file" accept="application/pdf" class="hidden" @change="handleInvoicePdfFileChange" />
+                        <div v-if="!markAsPaidForm.invoiceAttachment" class="border-2 border-dashed border-neutral-600 rounded-lg p-3 text-center hover:border-neutral-500 transition-colors">
+                            <button type="button" @click="invoicePdfFileInput?.click()" :disabled="invoiceUploading" class="w-full flex flex-col items-center justify-center py-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-neutral-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <span class="text-xs text-neutral-400">{{ invoiceUploading ? 'Enviando...' : 'Clique para anexar (opcional)' }}</span>
+                            </button>
+                        </div>
+                        <div v-else class="bg-neutral-700 rounded-lg p-2 flex items-center justify-between">
+                            <div class="flex items-center min-w-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-400 mr-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                                <div class="min-w-0">
+                                    <p class="text-xs text-white truncate max-w-[160px]">{{ (markAsPaidForm.invoiceAttachment || '').split('/').pop() }}</p>
+                                    <a :href="markAsPaidForm.invoiceAttachment" target="_blank" rel="noopener" class="text-xs text-blue-400 hover:text-blue-300">Abrir PDF</a>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button type="button" @click="invoicePdfFileInput?.click()" :disabled="invoiceUploading" class="p-1 text-neutral-400 hover:text-white" title="Trocar arquivo">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                </button>
+                                <button type="button" @click="removeInvoiceAttachment" class="p-1 text-red-400 hover:text-red-300" title="Remover">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     <div class="flex justify-end gap-2 pt-3 border-t border-neutral-700">
                         <button
                             type="button"
@@ -701,6 +792,47 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Modal: Anexar PDF (upload pendente) -->
+        <div v-if="showAttachPdfModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
+            <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-sm">
+                <div class="p-4 border-b border-neutral-700 flex justify-between items-center">
+                    <h3 class="text-lg font-medium text-white">Anexar nota fiscal (PDF)</h3>
+                    <button @click="closeAttachPdfModal" class="text-neutral-400 hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-4 space-y-3">
+                    <input ref="attachPdfFileInput" type="file" accept="application/pdf" class="hidden" @change="handleAttachPdfFileChange" />
+                    <div v-if="!attachPdfForm.invoiceAttachment" class="border-2 border-dashed border-neutral-600 rounded-lg p-4 text-center hover:border-neutral-500 transition-colors">
+                        <button type="button" @click="attachPdfFileInput?.click()" :disabled="attachPdfUploading" class="w-full flex flex-col items-center justify-center py-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-neutral-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            <span class="text-sm text-neutral-400">{{ attachPdfUploading ? 'Enviando...' : 'Clique para selecionar o PDF' }}</span>
+                        </button>
+                    </div>
+                    <div v-else class="bg-neutral-700 rounded-lg p-3 flex items-center justify-between">
+                        <div class="min-w-0">
+                            <p class="text-sm text-white truncate max-w-[200px]">{{ (attachPdfForm.invoiceAttachment || '').split('/').pop() }}</p>
+                            <a :href="attachPdfForm.invoiceAttachment" target="_blank" rel="noopener" class="text-xs text-blue-400 hover:text-blue-300">Abrir PDF</a>
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" @click="attachPdfFileInput?.click()" :disabled="attachPdfUploading" class="p-1.5 text-neutral-400 hover:text-white" title="Trocar">&#8634;</button>
+                            <button type="button" @click="attachPdfForm.invoiceAttachment = ''" class="p-1.5 text-red-400 hover:text-red-300" title="Remover">&#215;</button>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button type="button" @click="closeAttachPdfModal" class="px-3 py-1.5 text-sm font-medium text-neutral-300 bg-neutral-700 hover:bg-neutral-600 rounded-md">Cancelar</button>
+                        <button type="button" @click="saveAttachPdf" :disabled="savingAttachPdf || !attachPdfForm.invoiceAttachment" class="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
+                            {{ savingAttachPdf ? 'Salvando...' : 'Salvar' }}
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -993,6 +1125,28 @@
                             <p v-else-if="availablePaymentMethods.length === 0" class="mt-1 text-xs text-yellow-400">Nenhum método de pagamento cadastrado para esta empresa</p>
                         </div>
                         <div class="col-span-2">
+                            <label class="block text-sm font-medium text-neutral-300 mb-2">Nota Fiscal (PDF)</label>
+                            <input ref="formInvoicePdfFileInput" type="file" accept="application/pdf" class="hidden" @change="handleFormInvoicePdfFileChange" />
+                            <div v-if="!form.invoiceAttachment" class="border-2 border-dashed border-neutral-600 rounded-lg p-3 text-center hover:border-neutral-500 transition-colors">
+                                <button type="button" @click="formInvoicePdfFileInput?.click()" :disabled="formInvoiceUploading" class="w-full flex flex-col items-center justify-center py-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-neutral-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <span class="text-xs text-neutral-400">{{ formInvoiceUploading ? 'Enviando...' : 'Clique para anexar PDF (opcional)' }}</span>
+                                </button>
+                            </div>
+                            <div v-else class="bg-neutral-700 rounded-lg p-3 flex items-center justify-between">
+                                <div class="min-w-0">
+                                    <p class="text-sm text-white truncate max-w-[220px]">{{ (form.invoiceAttachment || '').split('/').pop() }}</p>
+                                    <a :href="form.invoiceAttachment" target="_blank" rel="noopener" class="text-xs text-blue-400 hover:text-blue-300">Abrir PDF</a>
+                                </div>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <button type="button" @click="formInvoicePdfFileInput?.click()" :disabled="formInvoiceUploading" class="p-1.5 text-neutral-400 hover:text-white" title="Trocar">&#8634;</button>
+                                    <button type="button" @click="form.invoiceAttachment = ''" class="p-1.5 text-red-400 hover:text-red-300" title="Remover">&#215;</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-span-2">
                             <label class="block text-sm font-medium text-neutral-300 mb-2">
                                 Observações
                             </label>
@@ -1126,8 +1280,11 @@ const form = ref({
     observations: '' as string | null,
     natureza_rendimento: '' as string | null,
     data_emissao_nota: '' as string | null,
-    invoiceCnae: '' as string
+    invoiceCnae: '' as string,
+    invoiceAttachment: '' as string
 });
+const formInvoicePdfFileInput = ref<HTMLInputElement | null>(null);
+const formInvoiceUploading = ref(false);
 
 const taxCalcResult = ref<{ gross: number; deductions: Array<{ name: string; amount: number; percent?: number }>; totalDeductions: number; liquid: number } | null>(null);
 const taxCalcLoading = ref(false);
@@ -1143,8 +1300,19 @@ const markAsPaidForm = ref({
     costCenterId: '',
     invoiceCnae: '' as string,
     taxPercentage: 0,
-    grossValue: 0 as number
+    grossValue: 0 as number,
+    invoiceAttachment: '' as string
 });
+
+const invoicePdfFileInput = ref<HTMLInputElement | null>(null);
+const invoiceUploading = ref(false);
+
+const showAttachPdfModal = ref(false);
+const attachPdfItem = ref<any>(null);
+const attachPdfForm = ref({ invoiceAttachment: '' as string });
+const attachPdfFileInput = ref<HTMLInputElement | null>(null);
+const attachPdfUploading = ref(false);
+const savingAttachPdf = ref(false);
 
 const markAsPaidTaxLocked = computed(() => {
     const engineUsed = markAsPaidItem.value?.tax_engine_used === true || markAsPaidItem.value?.tax_engine_used === 1;
@@ -1154,6 +1322,22 @@ const markAsPaidTaxLocked = computed(() => {
     const currentCc = markAsPaidForm.value.costCenterId || '';
     return currentCc === originalCc;
 });
+
+const markAsPaidOriginal = ref({
+    costCenterId: '',
+    invoiceCnae: '' as string
+});
+
+const markAsPaidNeedsTaxRecalc = computed(() => {
+    if (!showMarkAsPaidModal.value) return false;
+    const originalCc = markAsPaidOriginal.value.costCenterId || '';
+    const currentCc = markAsPaidForm.value.costCenterId || '';
+    const originalCnae = (markAsPaidOriginal.value.invoiceCnae || '').trim();
+    const currentCnae = (markAsPaidForm.value.invoiceCnae || '').trim();
+    return originalCc !== currentCc || originalCnae !== currentCnae;
+});
+
+const markAsPaidTaxCalcLoading = ref(false);
 
 const markAsPaidExchangeRate = ref<{ rate: number } | null>(null);
 const markAsPaidRateIsFromDate = ref(false);
@@ -1942,7 +2126,9 @@ const openAddDialog = () => {
         paymentMethod: null,
         observations: null,
         natureza_rendimento: null,
-        data_emissao_nota: null
+        data_emissao_nota: null,
+        invoiceCnae: '',
+        invoiceAttachment: ''
     };
     taxCalcResult.value = null;
     showDialog.value = true;
@@ -2007,7 +2193,8 @@ const editItem = (item: any) => {
             const day = String(d.getUTCDate()).padStart(2, '0');
             return `${y}-${m}-${day}`;
         })() : null,
-        invoiceCnae: (item.invoice_cnae && String(item.invoice_cnae).trim()) || getCnaePrincipalFromCostCenter(costCenters.value.find((c: any) => c.id === (item.costCenterId || ''))) || ''
+        invoiceCnae: (item.invoice_cnae && String(item.invoice_cnae).trim()) || getCnaePrincipalFromCostCenter(costCenters.value.find((c: any) => c.id === (item.costCenterId || ''))) || '',
+        invoiceAttachment: (item.invoice_attachment || item.invoiceAttachment || '').trim()
     };
 
     // Restaurar dados do motor tributario se existirem
@@ -2056,7 +2243,8 @@ const closeDialog = () => {
         observations: null,
         natureza_rendimento: null,
         data_emissao_nota: null,
-        invoiceCnae: ''
+        invoiceCnae: '',
+        invoiceAttachment: ''
     };
     taxCalcResult.value = null;
 };
@@ -2098,6 +2286,58 @@ const loadMarkAsPaidExchangeRate = async () => {
     }
 };
 
+const getMarkAsPaidReferenceMonth = () => {
+    const item = markAsPaidItem.value;
+    const y = Number(item?.expectedPaymentYear) || 0;
+    const m = Number(item?.expectedPaymentMonth) || 0;
+    if (y > 0 && m >= 1 && m <= 12) {
+        return `${y}-${String(m).padStart(2, '0')}`;
+    }
+    const dateStr = String(markAsPaidForm.value.effectivePaymentDate || '');
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return dateStr.slice(0, 7);
+    }
+    const today = new Date();
+    const todayYear = today.getUTCFullYear();
+    const todayMonth = String(today.getUTCMonth() + 1).padStart(2, '0');
+    return `${todayYear}-${todayMonth}`;
+};
+
+const runMarkAsPaidTaxCalc = async () => {
+    if (!markAsPaidItem.value) return;
+    const costCenterId = markAsPaidForm.value.costCenterId;
+    const gross = Number(markAsPaidForm.value.grossValue) || 0;
+    if (!costCenterId || gross <= 0) return;
+
+    markAsPaidTaxCalcLoading.value = true;
+    try {
+        const referenceMonth = getMarkAsPaidReferenceMonth();
+        const res = await client.taxCalc.calculate({
+            costCenterId,
+            grossAmount: gross,
+            referenceMonth,
+            orderId: markAsPaidItem.value.id,
+            invoiceCnae: (markAsPaidForm.value.invoiceCnae && String(markAsPaidForm.value.invoiceCnae).trim()) || undefined
+        });
+        const data = res?.data ?? res;
+        if (data && typeof data.totalDeductions === 'number') {
+            const pct = gross > 0 ? ((Number(data.totalDeductions) || 0) / gross) * 100 : 0;
+            markAsPaidForm.value.taxPercentage = Number(pct.toFixed(2));
+            markAsPaidOriginal.value = {
+                costCenterId: costCenterId || '',
+                invoiceCnae: (markAsPaidForm.value.invoiceCnae || '').trim()
+            };
+        } else {
+            alert('Nao foi possivel recalcular os impostos. Tente novamente.');
+        }
+    } catch (e: any) {
+        console.error('Erro ao recalcular impostos (marcar como pago):', e);
+        alert(e?.response?.data?.message || e?.message || 'Erro ao recalcular impostos.');
+    } finally {
+        markAsPaidTaxCalcLoading.value = false;
+    }
+};
+
 const markAsPaid = async (item: any) => {
     markAsPaidItem.value = item;
     
@@ -2120,7 +2360,12 @@ const markAsPaid = async (item: any) => {
         costCenterId: ccId,
         invoiceCnae: defaultCnae,
         taxPercentage: Number(taxPct.toFixed(2)),
-        grossValue: invoiceAmount
+        grossValue: invoiceAmount,
+        invoiceAttachment: (item.invoice_attachment || item.invoiceAttachment || '').trim()
+    };
+    markAsPaidOriginal.value = {
+        costCenterId: ccId,
+        invoiceCnae: defaultCnae
     };
     markAsPaidExchangeRate.value = null;
     markAsPaidRateIsFromDate.value = false;
@@ -2131,8 +2376,134 @@ const markAsPaid = async (item: any) => {
 const closeMarkAsPaidModal = () => {
     showMarkAsPaidModal.value = false;
     markAsPaidItem.value = null;
+    markAsPaidOriginal.value = { costCenterId: '', invoiceCnae: '' };
     markAsPaidExchangeRate.value = null;
     markAsPaidRateIsFromDate.value = false;
+    markAsPaidForm.value.invoiceAttachment = '';
+};
+
+const handleInvoicePdfFileChange = async (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || file.type !== 'application/pdf') {
+        input.value = '';
+        return;
+    }
+    invoiceUploading.value = true;
+    try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+        const res = await client.medias.uploadPdf({ pdf: base64, alt: file.name });
+        const data = res?.data ?? res;
+        if (data?.url) {
+            markAsPaidForm.value.invoiceAttachment = data.url;
+        } else {
+            alert('Falha ao enviar PDF. Tente novamente.');
+        }
+    } catch (e: any) {
+        console.error('Erro ao enviar PDF:', e);
+        alert(e?.response?.data?.message || e?.message || 'Erro ao enviar PDF.');
+    } finally {
+        invoiceUploading.value = false;
+        input.value = '';
+    }
+};
+
+const removeInvoiceAttachment = () => {
+    markAsPaidForm.value.invoiceAttachment = '';
+};
+
+const openAttachPdfModal = (item: any) => {
+    attachPdfItem.value = item;
+    attachPdfForm.value.invoiceAttachment = (item.invoice_attachment || item.invoiceAttachment || '').trim();
+    showAttachPdfModal.value = true;
+};
+
+const closeAttachPdfModal = () => {
+    showAttachPdfModal.value = false;
+    attachPdfItem.value = null;
+    attachPdfForm.value.invoiceAttachment = '';
+};
+
+const handleAttachPdfFileChange = async (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || file.type !== 'application/pdf') {
+        input.value = '';
+        return;
+    }
+    attachPdfUploading.value = true;
+    try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+        const res = await client.medias.uploadPdf({ pdf: base64, alt: file.name });
+        const data = res?.data ?? res;
+        if (data?.url) {
+            attachPdfForm.value.invoiceAttachment = data.url;
+        } else {
+            alert('Falha ao enviar PDF. Tente novamente.');
+        }
+    } catch (e: any) {
+        console.error('Erro ao enviar PDF:', e);
+        alert(e?.response?.data?.message || e?.message || 'Erro ao enviar PDF.');
+    } finally {
+        attachPdfUploading.value = false;
+        input.value = '';
+    }
+};
+
+const handleFormInvoicePdfFileChange = async (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || file.type !== 'application/pdf') {
+        input.value = '';
+        return;
+    }
+    formInvoiceUploading.value = true;
+    try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+        const res = await client.medias.uploadPdf({ pdf: base64, alt: file.name });
+        const data = res?.data ?? res;
+        if (data?.url) {
+            form.value.invoiceAttachment = data.url;
+        } else {
+            alert('Falha ao enviar PDF. Tente novamente.');
+        }
+    } catch (e: any) {
+        console.error('Erro ao enviar PDF:', e);
+        alert(e?.response?.data?.message || e?.message || 'Erro ao enviar PDF.');
+    } finally {
+        formInvoiceUploading.value = false;
+        input.value = '';
+    }
+};
+
+const saveAttachPdf = async () => {
+    if (!attachPdfItem.value?.id || !attachPdfForm.value.invoiceAttachment) return;
+    savingAttachPdf.value = true;
+    try {
+        await client.paymentOrders.update(attachPdfItem.value.id, { invoice_attachment: attachPdfForm.value.invoiceAttachment });
+        await loadData();
+        closeAttachPdfModal();
+    } catch (e: any) {
+        console.error('Erro ao salvar PDF:', e);
+        alert(e?.response?.data?.message || e?.message || 'Erro ao salvar.');
+    } finally {
+        savingAttachPdf.value = false;
+    }
 };
 
 watch(() => markAsPaidForm.value.costCenterId, (newVal) => {
@@ -2224,7 +2595,8 @@ const confirmMarkAsPaid = async () => {
         await client.paymentOrders.updateStatus(orderId, {
             status: 'Pago',
             effectivePaymentDate: markAsPaidForm.value.effectivePaymentDate,
-            paidValue: Number(paidValue.toFixed(2))
+            paidValue: Number(paidValue.toFixed(2)),
+            invoiceAttachment: (markAsPaidForm.value.invoiceAttachment || '').trim() || undefined
         });
         await loadData();
         closeMarkAsPaidModal();
@@ -2660,6 +3032,9 @@ const saveOrder = async () => {
         }
         if (form.value.invoiceCnae != null && form.value.invoiceCnae !== '') {
             payload.invoice_cnae = form.value.invoiceCnae.trim() || null;
+        }
+        if (form.value.invoiceAttachment) {
+            payload.invoice_attachment = form.value.invoiceAttachment.trim() || null;
         }
 
         if (isEditing.value && editingItem.value) {

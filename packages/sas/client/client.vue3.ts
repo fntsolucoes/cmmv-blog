@@ -143,7 +143,7 @@ export const useSasClient = () => {
         delete: async (id: string) => {
             return api.authRequest(`affiliation-manager/payment-orders/v2/${id}`, "DELETE");
         },
-        updateStatus: async (id: string, data: { status: string; effectivePaymentDate?: string | Date | null; paidValue?: number | null }) => {
+        updateStatus: async (id: string, data: { status: string; effectivePaymentDate?: string | Date | null; paidValue?: number | null; invoiceAttachment?: string | null }) => {
             return api.authRequest(`affiliation-manager/payment-orders/v2/${id}/status`, "PATCH", data);
         },
         getNetAmount: async (id: string) => {
@@ -411,6 +411,11 @@ export const useSasClient = () => {
             api.authRequest("affiliation-manager/cost-center-monthly-fator-r/by-month", "POST", data)
     };
 
+    const medias = {
+        uploadPdf: async (data: { pdf: string; alt?: string; caption?: string }) =>
+            api.authRequest("media/pdfs", "POST", data)
+    };
+
     return {
         costCenters,
         commercialPartners,
@@ -432,7 +437,8 @@ export const useSasClient = () => {
         costCenterTaxRules,
         costCenterMonthlyRevenue,
         costCenterMonthlyFatorR,
-        taxCalc
+        taxCalc,
+        medias
     };
 };
 

@@ -85,13 +85,19 @@ export class PaymentOrdersBusinessController {
     @Patch(":id/status")
     async updateStatus(
         @Param("id") id: string,
-        @Body() body: { status: string; effectivePaymentDate?: string | Date | null; paidValue?: number | null }
+        @Body() body: {
+            status: string;
+            effectivePaymentDate?: string | Date | null;
+            paidValue?: number | null;
+            invoiceAttachment?: string | null;
+        }
     ) {
         return await this.paymentOrdersService.updateStatus(
             id,
             body.status,
             body.effectivePaymentDate,
-            body.paidValue
+            body.paidValue,
+            body.invoiceAttachment
         );
     }
 

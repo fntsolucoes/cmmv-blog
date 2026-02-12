@@ -25,6 +25,12 @@ interface ProcessImageInterface {
     caption: string;
 }
 
+interface UploadPdfInterface {
+    pdf: string;
+    alt: string;
+    caption: string;
+}
+
 @Controller()
 export class MediasController {
     constructor(private readonly mediasService: MediasService){}
@@ -177,5 +183,29 @@ export class MediasController {
     @Auth("media:process")
     async deleteLocalFilesForMigratedMedias(@Body() body: { mediaIds: string[] }) {
         return await this.mediasService.deleteLocalFilesForMigratedMedias(body.mediaIds);
+    }
+
+    @Post("media/pdfs", { exclude: true })
+    @Auth("media:process")
+    @ContentType("application/json")
+    @Raw()
+    async uploadPdf(@Body() body: UploadPdfInterface) {
+        const result = await this.mediasService.uploadPdf(
+            body.pdf || "",
+            body.alt || "",
+            body.caption || ""
+        );
+        if (!result) throw new Error("Failed to upload PDF");
+        return result;
+    }
+
+    @Get("media/pdfs/:hash", { exclude: true })
+    async getPdf(@Param("hash") hash: string, @Response() res: any) {
+        const pdf = await this.mediasService.getPdf(hash);
+        if (!pdf) return res.code(404).send("PDF not found");
+        return res.code(200).set({
+            "Content-Type": "application/pdf",
+            "Cache-Control": "public, max-age=31536000, immutable"
+        }).contentType("application/pdf").send(pdf);
     }
 }
