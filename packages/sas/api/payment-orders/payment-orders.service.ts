@@ -72,7 +72,7 @@ export class PaymentOrdersService {
         paymentMethod?: string | null;
         observations?: string | null;
         natureza_rendimento?: string | null;
-        data_emissao_nota?: string | Date | null;
+        mes_referencia_nota?: string | null;
         tax_engine_used?: number | boolean | null;
         tax_calc_details?: string | object | null;
     }) {
@@ -82,24 +82,27 @@ export class PaymentOrdersService {
 
         // Validar valores numéricos
         if (data.invoiceAmount <= 0) {
-            throw new Error("Invoice value must be greater than zero");
+            throw new Error("O valor da nota deve ser maior que zero.");
         }
 
         // taxAmount: motor de tributos (Simples, Lucro Presumido, etc.) ou percentual manual
         let taxAmount: number;
         let taxEngineUsed = false;
         let taxCalcDetails: string | null = null;
+        let irpjAdicionalAmount = 0;
         const referenceMonth = this.buildExpectedPaymentMonth(data.expectedPaymentYear, data.expectedPaymentMonth);
         try {
             const calcResult = await this.taxCalcService.calculate({
                 costCenterId: data.costCenterId,
                 grossAmount: data.invoiceAmount,
-                referenceMonth
+                referenceMonth,
+                mesReferenciaNota: data.mes_referencia_nota ?? undefined
             });
             if (calcResult != null && typeof calcResult.totalDeductions === "number" && calcResult.totalDeductions >= 0) {
                 taxAmount = Math.round(calcResult.totalDeductions * 100) / 100;
                 taxEngineUsed = true;
                 taxCalcDetails = JSON.stringify(calcResult);
+                irpjAdicionalAmount = this.extractIrpjAdicional(calcResult);
             } else {
                 taxAmount = this.calculateTaxAmount(data.invoiceAmount, data.taxPercentage ?? 0);
             }
@@ -107,30 +110,30 @@ export class PaymentOrdersService {
             taxAmount = this.calculateTaxAmount(data.invoiceAmount, data.taxPercentage ?? 0);
         }
         if (taxAmount < 0) {
-            throw new Error("Tax value cannot be negative");
+            throw new Error("O valor do imposto não pode ser negativo.");
         }
         if (taxAmount > data.invoiceAmount) {
-            throw new Error("Tax value cannot exceed invoice value");
+            throw new Error("O valor do imposto não pode exceder o valor da nota.");
         }
 
         // Validar desconto
         const discountAmount = data.discountAmount ?? 0;
         if (discountAmount < 0) {
-            throw new Error("Discount value cannot be negative");
+            throw new Error("O valor do desconto não pode ser negativo.");
         }
 
         // Validar que imposto + desconto nao exceda o valor da fatura
         if (taxAmount + discountAmount > data.invoiceAmount) {
-            throw new Error("Tax and discount combined cannot exceed invoice value");
+            throw new Error("Imposto e desconto combinados não podem exceder o valor da nota.");
         }
 
         // Validar mês/ano
         if (!this.validateMonth(data.expectedPaymentMonth)) {
-            throw new Error("Expected payment month must be between 1 and 12");
+            throw new Error("O mês de previsão de pagamento deve estar entre 1 e 12.");
         }
 
         if (!this.validateYear(data.expectedPaymentYear)) {
-            throw new Error("Expected payment year must be between 2000 and 2100");
+            throw new Error("O ano de previsão de pagamento deve estar entre 2000 e 2100.");
         }
 
         // Validar data de saque (não pode ser futura)
@@ -166,7 +169,7 @@ export class PaymentOrdersService {
         ));
 
         if (withdrawalDate.getTime() > todayUTC.getTime()) {
-            throw new Error("Withdrawal date cannot be in the future");
+            throw new Error("A Data de Saque não pode ser uma data futura.");
         }
 
         // Verificar parceiro comercial
@@ -175,7 +178,7 @@ export class PaymentOrdersService {
         });
 
         if (!partner) {
-            throw new Error("Partner not found");
+            throw new Error("Parceiro comercial não encontrado.");
         }
 
         // Verificar centro de custos (empresa)
@@ -184,7 +187,7 @@ export class PaymentOrdersService {
         });
 
         if (!costCenter) {
-            throw new Error("Cost center not found");
+            throw new Error("Centro de custo não encontrado.");
         }
 
         const expectedPaymentMonthStr = this.buildExpectedPaymentMonth(
@@ -212,17 +215,12 @@ export class PaymentOrdersService {
         payload.tax_calc_details = data.tax_calc_details !== undefined
             ? (typeof data.tax_calc_details === 'string' ? data.tax_calc_details : data.tax_calc_details != null ? JSON.stringify(data.tax_calc_details) : null)
             : taxCalcDetails;
+        payload.irpj_adicional_amount = irpjAdicionalAmount;
         if (data.natureza_rendimento != null && data.natureza_rendimento !== "") {
             payload.natureza_rendimento = data.natureza_rendimento;
         }
-        if (data.data_emissao_nota != null && data.data_emissao_nota !== "") {
-            const str = typeof data.data_emissao_nota === "string" ? data.data_emissao_nota : (data.data_emissao_nota as Date).toISOString().slice(0, 10);
-            if (str.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                const [y, m, d] = str.split("-").map(Number);
-                payload.data_emissao_nota = new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0));
-            } else {
-                payload.data_emissao_nota = new Date(data.data_emissao_nota);
-            }
+        if (data.mes_referencia_nota != null && data.mes_referencia_nota !== "") {
+            payload.mes_referencia_nota = String(data.mes_referencia_nota).trim();
         }
         if (data.invoice_cnae != null && data.invoice_cnae !== "") {
             payload.invoice_cnae = String(data.invoice_cnae).trim();
@@ -234,7 +232,7 @@ export class PaymentOrdersService {
         // Se status for Pago, exigir data de pagamento
         if (payload.status === "Pago") {
             if (!data.effectivePaymentDate) {
-                throw new Error('Effective payment date is required when status is "Pago"');
+                throw new Error('A data efetiva de pagamento é obrigatória quando o status é "Pago".');
             }
 
             // Normalizar data para UTC com meio-dia para evitar problemas de timezone
@@ -260,7 +258,7 @@ export class PaymentOrdersService {
             ));
             
             if (paymentDate.getTime() > todayUTC.getTime()) {
-                throw new Error("Effective payment date cannot be in the future");
+                throw new Error("A data efetiva de pagamento não pode ser futura.");
             }
 
             payload.effectivePaymentDate = paymentDate;
@@ -289,7 +287,7 @@ export class PaymentOrdersService {
         paymentMethod: string | null;
         observations: string | null;
         natureza_rendimento: string | null;
-        data_emissao_nota: string | Date | null;
+        mes_referencia_nota: string | null;
         tax_engine_used: number | boolean | null;
         tax_calc_details: string | object | null;
     }>) {
@@ -299,7 +297,7 @@ export class PaymentOrdersService {
 
         const existing = await Repository.findOne(PaymentOrdersEntity, { id });
         if (!existing) {
-            throw new Error("Payment order not found");
+            throw new Error("Ordem de pagamento não encontrada.");
         }
 
         const payload: any = {};
@@ -307,7 +305,7 @@ export class PaymentOrdersService {
         // Atualizar valores com validações
         if (data.invoiceAmount !== undefined) {
             if (data.invoiceAmount <= 0) {
-                throw new Error("Invoice value must be greater than zero");
+                throw new Error("O valor da nota deve ser maior que zero.");
             }
             payload.invoiceAmount = data.invoiceAmount;
         }
@@ -317,13 +315,13 @@ export class PaymentOrdersService {
             const invoiceAmount = data.invoiceAmount ?? existing.invoiceAmount;
             const taxAmount = this.calculateTaxAmount(invoiceAmount, data.taxPercentage);
             if (taxAmount < 0) {
-                throw new Error("Tax value cannot be negative");
+                throw new Error("O valor do imposto não pode ser negativo.");
             }
             if (taxAmount > invoiceAmount) {
-                throw new Error("Tax value cannot exceed invoice value");
+                throw new Error("O valor do imposto não pode exceder o valor da nota.");
             }
             payload.taxAmount = taxAmount;
-        } else if (data.invoiceAmount !== undefined || data.expectedPaymentMonth !== undefined || data.expectedPaymentYear !== undefined) {
+        } else if (data.invoiceAmount !== undefined || data.expectedPaymentMonth !== undefined || data.expectedPaymentYear !== undefined || data.mes_referencia_nota !== undefined) {
             const invoiceAmount = data.invoiceAmount ?? existing.invoiceAmount;
             const referenceMonth = (data.expectedPaymentMonth !== undefined || data.expectedPaymentYear !== undefined)
                 ? this.buildExpectedPaymentMonth(
@@ -331,17 +329,20 @@ export class PaymentOrdersService {
                     data.expectedPaymentMonth ?? this.extractMonth(existing.expectedPaymentMonth)
                 )
                 : existing.expectedPaymentMonth;
+            const mesRef = data.mes_referencia_nota ?? existing.mes_referencia_nota ?? (existing as any).mesReferenciaNota ?? undefined;
             try {
                 const calcResult = await this.taxCalcService.calculate({
                     costCenterId: existing.costCenterId,
                     grossAmount: invoiceAmount,
                     referenceMonth,
-                    orderId: id
+                    orderId: id,
+                    mesReferenciaNota: mesRef
                 });
                 if (calcResult != null && typeof calcResult.totalDeductions === "number" && calcResult.totalDeductions >= 0) {
                     payload.taxAmount = Math.round(calcResult.totalDeductions * 100) / 100;
                     payload.tax_engine_used = true;
                     payload.tax_calc_details = JSON.stringify(calcResult);
+                    payload.irpj_adicional_amount = this.extractIrpjAdicional(calcResult);
                 }
             } catch (_) {
                 // mantem valores atuais
@@ -350,7 +351,7 @@ export class PaymentOrdersService {
 
         if (data.discountAmount !== undefined) {
             if (data.discountAmount < 0) {
-                throw new Error("Discount value cannot be negative");
+                throw new Error("O valor do desconto não pode ser negativo.");
             }
             const invoiceAmount = data.invoiceAmount ?? existing.invoiceAmount;
             const taxAmount = payload.taxAmount ?? (data.taxPercentage !== undefined
@@ -358,20 +359,20 @@ export class PaymentOrdersService {
                 : existing.taxAmount);
             const discountAmount = data.discountAmount ?? 0;
             if (taxAmount + discountAmount > invoiceAmount) {
-                throw new Error("Tax and discount combined cannot exceed invoice value");
+                throw new Error("Imposto e desconto combinados não podem exceder o valor da nota.");
             }
             payload.discountAmount = discountAmount;
         }
 
         if (data.expectedPaymentMonth !== undefined) {
             if (!this.validateMonth(data.expectedPaymentMonth)) {
-                throw new Error("Expected payment month must be between 1 and 12");
+                throw new Error("O mês de previsão de pagamento deve estar entre 1 e 12.");
             }
         }
 
         if (data.expectedPaymentYear !== undefined) {
             if (!this.validateYear(data.expectedPaymentYear)) {
-                throw new Error("Expected payment year must be between 2000 and 2100");
+                throw new Error("O ano de previsão de pagamento deve estar entre 2000 e 2100.");
             }
         }
 
@@ -417,7 +418,7 @@ export class PaymentOrdersService {
                 ));
                 
                 if (withdrawalDate.getTime() > todayUTC.getTime()) {
-                    throw new Error("Withdrawal date cannot be in the future");
+                    throw new Error("A Data de Saque não pode ser uma data futura.");
                 }
                 payload.withdrawalDate = withdrawalDate;
             }
@@ -429,7 +430,7 @@ export class PaymentOrdersService {
                 id: data.commercialPartnerId
             });
             if (!partner) {
-                throw new Error("Partner not found");
+                throw new Error("Parceiro comercial não encontrado.");
             }
             payload.commercialPartnerId = data.commercialPartnerId;
         }
@@ -440,7 +441,7 @@ export class PaymentOrdersService {
                 id: data.costCenterId
             });
             if (!costCenter) {
-                throw new Error("Cost center not found");
+                throw new Error("Centro de custo não encontrado.");
             }
             payload.costCenterId = data.costCenterId;
         }
@@ -485,7 +486,7 @@ export class PaymentOrdersService {
                 ));
                 
                 if (paymentDate.getTime() > todayUTC.getTime()) {
-                    throw new Error("Effective payment date cannot be in the future");
+                    throw new Error("A data efetiva de pagamento não pode ser futura.");
                 }
                 payload.effectivePaymentDate = paymentDate;
             }
@@ -497,7 +498,7 @@ export class PaymentOrdersService {
 
         if (data.paidValue !== undefined) {
             if (data.paidValue !== null && data.paidValue < 0) {
-                throw new Error("Paid value cannot be negative");
+                throw new Error("O valor pago não pode ser negativo.");
             }
             payload.paidValue = data.paidValue;
         }
@@ -522,18 +523,8 @@ export class PaymentOrdersService {
         if (data.natureza_rendimento !== undefined) {
             payload.natureza_rendimento = data.natureza_rendimento === null || data.natureza_rendimento === "" ? null : data.natureza_rendimento;
         }
-        if (data.data_emissao_nota !== undefined) {
-            if (data.data_emissao_nota === null || data.data_emissao_nota === "") {
-                payload.data_emissao_nota = null;
-            } else {
-                const str = typeof data.data_emissao_nota === "string" ? data.data_emissao_nota : (data.data_emissao_nota as Date).toISOString().slice(0, 10);
-                if (str.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                    const [y, m, d] = str.split("-").map(Number);
-                    payload.data_emissao_nota = new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0));
-                } else {
-                    payload.data_emissao_nota = new Date(data.data_emissao_nota);
-                }
-            }
+        if (data.mes_referencia_nota !== undefined) {
+            payload.mes_referencia_nota = (data.mes_referencia_nota && String(data.mes_referencia_nota).trim()) || null;
         }
         if (data.invoice_cnae !== undefined) {
             payload.invoice_cnae = data.invoice_cnae === null || data.invoice_cnae === "" ? null : String(data.invoice_cnae).trim();
@@ -569,14 +560,14 @@ export class PaymentOrdersService {
 
         const existing = await Repository.findOne(PaymentOrdersEntity, { id });
         if (!existing) {
-            throw new Error("Payment order not found");
+            throw new Error("Ordem de pagamento não encontrada.");
         }
 
         const payload: any = {};
 
         if (status === "Pago") {
             if (!effectivePaymentDate) {
-                throw new Error('Effective payment date is required when status is "Pago"');
+                throw new Error('A data efetiva de pagamento é obrigatória quando o status é "Pago".');
             }
             if (invoiceAttachment && String(invoiceAttachment).trim()) {
                 payload.invoice_attachment = String(invoiceAttachment).trim();
@@ -614,14 +605,14 @@ export class PaymentOrdersService {
             ));
             
             if (paymentDate.getTime() > todayUTC.getTime()) {
-                throw new Error("Effective payment date cannot be in the future");
+                throw new Error("A data efetiva de pagamento não pode ser futura.");
             }
 
             payload.effectivePaymentDate = paymentDate;
 
             if (paidValue !== undefined && paidValue !== null) {
                 if (paidValue < 0) {
-                    throw new Error("Paid value cannot be negative");
+                    throw new Error("O valor pago não pode ser negativo.");
                 }
                 payload.paidValue = paidValue;
             } else if (!existing.paidValue || existing.paidValue === 0) {
@@ -720,6 +711,68 @@ export class PaymentOrdersService {
     }
 
     /**
+     * Recalcular impostos de todas as ordens em aberto que usaram o motor tributario.
+     * Filtra por tax_engine_used = true e status != "Pago".
+     */
+    async recalculateAllTaxes(): Promise<{ recalculated: number; errors: string[] }> {
+        const PaymentOrdersEntity = Repository.getEntity("SasPaymentOrdersEntity");
+        const list = await Repository.findAll(PaymentOrdersEntity, { limit: 1000000 });
+        const items = Array.isArray(list?.data) ? list.data : Array.isArray(list?.items) ? list.items : Array.isArray(list) ? list : [];
+
+        const errors: string[] = [];
+        let recalculated = 0;
+
+        for (const order of items) {
+            const engineUsed = order.tax_engine_used === true || order.tax_engine_used === 1;
+            const isPaid = (order.status || "").toLowerCase() === "pago";
+            if (!engineUsed || isPaid) continue;
+
+            try {
+                const costCenterId = order.costCenterId || order.cost_center_id;
+                const invoiceAmount = Number(order.invoiceAmount || order.invoice_amount) || 0;
+                if (!costCenterId || invoiceAmount <= 0) continue;
+
+                const referenceMonth = order.expectedPaymentMonth || order.expected_payment_month || "";
+                const mesRef = order.mes_referencia_nota || order.mesReferenciaNota || undefined;
+                const invoiceCnae = order.invoice_cnae || order.invoiceCnae || undefined;
+
+                const calcResult = await this.taxCalcService.calculate({
+                    costCenterId,
+                    grossAmount: invoiceAmount,
+                    referenceMonth,
+                    orderId: order.id,
+                    invoiceCnae,
+                    mesReferenciaNota: mesRef
+                });
+
+                if (calcResult != null && typeof calcResult.totalDeductions === "number" && calcResult.totalDeductions >= 0) {
+                    const payload: any = {
+                        taxAmount: Math.round(calcResult.totalDeductions * 100) / 100,
+                        tax_engine_used: true,
+                        tax_calc_details: JSON.stringify(calcResult),
+                        irpj_adicional_amount: this.extractIrpjAdicional(calcResult)
+                    };
+                    await Repository.update(PaymentOrdersEntity, order.id, payload);
+                    recalculated++;
+                }
+            } catch (err: any) {
+                errors.push(`Ordem ${order.id}: ${err?.message || String(err)}`);
+            }
+        }
+
+        return { recalculated, errors };
+    }
+
+    /**
+     * Extrai o valor do IRPJ Adicional do resultado do motor tributario.
+     */
+    private extractIrpjAdicional(calcResult: any): number {
+        if (!calcResult?.deductions || !Array.isArray(calcResult.deductions)) return 0;
+        const item = calcResult.deductions.find((d: any) => d.name === "IRPJ Adicional");
+        return item ? Math.round((Number(item.amount) || 0) * 100) / 100 : 0;
+    }
+
+    /**
      * Extrair mês numérico de uma string YYYY-MM
      */
     private extractMonth(value: string | null | undefined): number {
@@ -749,7 +802,7 @@ export class PaymentOrdersService {
         const order = await Repository.findOne(PaymentOrdersEntity, { id: orderId });
 
         if (!order) {
-            throw new Error("Order not found");
+            throw new Error("Ordem não encontrada.");
         }
 
         const discountAmount = order.discountAmount ?? 0;

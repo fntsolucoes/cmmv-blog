@@ -56,6 +56,16 @@ export class PaymentOrdersBusinessController {
     }
 
     /**
+     * Recalcular impostos de todas as ordens em aberto com motor tributario.
+     * Somente usuario root pode executar.
+     */
+    @Post("recalculate-taxes")
+    @Auth({ rootOnly: true })
+    async recalculateTaxes() {
+        return await this.paymentOrdersService.recalculateAllTaxes();
+    }
+
+    /**
      * Buscar ordem por ID
      */
     @Get(":id")

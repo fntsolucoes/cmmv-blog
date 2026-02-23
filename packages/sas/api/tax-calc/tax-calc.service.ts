@@ -8,6 +8,8 @@ export interface TaxCalcInput {
     orderId?: string; // exclude this order from monthly sum when editing
     /** CNAE da nota (codigo). Define o anexo para esta ordem no calculo multi-anexo do Simples. */
     invoiceCnae?: string;
+    /** Mes de referencia da nota (YYYY-MM). Usado no Lucro Presumido para agrupar IRPJ por competencia. */
+    mesReferenciaNota?: string;
 }
 
 export interface DeductionItem {
@@ -33,7 +35,7 @@ const DEFAULT_PRESUMPTION_RATE = 32; // 32% para servicos (Lucro Presumido)
 @Service()
 export class TaxCalcService {
     /**
-     * Soma do valor bruto das ordens do centro de custo no mes (excluindo orderId se informado).
+     * Soma do valor bruto das ordens do centro de custo no mes por expectedPaymentMonth.
      */
     private async getMonthlySumForCostCenter(
         costCenterId: string,
@@ -46,6 +48,39 @@ export class TaxCalcService {
         let sum = 0;
         for (const o of items) {
             if (excludeOrderId && o.id === excludeOrderId) continue;
+            sum += Number(o.invoiceAmount) || 0;
+        }
+        return sum;
+    }
+
+    /**
+     * Normaliza chave de mes para YYYY-MM (mes sempre com 2 digitos).
+     */
+    static normalizeMonthKey(key: string): string {
+        const match = key.match(/^(\d{4})-(\d{1,2})/);
+        if (!match) return key;
+        const [, y, m] = match;
+        return `${y}-${String(parseInt(m, 10)).padStart(2, "0")}`;
+    }
+
+    /**
+     * Soma do valor bruto das ordens do centro de custo no mes pelo campo mes_referencia_nota (YYYY-MM).
+     * Usado no Lucro Presumido para IRPJ/IRPJ adicional (competencia pela emissao).
+     */
+    private async getMonthlySumByMesReferencia(
+        costCenterId: string,
+        mesReferencia: string,
+        excludeOrderId?: string
+    ): Promise<number> {
+        const Entity = Repository.getEntity("SasPaymentOrdersEntity");
+        const list = await Repository.findAll(Entity, { costCenterId }, []);
+        const items = Array.isArray(list?.data) ? list.data : Array.isArray(list?.items) ? list.items : Array.isArray(list) ? list : [];
+        const monthNorm = TaxCalcService.normalizeMonthKey(mesReferencia);
+        let sum = 0;
+        for (const o of items) {
+            if (excludeOrderId && o.id === excludeOrderId) continue;
+            const mk = o.mes_referencia_nota ?? o.mesReferenciaNota;
+            if (!mk || TaxCalcService.normalizeMonthKey(String(mk)) !== monthNorm) continue;
             sum += Number(o.invoiceAmount) || 0;
         }
         return sum;
@@ -112,11 +147,21 @@ export class TaxCalcService {
                     ? Number(fiscalProfile.presumptionRate) : DEFAULT_PRESUMPTION_RATE;
                 const presumptionRate = Math.min(100, Math.max(0, presumptionPct)) / 100;
 
-                const monthlySum = await this.getMonthlySumForCostCenter(
-                    input.costCenterId,
-                    referenceMonth,
-                    input.orderId
-                );
+                const mesRef = input.mesReferenciaNota ? TaxCalcService.normalizeMonthKey(input.mesReferenciaNota) : null;
+                let monthlySum: number;
+                if (mesRef) {
+                    monthlySum = await this.getMonthlySumByMesReferencia(
+                        input.costCenterId,
+                        mesRef,
+                        input.orderId
+                    );
+                } else {
+                    monthlySum = await this.getMonthlySumForCostCenter(
+                        input.costCenterId,
+                        referenceMonth,
+                        input.orderId
+                    );
+                }
                 const monthlyGross = monthlySum + gross;
                 const orderBaseIR = gross * presumptionRate;
                 const monthlyBaseIR = monthlyGross * presumptionRate;

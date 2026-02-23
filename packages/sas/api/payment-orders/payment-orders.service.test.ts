@@ -60,6 +60,109 @@ describe('PaymentOrdersService', () => {
         });
     });
 
+    describe('recalculateAllTaxes', () => {
+        let mockTaxCalcService: any;
+
+        beforeEach(() => {
+            mockTaxCalcService = {
+                calculate: vi.fn()
+            };
+            (Repository.getEntity as ReturnType<typeof vi.fn>).mockReturnValue(mockEntity);
+            service = new PaymentOrdersService(mockTaxCalcService);
+        });
+
+        it('deve recalcular ordens com tax_engine_used = 1 e status diferente de Pago', async () => {
+            const orders = [
+                { id: 'ord-1', tax_engine_used: 1, status: 'Pendente', costCenterId: 'cc-1', invoiceAmount: 5000, expectedPaymentMonth: '2026-03', mes_referencia_nota: '2026-03' },
+                { id: 'ord-2', tax_engine_used: 1, status: 'Pago', costCenterId: 'cc-2', invoiceAmount: 3000, expectedPaymentMonth: '2026-03' },
+                { id: 'ord-3', tax_engine_used: 0, status: 'Pendente', costCenterId: 'cc-3', invoiceAmount: 2000, expectedPaymentMonth: '2026-03' },
+            ];
+            (Repository.findAll as ReturnType<typeof vi.fn>).mockResolvedValue({ data: orders });
+            (Repository.update as ReturnType<typeof vi.fn>).mockResolvedValue({});
+            mockTaxCalcService.calculate.mockResolvedValue({
+                totalDeductions: 500,
+                deductions: [
+                    { name: 'ISS', amount: 250 },
+                    { name: 'IRPJ Adicional', amount: 100 }
+                ]
+            });
+
+            const result = await service.recalculateAllTaxes();
+
+            expect(result.recalculated).toBe(1);
+            expect(result.errors).toEqual([]);
+            expect(mockTaxCalcService.calculate).toHaveBeenCalledTimes(1);
+            expect(mockTaxCalcService.calculate).toHaveBeenCalledWith(expect.objectContaining({
+                costCenterId: 'cc-1',
+                grossAmount: 5000,
+                mesReferenciaNota: '2026-03'
+            }));
+            expect(Repository.update).toHaveBeenCalledWith(mockEntity, 'ord-1', expect.objectContaining({
+                taxAmount: 500,
+                tax_engine_used: true,
+                irpj_adicional_amount: 100
+            }));
+        });
+
+        it('deve retornar 0 recalculadas quando nenhuma ordem se qualifica', async () => {
+            const orders = [
+                { id: 'ord-1', tax_engine_used: 0, status: 'Pendente', costCenterId: 'cc-1', invoiceAmount: 5000 },
+                { id: 'ord-2', tax_engine_used: 1, status: 'Pago', costCenterId: 'cc-2', invoiceAmount: 3000 },
+            ];
+            (Repository.findAll as ReturnType<typeof vi.fn>).mockResolvedValue({ data: orders });
+
+            const result = await service.recalculateAllTaxes();
+
+            expect(result.recalculated).toBe(0);
+            expect(result.errors).toEqual([]);
+            expect(mockTaxCalcService.calculate).not.toHaveBeenCalled();
+        });
+
+        it('deve capturar erros de calculo e continuar processando', async () => {
+            const orders = [
+                { id: 'ord-1', tax_engine_used: 1, status: 'Pendente', costCenterId: 'cc-1', invoiceAmount: 5000, expectedPaymentMonth: '2026-03' },
+                { id: 'ord-2', tax_engine_used: 1, status: 'Pendente', costCenterId: 'cc-2', invoiceAmount: 3000, expectedPaymentMonth: '2026-03' },
+            ];
+            (Repository.findAll as ReturnType<typeof vi.fn>).mockResolvedValue({ data: orders });
+            (Repository.update as ReturnType<typeof vi.fn>).mockResolvedValue({});
+            mockTaxCalcService.calculate
+                .mockRejectedValueOnce(new Error('Falha no calculo'))
+                .mockResolvedValueOnce({
+                    totalDeductions: 200,
+                    deductions: [{ name: 'ISS', amount: 200 }]
+                });
+
+            const result = await service.recalculateAllTaxes();
+
+            expect(result.recalculated).toBe(1);
+            expect(result.errors.length).toBe(1);
+            expect(result.errors[0]).toContain('ord-1');
+            expect(result.errors[0]).toContain('Falha no calculo');
+        });
+
+        it('deve ignorar ordens sem costCenterId ou com invoiceAmount <= 0', async () => {
+            const orders = [
+                { id: 'ord-1', tax_engine_used: 1, status: 'Pendente', costCenterId: '', invoiceAmount: 5000, expectedPaymentMonth: '2026-03' },
+                { id: 'ord-2', tax_engine_used: 1, status: 'Pendente', costCenterId: 'cc-2', invoiceAmount: 0, expectedPaymentMonth: '2026-03' },
+            ];
+            (Repository.findAll as ReturnType<typeof vi.fn>).mockResolvedValue({ data: orders });
+
+            const result = await service.recalculateAllTaxes();
+
+            expect(result.recalculated).toBe(0);
+            expect(mockTaxCalcService.calculate).not.toHaveBeenCalled();
+        });
+
+        it('deve tratar lista vazia de ordens', async () => {
+            (Repository.findAll as ReturnType<typeof vi.fn>).mockResolvedValue({ data: [] });
+
+            const result = await service.recalculateAllTaxes();
+
+            expect(result.recalculated).toBe(0);
+            expect(result.errors).toEqual([]);
+        });
+    });
+
     describe('updateFromExportCSV', () => {
         const mockCommercialPartnersEntity = { name: 'SasCommercialPartnersEntity' };
         const mockCostCentersEntity = { name: 'SasCostCentersEntity' };

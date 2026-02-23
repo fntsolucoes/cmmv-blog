@@ -52,6 +52,17 @@
                         class="hidden"
                         @change="handleBulkUpdateCSVFile"
                     />
+                    <button
+                        type="button"
+                        @click="recalculateAllTaxes"
+                        :disabled="recalculatingTaxes"
+                        class="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium rounded-md transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        {{ recalculatingTaxes ? 'Recalculando...' : 'Recalcular Impostos' }}
+                    </button>
                 </template>
                 <button @click="openAddDialog" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md transition-colors flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -651,11 +662,11 @@
                             @change="loadMarkAsPaidExchangeRate"
                         />
                         <p v-if="markAsPaidItem?.currency && markAsPaidItem.currency !== 'BRL'" class="mt-1 text-xs text-neutral-400">
-                            <span v-if="markAsPaidRateLoading">Carregando cotacao...</span>
+                            <span v-if="markAsPaidRateLoading">Carregando cotação...</span>
                             <template v-else-if="markAsPaidExchangeRate">
-                                Cotacao {{ markAsPaidItem.currency }}-BRL {{ markAsPaidRateIsFromDate ? '(data do pagamento)' : '(ultima no sistema)' }}: 1 {{ markAsPaidItem.currency }} = R$ {{ formatRateNumber(markAsPaidExchangeRate.rate) }}
+                                Cotação {{ markAsPaidItem.currency }}-BRL {{ markAsPaidRateIsFromDate ? '(data do pagamento)' : '(última no sistema)' }}: 1 {{ markAsPaidItem.currency }} = R$ {{ formatRateNumber(markAsPaidExchangeRate.rate) }}
                             </template>
-                            <span v-else class="text-yellow-500">Sem cotacao cadastrada</span>
+                            <span v-else class="text-yellow-500">Sem cotação cadastrada</span>
                         </p>
                     </div>
                     <div>
@@ -703,12 +714,12 @@
                                 @click="runMarkAsPaidTaxCalc"
                                 :disabled="markAsPaidTaxCalcLoading || !markAsPaidForm.costCenterId || (Number(markAsPaidForm.grossValue) || 0) <= 0"
                                 class="px-2 py-1 text-xs bg-amber-600 hover:bg-amber-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Recalcular imposto pelo motor tributario"
+                                title="Recalcular imposto pelo motor tributário"
                             >
                                 {{ markAsPaidTaxCalcLoading ? '...' : 'Recalcular' }}
                             </button>
                         </div>
-                        <p v-if="markAsPaidTaxLocked" class="mt-0.5 text-xs text-amber-400">Imposto calculado pelo motor tributario.</p>
+                        <p v-if="markAsPaidTaxLocked" class="mt-0.5 text-xs text-amber-400">Imposto calculado pelo motor tributário.</p>
                         <p v-else class="mt-0.5 text-xs text-neutral-400">Confirme a % de imposto aplicada na nota</p>
                     </div>
                     <div>
@@ -728,7 +739,7 @@
                         />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-neutral-300 mb-1">Valor liquido <span class="text-neutral-400 font-normal">(em Real)</span></label>
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">Valor líquido <span class="text-neutral-400 font-normal">(em Real)</span></label>
                         <div
                             class="w-full max-w-[180px] px-2 py-1.5 text-sm bg-neutral-600 border border-neutral-500 rounded-md text-white font-medium"
                         >
@@ -1039,9 +1050,20 @@
                                 class="w-full px-3 py-2 bg-neutral-600 border border-neutral-600 rounded-md text-neutral-300 cursor-not-allowed"
                             />
                         </div>
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-300 mb-2">
+                                Mês de referência da nota
+                            </label>
+                            <input
+                                v-model="form.mes_referencia_nota"
+                                type="month"
+                                class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <p class="mt-1 text-xs text-amber-400">Influencia o cálculo do IRPJ adicional (Lucro Presumido).</p>
+                        </div>
                         <div class="col-span-2 p-3 bg-neutral-700/50 rounded-lg border border-neutral-600">
                             <div class="flex items-center justify-between mb-2">
-                                <span class="text-sm font-medium text-neutral-300">Motor tributario</span>
+                                <span class="text-sm font-medium text-neutral-300">Motor tributário</span>
                                 <button
                                     type="button"
                                     :disabled="!form.costCenterId || taxCalcLoading || parseCurrencyValue(form.invoiceAmount) <= 0"
@@ -1054,7 +1076,7 @@
                             <p v-if="taxCalcResult" class="text-xs text-neutral-400 space-y-0.5">
                                 <span class="block">Bruto: {{ formatCurrency(taxCalcResult.gross, form.currency) }}</span>
                                 <span v-for="d in taxCalcResult.deductions" :key="d.name" class="block">- {{ d.name }}<template v-if="d.percent != null"> ({{ d.percent.toFixed(2).replace('.', ',') }}%)</template>: {{ formatCurrency(d.amount, form.currency) }}</span>
-                                <span class="block font-medium text-white">Liquido: {{ formatCurrency(taxCalcResult.liquid, form.currency) }}</span>
+                                <span class="block font-medium text-white">Líquido: {{ formatCurrency(taxCalcResult.liquid, form.currency) }}</span>
                             </p>
                             <p v-else class="text-xs text-neutral-500">Selecione empresa e valor e clique em Calcular impostos.</p>
                         </div>
@@ -1065,21 +1087,10 @@
                             <input
                                 v-model="form.natureza_rendimento"
                                 type="text"
-                                placeholder="Ex: 13001 (servicos TI)"
+                                placeholder="Ex: 13001 (serviços TI)"
                                 class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
-                            <p class="mt-1 text-xs text-neutral-400">Codigo exigido pelo governo para envio Reinf.</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-neutral-300 mb-2">
-                                Data do Fato Gerador (emissao nota)
-                            </label>
-                            <input
-                                v-model="form.data_emissao_nota"
-                                type="date"
-                                class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <p class="mt-1 text-xs text-neutral-400">Regime de Caixa: conta no pagamento; Competencia: na emissao.</p>
+                            <p class="mt-1 text-xs text-neutral-400">Código exigido pelo governo para envio Reinf.</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-neutral-300 mb-2">
@@ -1225,6 +1236,7 @@ const importingCSV = ref(false);
 const exportingCSV = ref(false);
 const canBulkUpdate = ref(false);
 const updatingBulkCSV = ref(false);
+const recalculatingTaxes = ref(false);
 const bulkUpdateFileInput = ref<HTMLInputElement | null>(null);
 
 // Estados para busca de parceiros
@@ -1279,7 +1291,7 @@ const form = ref({
     paymentMethod: '' as string | null,
     observations: '' as string | null,
     natureza_rendimento: '' as string | null,
-    data_emissao_nota: '' as string | null,
+    mes_referencia_nota: '' as string | null,
     invoiceCnae: '' as string,
     invoiceAttachment: '' as string
 });
@@ -2003,7 +2015,7 @@ const formatValueForDBExport = (val: unknown): string => {
 const exportToCSV = () => {
     const list = filteredItems.value;
     if (list.length === 0) {
-        alert('Nao ha dados para exportar. Ajuste os filtros ou carregue as ordens.');
+        alert('Não há dados para exportar. Ajuste os filtros ou carregue as ordens.');
         return;
     }
     exportingCSV.value = true;
@@ -2057,7 +2069,7 @@ const handleBulkUpdateCSVFile = async (event: Event) => {
         const updated = data?.updated ?? 0;
         const errors = data?.errors ?? [];
         await loadData();
-        let msg = `Update em lote concluido.\nRegistros atualizados: ${updated}`;
+        let msg = `Atualização em lote concluída.\nRegistros atualizados: ${updated}`;
         if (errors.length > 0) {
             msg += `\n\nErros (${errors.length}):\n${errors.slice(0, 10).join('\n')}`;
             if (errors.length > 10) msg += '\n...';
@@ -2065,9 +2077,32 @@ const handleBulkUpdateCSVFile = async (event: Event) => {
         alert(msg);
     } catch (err: any) {
         console.error('Erro no update em lote:', err);
-        alert('Erro no update em lote: ' + (err?.message || String(err)) + '\nApenas usuario root pode executar.');
+        alert('Erro na atualização em lote: ' + (err?.message || String(err)) + '\nApenas usuário root pode executar.');
     } finally {
         updatingBulkCSV.value = false;
+    }
+};
+
+const recalculateAllTaxes = async () => {
+    if (!confirm('Deseja recalcular os impostos de todas as ordens em aberto que utilizam o motor tributário?')) return;
+    recalculatingTaxes.value = true;
+    try {
+        const res = await client.paymentOrders.recalculateTaxes();
+        const data = res?.data ?? res?.result ?? res;
+        const recalculated = data?.recalculated ?? 0;
+        const errors = data?.errors ?? [];
+        await loadData();
+        let msg = `Recálculo concluído.\nOrdens recalculadas: ${recalculated}`;
+        if (errors.length > 0) {
+            msg += `\n\nErros (${errors.length}):\n${errors.slice(0, 10).join('\n')}`;
+            if (errors.length > 10) msg += '\n...';
+        }
+        alert(msg);
+    } catch (err: any) {
+        console.error('Erro ao recalcular impostos:', err);
+        alert('Erro ao recalcular impostos: ' + (err?.message || String(err)));
+    } finally {
+        recalculatingTaxes.value = false;
     }
 };
 
@@ -2089,7 +2124,7 @@ const handleImportCSVFile = async (event: Event) => {
         const imported = data?.imported ?? 0;
         const errors = data?.errors ?? [];
         await loadData();
-        let msg = `Importacao concluida.\nOrdens criadas: ${imported}`;
+        let msg = `Importação concluída.\nOrdens criadas: ${imported}`;
         if (errors.length > 0) {
             msg += `\n\nErros (${errors.length}):\n${errors.slice(0, 10).join('\n')}`;
             if (errors.length > 10) msg += '\n...';
@@ -2126,7 +2161,7 @@ const openAddDialog = () => {
         paymentMethod: null,
         observations: null,
         natureza_rendimento: null,
-        data_emissao_nota: null,
+        mes_referencia_nota: null,
         invoiceCnae: '',
         invoiceAttachment: ''
     };
@@ -2186,13 +2221,7 @@ const editItem = (item: any) => {
         paymentMethod: (item.paymentMethod ?? item.payment_method ?? null) || null,
         observations: item.observations || null,
         natureza_rendimento: item.natureza_rendimento ?? null,
-        data_emissao_nota: item.data_emissao_nota ? (() => {
-            const d = new Date(item.data_emissao_nota);
-            const y = d.getUTCFullYear();
-            const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(d.getUTCDate()).padStart(2, '0');
-            return `${y}-${m}-${day}`;
-        })() : null,
+        mes_referencia_nota: item.mes_referencia_nota ?? item.mesReferenciaNota ?? null,
         invoiceCnae: (item.invoice_cnae && String(item.invoice_cnae).trim()) || getCnaePrincipalFromCostCenter(costCenters.value.find((c: any) => c.id === (item.costCenterId || ''))) || '',
         invoiceAttachment: (item.invoice_attachment || item.invoiceAttachment || '').trim()
     };
@@ -2242,7 +2271,7 @@ const closeDialog = () => {
         paymentMethod: null,
         observations: null,
         natureza_rendimento: null,
-        data_emissao_nota: null,
+        mes_referencia_nota: null,
         invoiceCnae: '',
         invoiceAttachment: ''
     };
@@ -2312,12 +2341,14 @@ const runMarkAsPaidTaxCalc = async () => {
     markAsPaidTaxCalcLoading.value = true;
     try {
         const referenceMonth = getMarkAsPaidReferenceMonth();
+        const itemMesRef = markAsPaidItem.value?.mes_referencia_nota || markAsPaidItem.value?.mesReferenciaNota || undefined;
         const res = await client.taxCalc.calculate({
             costCenterId,
             grossAmount: gross,
             referenceMonth,
             orderId: markAsPaidItem.value.id,
-            invoiceCnae: (markAsPaidForm.value.invoiceCnae && String(markAsPaidForm.value.invoiceCnae).trim()) || undefined
+            invoiceCnae: (markAsPaidForm.value.invoiceCnae && String(markAsPaidForm.value.invoiceCnae).trim()) || undefined,
+            mesReferenciaNota: itemMesRef
         });
         const data = res?.data ?? res;
         if (data && typeof data.totalDeductions === 'number') {
@@ -2328,7 +2359,7 @@ const runMarkAsPaidTaxCalc = async () => {
                 invoiceCnae: (markAsPaidForm.value.invoiceCnae || '').trim()
             };
         } else {
-            alert('Nao foi possivel recalcular os impostos. Tente novamente.');
+            alert('Não foi possível recalcular os impostos. Tente novamente.');
         }
     } catch (e: any) {
         console.error('Erro ao recalcular impostos (marcar como pago):', e);
@@ -2556,7 +2587,7 @@ const formatMarkAsPaidNetValueInBRL = (gross: number, taxPct: number, currency?:
         return 'R$ ' + Number(net).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
     if (markAsPaidRateLoading.value) return 'Carregando...';
-    if (!markAsPaidExchangeRate.value) return formatMarkAsPaidNetValue(g, p, c) + ' (sem cotacao para R$)';
+    if (!markAsPaidExchangeRate.value) return formatMarkAsPaidNetValue(g, p, c) + ' (sem cotação para R$)';
     const netBRL = net * Number(markAsPaidExchangeRate.value.rate);
     return 'R$ ' + Number(netBRL).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
@@ -2566,7 +2597,7 @@ const confirmMarkAsPaid = async () => {
     
     const currency = (markAsPaidItem.value.currency || 'BRL').toUpperCase();
     if (currency !== 'BRL' && !markAsPaidExchangeRate.value) {
-        alert('Para moeda estrangeira e necessario ter cotacao carregada. Altere a data de pagamento ou cadastre a cotacao.');
+        alert('Para moeda estrangeira é necessário ter cotação carregada. Altere a data de pagamento ou cadastre a cotação.');
         return;
     }
     
@@ -2991,6 +3022,16 @@ const saveOrder = async () => {
         return;
     }
     
+    if (form.value.withdrawalDate) {
+        const wd = new Date(form.value.withdrawalDate + 'T12:00:00Z');
+        const now = new Date();
+        const todayEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+        if (wd.getTime() > todayEnd.getTime()) {
+            alert('A Data de Saque não pode ser uma data futura.');
+            return;
+        }
+    }
+
     saving.value = true;
     try {
         const payload: any = {
@@ -3027,8 +3068,8 @@ const saveOrder = async () => {
         if (form.value.natureza_rendimento != null && form.value.natureza_rendimento !== '') {
             payload.natureza_rendimento = form.value.natureza_rendimento.trim() || null;
         }
-        if (form.value.data_emissao_nota != null && form.value.data_emissao_nota !== '') {
-            payload.data_emissao_nota = form.value.data_emissao_nota || null;
+        if (form.value.mes_referencia_nota != null && form.value.mes_referencia_nota !== '') {
+            payload.mes_referencia_nota = form.value.mes_referencia_nota || null;
         }
         if (form.value.invoiceCnae != null && form.value.invoiceCnae !== '') {
             payload.invoice_cnae = form.value.invoiceCnae.trim() || null;
@@ -3107,7 +3148,8 @@ const runTaxCalc = async () => {
             grossAmount: gross,
             referenceMonth: refMonth,
             orderId: isEditing.value && editingItem.value ? editingItem.value.id : undefined,
-            invoiceCnae: (form.value.invoiceCnae && String(form.value.invoiceCnae).trim()) || undefined
+            invoiceCnae: (form.value.invoiceCnae && String(form.value.invoiceCnae).trim()) || undefined,
+            mesReferenciaNota: form.value.mes_referencia_nota || undefined
         });
         const data = res?.data ?? res;
         if (data && typeof data.gross === 'number') {

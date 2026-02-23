@@ -635,4 +635,547 @@ describe("TaxCalcService", () => {
             expect(result).toBeCloseTo(29.10, 2);
         });
     });
+
+    // ==========================================
+    // normalizeMonthKey (static)
+    // ==========================================
+    describe("normalizeMonthKey", () => {
+        it("mantem YYYY-MM com dois digitos", () => {
+            expect(TaxCalcService.normalizeMonthKey("2025-07")).toBe("2025-07");
+        });
+        it("normaliza YYYY-M para YYYY-MM", () => {
+            expect(TaxCalcService.normalizeMonthKey("2025-7")).toBe("2025-07");
+            expect(TaxCalcService.normalizeMonthKey("2024-9")).toBe("2024-09");
+        });
+    });
+
+    // ==========================================
+    // getMonthlySumByMesReferencia
+    // ==========================================
+    describe("getMonthlySumByMesReferencia", () => {
+        it("soma apenas ordens cujo mes_referencia_nota corresponde ao mes", async () => {
+            mockFindAll.mockResolvedValue({ data: [
+                { id: "o1", invoiceAmount: 10000, mes_referencia_nota: "2025-07" },
+                { id: "o2", invoiceAmount: 20000, mes_referencia_nota: "2025-07" },
+                { id: "o3", invoiceAmount: 5000, mes_referencia_nota: "2025-08" },
+                { id: "o4", invoiceAmount: 3000 },
+            ] });
+
+            const sum = await (service as any).getMonthlySumByMesReferencia("cc-1", "2025-07");
+            expect(sum).toBe(30000);
+        });
+
+        it("exclui orderId informado", async () => {
+            mockFindAll.mockResolvedValue({ data: [
+                { id: "o1", invoiceAmount: 10000, mes_referencia_nota: "2025-07" },
+                { id: "o2", invoiceAmount: 20000, mes_referencia_nota: "2025-07" },
+            ] });
+
+            const sum = await (service as any).getMonthlySumByMesReferencia("cc-1", "2025-07", "o1");
+            expect(sum).toBe(20000);
+        });
+
+        it("retorna 0 quando nenhuma ordem tem mes_referencia_nota no mes", async () => {
+            mockFindAll.mockResolvedValue({ data: [
+                { id: "o1", invoiceAmount: 10000, mes_referencia_nota: "2025-06" },
+                { id: "o2", invoiceAmount: 5000 },
+            ] });
+
+            const sum = await (service as any).getMonthlySumByMesReferencia("cc-1", "2025-07");
+            expect(sum).toBe(0);
+        });
+
+        it("retorna 0 para lista vazia", async () => {
+            mockFindAll.mockResolvedValue({ data: [] });
+            const sum = await (service as any).getMonthlySumByMesReferencia("cc-1", "2025-07");
+            expect(sum).toBe(0);
+        });
+
+        it("soma corretamente duas notas no mesmo mes (caso real 15k + 6k)", async () => {
+            mockFindAll.mockResolvedValue({ data: [
+                { id: "o1", invoiceAmount: 15000, mes_referencia_nota: "2026-03" },
+                { id: "o2", invoiceAmount: 6000, mes_referencia_nota: "2026-03" },
+            ] });
+
+            const sum = await (service as any).getMonthlySumByMesReferencia("cc-1", "2026-03");
+            expect(sum).toBe(21000);
+        });
+    });
+
+    // ==========================================
+    // calculate - Lucro Presumido com mesReferenciaNota
+    // ==========================================
+    describe("calculate - Lucro Presumido com mesReferenciaNota", () => {
+        it("usa mesReferenciaNota para soma mensal no IRPJ adicional", async () => {
+            const costCenterId = "cc-lp";
+            const gross = 100000;
+
+            const costCenter = {
+                id: costCenterId,
+                tax_regime_id: "reg-lp",
+                is_mei_optant: false,
+                fiscal_profile: JSON.stringify({
+                    personType: "PJ",
+                    presumptionRate: 32
+                }),
+            };
+
+            const regime = { id: "reg-lp", code: "LUCRO_PRESUMIDO" };
+
+            mockGetEntity.mockReturnValue("MockEntity");
+
+            mockFindOne.mockImplementation(async (_entity: any, query: any) => {
+                if (query.id === costCenterId) return costCenter;
+                if (query.id === "reg-lp") return regime;
+                return null;
+            });
+
+            const ordersInMonth = [
+                { id: "o-other", invoiceAmount: 50000, mes_referencia_nota: "2025-07" },
+            ];
+
+            mockFindAll.mockImplementation(async (_entity: any, filters: any) => {
+                if (filters && filters.costCenterId && !filters.expectedPaymentMonth) {
+                    return { data: ordersInMonth };
+                }
+                return { data: [] };
+            });
+
+            const result = await service.calculate({
+                costCenterId,
+                grossAmount: gross,
+                referenceMonth: "2025-09",
+                mesReferenciaNota: "2025-07",
+            });
+
+            expect(result.gross).toBe(gross);
+
+            const irpj = result.deductions.find(d => d.name === "IRPJ");
+            expect(irpj).toBeDefined();
+            expect(irpj!.amount).toBeGreaterThan(0);
+
+            // monthlySum = 50000 (da outra ordem com mes_referencia_nota 2025-07)
+            // monthlyGross = 50000 + 100000 = 150000
+            // monthlyBaseIR = 150000 * 0.32 = 48000
+            // orderBaseIR = 100000 * 0.32 = 32000
+            // IRPJ Adicional: monthlyBaseIR(48000) - 20000 = 28000 * 0.10 = 2800
+            // proporcao da ordem: 32000/48000 = 0.6667
+            // orderAdicional: 2800 * 0.6667 = 1866.67
+            const adicional = result.deductions.find(d => d.name === "IRPJ Adicional");
+            expect(adicional).toBeDefined();
+            expect(adicional!.amount).toBeCloseTo(1866.67, 0);
+        });
+
+        it("faz fallback para expectedPaymentMonth quando mesReferenciaNota nao e informado", async () => {
+            const costCenterId = "cc-lp-fb";
+            const gross = 100000;
+
+            const costCenter = {
+                id: costCenterId,
+                tax_regime_id: "reg-lp",
+                is_mei_optant: false,
+                fiscal_profile: JSON.stringify({
+                    personType: "PJ",
+                    presumptionRate: 32
+                }),
+            };
+
+            const regime = { id: "reg-lp", code: "LUCRO_PRESUMIDO" };
+
+            mockGetEntity.mockReturnValue("MockEntity");
+
+            mockFindOne.mockImplementation(async (_entity: any, query: any) => {
+                if (query.id === costCenterId) return costCenter;
+                if (query.id === "reg-lp") return regime;
+                return null;
+            });
+
+            const ordersExpectedMonth = [
+                { id: "o-exp", invoiceAmount: 40000, expectedPaymentMonth: "2025-09" },
+            ];
+
+            mockFindAll.mockImplementation(async (_entity: any, filters: any) => {
+                if (filters && filters.expectedPaymentMonth) {
+                    return { data: ordersExpectedMonth };
+                }
+                return { data: [] };
+            });
+
+            const result = await service.calculate({
+                costCenterId,
+                grossAmount: gross,
+                referenceMonth: "2025-09",
+            });
+
+            expect(result.gross).toBe(gross);
+
+            // monthlySum = 40000 (via expectedPaymentMonth fallback)
+            // monthlyGross = 140000
+            // monthlyBaseIR = 140000 * 0.32 = 44800
+            // IRPJ Adicional: (44800 - 20000) * 0.10 = 2480
+            const adicional = result.deductions.find(d => d.name === "IRPJ Adicional");
+            expect(adicional).toBeDefined();
+            expect(adicional!.amount).toBeGreaterThan(0);
+        });
+
+        it("caso real: duas notas no mesmo mes (15k + 6k em 2026-03) - base presumida 6720 < 20000 - sem adicional", async () => {
+            const costCenterId = "cc-lp-real";
+            const gross = 15000;
+
+            const costCenter = {
+                id: costCenterId,
+                tax_regime_id: "reg-lp",
+                is_mei_optant: false,
+                fiscal_profile: JSON.stringify({
+                    personType: "PJ",
+                    presumptionRate: 32
+                }),
+            };
+
+            const regime = { id: "reg-lp", code: "LUCRO_PRESUMIDO" };
+
+            mockGetEntity.mockReturnValue("MockEntity");
+
+            mockFindOne.mockImplementation(async (_entity: any, query: any) => {
+                if (query.id === costCenterId) return costCenter;
+                if (query.id === "reg-lp") return regime;
+                return null;
+            });
+
+            const ordersInMonth = [
+                { id: "o-6k", invoiceAmount: 6000, mes_referencia_nota: "2026-03" },
+            ];
+
+            mockFindAll.mockImplementation(async (_entity: any, filters: any) => {
+                if (filters && filters.costCenterId && !filters.expectedPaymentMonth) {
+                    return { data: ordersInMonth };
+                }
+                return { data: [] };
+            });
+
+            const result = await service.calculate({
+                costCenterId,
+                grossAmount: gross,
+                referenceMonth: "2026-04",
+                mesReferenciaNota: "2026-03",
+            });
+
+            expect(result.gross).toBe(gross);
+
+            // monthlyGross = 6000 + 15000 = 21000
+            // monthlyBaseIR = 21000 * 0.32 = 6720
+            // 6720 < 20000 -> sem adicional (limite e sobre a BASE, nao sobre a receita)
+            const adicional = result.deductions.find(d => d.name === "IRPJ Adicional");
+            expect(adicional).toBeUndefined();
+
+            const irpj = result.deductions.find(d => d.name === "IRPJ");
+            expect(irpj).toBeDefined();
+            expect(irpj!.amount).toBeGreaterThan(0);
+        });
+
+        it("nota unica de 100k - base presumida 32000 > 20000 - DEVE ter adicional de 1200", async () => {
+            const costCenterId = "cc-lp-100k";
+            const gross = 100000;
+
+            const costCenter = {
+                id: costCenterId,
+                tax_regime_id: "reg-lp",
+                is_mei_optant: false,
+                fiscal_profile: JSON.stringify({
+                    personType: "PJ",
+                    presumptionRate: 32
+                }),
+            };
+
+            const regime = { id: "reg-lp", code: "LUCRO_PRESUMIDO" };
+
+            mockGetEntity.mockReturnValue("MockEntity");
+
+            mockFindOne.mockImplementation(async (_entity: any, query: any) => {
+                if (query.id === costCenterId) return costCenter;
+                if (query.id === "reg-lp") return regime;
+                return null;
+            });
+
+            mockFindAll.mockImplementation(async (_entity: any, filters: any) => {
+                if (filters && filters.costCenterId && !filters.expectedPaymentMonth) {
+                    return { data: [] };
+                }
+                return { data: [] };
+            });
+
+            const result = await service.calculate({
+                costCenterId,
+                grossAmount: gross,
+                referenceMonth: "2026-03",
+                mesReferenciaNota: "2026-03",
+            });
+
+            // monthlyGross = 0 + 100000 = 100000
+            // monthlyBaseIR = 100000 * 0.32 = 32000
+            // 32000 > 20000 -> adicional = (32000 - 20000) * 0.10 = 1200
+            const adicional = result.deductions.find(d => d.name === "IRPJ Adicional");
+            expect(adicional).toBeDefined();
+            expect(adicional!.amount).toBeCloseTo(1200, 0);
+
+            const irpj = result.deductions.find(d => d.name === "IRPJ");
+            expect(irpj).toBeDefined();
+            // IRPJ = 32000 * 0.15 = 4800
+            expect(irpj!.amount).toBeCloseTo(4800, 0);
+
+            const csll = result.deductions.find(d => d.name === "CSLL");
+            expect(csll).toBeDefined();
+            // CSLL = 32000 * 0.09 = 2880
+            expect(csll!.amount).toBeCloseTo(2880, 0);
+        });
+
+        it("nota unica de 25k - base presumida 8000 < 20000 - SEM adicional", async () => {
+            const costCenterId = "cc-lp-25k";
+            const gross = 25000;
+
+            const costCenter = {
+                id: costCenterId,
+                tax_regime_id: "reg-lp",
+                is_mei_optant: false,
+                fiscal_profile: JSON.stringify({
+                    personType: "PJ",
+                    presumptionRate: 32
+                }),
+            };
+
+            const regime = { id: "reg-lp", code: "LUCRO_PRESUMIDO" };
+
+            mockGetEntity.mockReturnValue("MockEntity");
+
+            mockFindOne.mockImplementation(async (_entity: any, query: any) => {
+                if (query.id === costCenterId) return costCenter;
+                if (query.id === "reg-lp") return regime;
+                return null;
+            });
+
+            mockFindAll.mockImplementation(async () => {
+                return { data: [] };
+            });
+
+            const result = await service.calculate({
+                costCenterId,
+                grossAmount: gross,
+                referenceMonth: "2026-03",
+                mesReferenciaNota: "2026-03",
+            });
+
+            // monthlyGross = 25000
+            // monthlyBaseIR = 25000 * 0.32 = 8000
+            // 8000 < 20000 -> SEM adicional
+            const adicional = result.deductions.find(d => d.name === "IRPJ Adicional");
+            expect(adicional).toBeUndefined();
+        });
+
+        it("limiar exato: receita de 62500 - base presumida = 20000 - SEM adicional (nao ultrapassa)", async () => {
+            const costCenterId = "cc-lp-limiar";
+            const gross = 62500;
+
+            const costCenter = {
+                id: costCenterId,
+                tax_regime_id: "reg-lp",
+                is_mei_optant: false,
+                fiscal_profile: JSON.stringify({
+                    personType: "PJ",
+                    presumptionRate: 32
+                }),
+            };
+
+            const regime = { id: "reg-lp", code: "LUCRO_PRESUMIDO" };
+
+            mockGetEntity.mockReturnValue("MockEntity");
+
+            mockFindOne.mockImplementation(async (_entity: any, query: any) => {
+                if (query.id === costCenterId) return costCenter;
+                if (query.id === "reg-lp") return regime;
+                return null;
+            });
+
+            mockFindAll.mockImplementation(async () => {
+                return { data: [] };
+            });
+
+            const result = await service.calculate({
+                costCenterId,
+                grossAmount: gross,
+                referenceMonth: "2026-03",
+                mesReferenciaNota: "2026-03",
+            });
+
+            // monthlyBaseIR = 62500 * 0.32 = 20000
+            // 20000 - 20000 = 0 -> SEM adicional (limite nao ultrapassado)
+            const adicional = result.deductions.find(d => d.name === "IRPJ Adicional");
+            expect(adicional).toBeUndefined();
+        });
+
+        it("acima do limiar: receita de 62501 - base presumida 20000.32 > 20000 - COM adicional", async () => {
+            const costCenterId = "cc-lp-acima";
+            const gross = 62501;
+
+            const costCenter = {
+                id: costCenterId,
+                tax_regime_id: "reg-lp",
+                is_mei_optant: false,
+                fiscal_profile: JSON.stringify({
+                    personType: "PJ",
+                    presumptionRate: 32
+                }),
+            };
+
+            const regime = { id: "reg-lp", code: "LUCRO_PRESUMIDO" };
+
+            mockGetEntity.mockReturnValue("MockEntity");
+
+            mockFindOne.mockImplementation(async (_entity: any, query: any) => {
+                if (query.id === costCenterId) return costCenter;
+                if (query.id === "reg-lp") return regime;
+                return null;
+            });
+
+            mockFindAll.mockImplementation(async () => {
+                return { data: [] };
+            });
+
+            const result = await service.calculate({
+                costCenterId,
+                grossAmount: gross,
+                referenceMonth: "2026-03",
+                mesReferenciaNota: "2026-03",
+            });
+
+            // monthlyBaseIR = 62501 * 0.32 = 20000.32
+            // 20000.32 - 20000 = 0.32 * 0.10 = 0.032 -> COM adicional (pequeno)
+            const adicional = result.deductions.find(d => d.name === "IRPJ Adicional");
+            expect(adicional).toBeDefined();
+            expect(adicional!.amount).toBeGreaterThan(0);
+        });
+
+        it("duas notas somando 70k no mes - base 22400 > 20000 - COM adicional proporcional", async () => {
+            const costCenterId = "cc-lp-70k";
+            const gross = 40000;
+
+            const costCenter = {
+                id: costCenterId,
+                tax_regime_id: "reg-lp",
+                is_mei_optant: false,
+                fiscal_profile: JSON.stringify({
+                    personType: "PJ",
+                    presumptionRate: 32
+                }),
+            };
+
+            const regime = { id: "reg-lp", code: "LUCRO_PRESUMIDO" };
+
+            mockGetEntity.mockReturnValue("MockEntity");
+
+            mockFindOne.mockImplementation(async (_entity: any, query: any) => {
+                if (query.id === costCenterId) return costCenter;
+                if (query.id === "reg-lp") return regime;
+                return null;
+            });
+
+            const ordersInMonth = [
+                { id: "o-30k", invoiceAmount: 30000, mes_referencia_nota: "2026-03" },
+            ];
+
+            mockFindAll.mockImplementation(async (_entity: any, filters: any) => {
+                if (filters && filters.costCenterId && !filters.expectedPaymentMonth) {
+                    return { data: ordersInMonth };
+                }
+                return { data: [] };
+            });
+
+            const result = await service.calculate({
+                costCenterId,
+                grossAmount: gross,
+                referenceMonth: "2026-04",
+                mesReferenciaNota: "2026-03",
+            });
+
+            // monthlyGross = 30000 + 40000 = 70000
+            // monthlyBaseIR = 70000 * 0.32 = 22400
+            // 22400 > 20000 -> adicional mensal = (22400 - 20000) * 0.10 = 240
+            // proporcao desta ordem: (40000*0.32)/(70000*0.32) = 40000/70000 = 0.5714
+            // orderAdicional = 240 * 0.5714 = 137.14
+            const adicional = result.deductions.find(d => d.name === "IRPJ Adicional");
+            expect(adicional).toBeDefined();
+            expect(adicional!.amount).toBeCloseTo(137.14, 0);
+        });
+
+        it("verifica calculo completo com exemplo 100k (tabela da regra fiscal)", async () => {
+            const costCenterId = "cc-lp-full";
+            const gross = 100000;
+
+            const costCenter = {
+                id: costCenterId,
+                tax_regime_id: "reg-lp",
+                is_mei_optant: false,
+                fiscal_profile: JSON.stringify({
+                    personType: "PJ",
+                    presumptionRate: 32
+                }),
+                cnpj_details: JSON.stringify({ municipality: "Sao Paulo", state: "SP" }),
+            };
+
+            const regime = { id: "reg-lp", code: "LUCRO_PRESUMIDO" };
+            const issMunicipality = { municipality: "Sao Paulo", uf: "SP", percent: 5 };
+
+            mockGetEntity.mockReturnValue("MockEntity");
+
+            mockFindOne.mockImplementation(async (_entity: any, query: any) => {
+                if (query.id === costCenterId) return costCenter;
+                if (query.id === "reg-lp") return regime;
+                if (query.municipality === "Sao Paulo" && query.uf === "SP") return issMunicipality;
+                return null;
+            });
+
+            mockFindAll.mockImplementation(async () => {
+                return { data: [] };
+            });
+
+            const result = await service.calculate({
+                costCenterId,
+                grossAmount: gross,
+                referenceMonth: "2026-03",
+                mesReferenciaNota: "2026-03",
+            });
+
+            // PIS = 100000 * 0.65% = 650
+            const pis = result.deductions.find(d => d.name === "PIS");
+            expect(pis).toBeDefined();
+            expect(pis!.amount).toBeCloseTo(650, 0);
+
+            // COFINS = 100000 * 3% = 3000
+            const cofins = result.deductions.find(d => d.name === "COFINS");
+            expect(cofins).toBeDefined();
+            expect(cofins!.amount).toBeCloseTo(3000, 0);
+
+            // CSLL = 32000 * 9% = 2880
+            const csll = result.deductions.find(d => d.name === "CSLL");
+            expect(csll).toBeDefined();
+            expect(csll!.amount).toBeCloseTo(2880, 0);
+
+            // IRPJ = 32000 * 15% = 4800
+            const irpj = result.deductions.find(d => d.name === "IRPJ");
+            expect(irpj).toBeDefined();
+            expect(irpj!.amount).toBeCloseTo(4800, 0);
+
+            // IRPJ Adicional = (32000 - 20000) * 10% = 1200
+            const adicional = result.deductions.find(d => d.name === "IRPJ Adicional");
+            expect(adicional).toBeDefined();
+            expect(adicional!.amount).toBeCloseTo(1200, 0);
+
+            // ISS = 100000 * 5% = 5000
+            const iss = result.deductions.find(d => d.name === "ISS");
+            expect(iss).toBeDefined();
+            expect(iss!.amount).toBeCloseTo(5000, 0);
+
+            // Total = 650 + 3000 + 2880 + 4800 + 1200 + 5000 = 17530
+            expect(result.totalDeductions).toBeCloseTo(17530, 0);
+        });
+    });
 });

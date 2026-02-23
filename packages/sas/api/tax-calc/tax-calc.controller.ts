@@ -12,7 +12,8 @@ export class TaxCalcController {
             grossAmount: Number(body.grossAmount) || 0,
             referenceMonth: body.referenceMonth,
             orderId: body.orderId,
-            invoiceCnae: body.invoiceCnae ?? undefined
+            invoiceCnae: body.invoiceCnae ?? undefined,
+            mesReferenciaNota: body.mesReferenciaNota ?? undefined
         });
     }
 }

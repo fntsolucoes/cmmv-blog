@@ -160,6 +160,9 @@ export const useSasClient = () => {
         },
         updateBulkCSV: async (csvContent: string) => {
             return api.authRequest("affiliation-manager/payment-orders/v2/update-csv", "POST", { csvContent });
+        },
+        recalculateTaxes: async () => {
+            return api.authRequest("affiliation-manager/payment-orders/v2/recalculate-taxes", "POST", {});
         }
     };
 
@@ -381,7 +384,7 @@ export const useSasClient = () => {
     };
 
     const taxCalc = {
-        calculate: async (data: { costCenterId: string; grossAmount: number; referenceMonth?: string; orderId?: string }) =>
+        calculate: async (data: { costCenterId: string; grossAmount: number; referenceMonth?: string; orderId?: string; invoiceCnae?: string; mesReferenciaNota?: string }) =>
             api.authRequest("affiliation-manager/tax-calc", "POST", data)
     };
 

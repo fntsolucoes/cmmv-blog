@@ -124,8 +124,8 @@ export class SasPaymentOrdersContract extends AbstractContract {
     @ContractField({ protoType: 'string', nullable: true, index: true })
     natureza_rendimento?: string; // Codigo Reinf (ex: 13001 servicos TI)
 
-    @ContractField({ protoType: 'date', nullable: true, index: true })
-    data_emissao_nota?: Date; // Data do fato gerador (emissao) - regime competencia
+    @ContractField({ protoType: 'string', nullable: true, index: true })
+    mes_referencia_nota?: string; // Mes de referencia da nota (YYYY-MM) - competencia para IRPJ
 
     @ContractField({ protoType: 'string', nullable: true, index: true })
     id_imposto_reforma?: string; // Preparacao split payment IBS/CBS
@@ -141,6 +141,9 @@ export class SasPaymentOrdersContract extends AbstractContract {
 
     @ContractField({ protoType: 'string', nullable: true, index: false })
     invoice_attachment?: string; // URL do PDF da nota fiscal (obrigatorio ao marcar como Pago).
+
+    @ContractField({ protoType: 'double', nullable: true, defaultValue: 0, index: false })
+    irpj_adicional_amount?: number; // Valor do IRPJ adicional calculado para esta nota (0 se nao incide)
 }
 
 

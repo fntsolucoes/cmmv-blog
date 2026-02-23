@@ -1,25 +1,25 @@
 <template>
     <div class="space-y-8">
-        <h1 class="text-2xl font-bold text-white">Matriz de Configuracao de Impostos</h1>
+        <h1 class="text-2xl font-bold text-white">Matriz de Configuração de Impostos</h1>
 
         <!-- ISS por Municipio (fora do agrupamento por CC) -->
         <div class="bg-neutral-800 rounded-lg overflow-hidden">
             <div class="px-6 py-3 bg-neutral-700 flex flex-wrap items-center justify-between gap-2">
-                <h2 class="text-sm font-medium text-white">Aliquotas de ISS por Municipio</h2>
-                <button @click="openAddIss" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md">Novo Municipio</button>
+                <h2 class="text-sm font-medium text-white">Alíquotas de ISS por Município</h2>
+                <button @click="openAddIss" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md">Novo Município</button>
             </div>
             <table class="min-w-full divide-y divide-neutral-700">
                 <thead class="bg-neutral-700">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Municipio</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Município</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase">UF</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase">ISS (%)</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Acoes</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-neutral-300 uppercase">Ações</th>
                     </tr>
                 </thead>
                 <tbody class="bg-neutral-800 divide-y divide-neutral-700">
                     <tr v-if="issList.length === 0">
-                        <td colspan="4" class="px-6 py-4 text-center text-sm text-neutral-400">Nenhum municipio cadastrado.</td>
+                        <td colspan="4" class="px-6 py-4 text-center text-sm text-neutral-400">Nenhum município cadastrado.</td>
                     </tr>
                     <tr v-for="m in issList" :key="m.id" class="hover:bg-neutral-700">
                         <td class="px-6 py-3 text-sm text-white">{{ m.municipality }}</td>
@@ -38,7 +38,7 @@
         <div class="bg-neutral-800 rounded-lg overflow-hidden">
             <div class="px-6 py-3 bg-neutral-700 border-b border-neutral-600">
                 <h2 class="text-sm font-medium text-white">Impostos por Centro de Custo</h2>
-                <p class="text-xs text-neutral-400 mt-1">Cada centro de custo possui suas proprias aliquotas de impostos, configuradas de acordo com o regime tributario.</p>
+                <p class="text-xs text-neutral-400 mt-1">Cada centro de custo possui suas próprias alíquotas de impostos, configuradas de acordo com o regime tributário.</p>
             </div>
 
             <div v-if="activeCostCenters.length === 0" class="px-6 py-4 text-center text-sm text-neutral-400">
@@ -76,13 +76,13 @@
 
                     <!-- Resumo dos impostos aplicaveis (read-only) -->
                     <div>
-                        <h4 class="text-xs font-medium text-neutral-400 uppercase mb-2">Impostos aplicaveis</h4>
+                        <h4 class="text-xs font-medium text-neutral-400 uppercase mb-2">Impostos aplicáveis</h4>
                         <table class="min-w-full divide-y divide-neutral-700 rounded overflow-hidden">
                             <thead class="bg-neutral-700/50">
                                 <tr>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Imposto</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Aliquota</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Observacao</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Alíquota</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Observação</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-neutral-700/50">
@@ -97,16 +97,16 @@
 
                     <!-- Regras editaveis deste CC -->
                     <div v-if="getApplicableRules(cc).length > 0">
-                        <h4 class="text-xs font-medium text-neutral-400 uppercase mb-2">Regras de impostos (editavel)</h4>
-                        <p class="text-xs text-neutral-500 mb-2">Alteracoes aqui afetam somente este centro de custo.</p>
+                        <h4 class="text-xs font-medium text-neutral-400 uppercase mb-2">Regras de impostos (editável)</h4>
+                        <p class="text-xs text-neutral-500 mb-2">Alterações aqui afetam somente este centro de custo.</p>
                         <table class="min-w-full divide-y divide-neutral-700 rounded overflow-hidden">
                             <thead class="bg-neutral-700/50">
                                 <tr>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Regra</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Aliquota (%)</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Valor minimo / Limite (R$)</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Alíquota (%)</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Valor mínimo / Limite (R$)</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Ativo</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Acoes</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Ações</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-neutral-700/50">
@@ -115,7 +115,7 @@
                                     <td class="px-4 py-2 text-sm text-neutral-300">{{ formatNum(r.percentage) }}</td>
                                     <td class="px-4 py-2 text-sm text-neutral-300">{{ r.min_threshold != null ? formatCurrency(r.min_threshold) : '-' }}</td>
                                     <td class="px-4 py-2">
-                                        <span :class="r.active ? 'bg-green-500' : 'bg-neutral-500'" class="px-2 py-0.5 text-xs rounded-full text-white">{{ r.active ? 'Sim' : 'Nao' }}</span>
+                                        <span :class="r.active ? 'bg-green-500' : 'bg-neutral-500'" class="px-2 py-0.5 text-xs rounded-full text-white">{{ r.active ? 'Sim' : 'Não' }}</span>
                                     </td>
                                     <td class="px-4 py-2">
                                         <button @click="openEditRule(r)" class="text-blue-400 hover:text-blue-300 text-xs">Editar</button>
@@ -131,7 +131,7 @@
                             <div class="flex items-center justify-between gap-2 mb-2">
                                 <div>
                                     <h4 class="text-xs font-medium text-neutral-400 uppercase">Faturamento mensal bruto (RBT12)</h4>
-                                    <p class="text-xs text-neutral-500 mt-0.5">RBT12 = soma dos ultimos 12 meses (excl. mes atual). Empresa nova: media x 12.</p>
+                                    <p class="text-xs text-neutral-500 mt-0.5">RBT12 = soma dos últimos 12 meses (excl. mês atual). Empresa nova: média x 12.</p>
                                 </div>
                                 <button type="button" @click="openAddRevenueModal(cc.id)" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md shrink-0">Adicionar valor</button>
                             </div>
@@ -139,7 +139,7 @@
                                 <table class="min-w-full divide-y divide-neutral-700 rounded overflow-hidden">
                                     <thead class="bg-neutral-700/50">
                                         <tr>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Mes</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Mês</th>
                                             <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Faturamento (R$)</th>
                                         </tr>
                                     </thead>
@@ -158,22 +158,22 @@
                                             </td>
                                         </tr>
                                         <tr v-if="getRevenueRows(cc.id).length === 0">
-                                            <td colspan="2" class="px-4 py-3 text-center text-sm text-neutral-500">Nenhum mes cadastrado. Clique em Adicionar valor.</td>
+                                            <td colspan="2" class="px-4 py-3 text-center text-sm text-neutral-500">Nenhum mês cadastrado. Clique em Adicionar valor.</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
                             <div v-if="totalRevenuePages(cc.id) > 1" class="flex items-center justify-between mt-2 px-1 text-sm text-neutral-400">
                                 <button type="button" @click="revenuePage = Math.max(1, revenuePage - 1)" :disabled="revenuePage <= 1" class="px-2 py-1 rounded hover:bg-neutral-700 disabled:opacity-50">Anterior</button>
-                                <span>Pagina {{ revenuePage }} de {{ totalRevenuePages(cc.id) }}</span>
-                                <button type="button" @click="revenuePage = Math.min(totalRevenuePages(cc.id), revenuePage + 1)" :disabled="revenuePage >= totalRevenuePages(cc.id)" class="px-2 py-1 rounded hover:bg-neutral-700 disabled:opacity-50">Proximo</button>
+                                <span>Página {{ revenuePage }} de {{ totalRevenuePages(cc.id) }}</span>
+                                <button type="button" @click="revenuePage = Math.min(totalRevenuePages(cc.id), revenuePage + 1)" :disabled="revenuePage >= totalRevenuePages(cc.id)" class="px-2 py-1 rounded hover:bg-neutral-700 disabled:opacity-50">Próximo</button>
                             </div>
                         </div>
                         <div>
                             <div class="flex items-center justify-between gap-2 mb-2">
                                 <div>
                                     <h4 class="text-xs font-medium text-neutral-400 uppercase">Fator R mensal</h4>
-                                    <p class="text-xs text-neutral-500 mt-0.5">Folha / receita. Acima de 28% pode optar Anexo III.</p>
+                                    <p class="text-xs text-neutral-500 mt-0.5">Folha / receita. Acima de 28% pode optar pelo Anexo III.</p>
                                 </div>
                                 <button type="button" @click="openAddFatorRModal(cc.id)" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-md shrink-0">Adicionar valor</button>
                             </div>
@@ -181,7 +181,7 @@
                                 <table class="min-w-full divide-y divide-neutral-700 rounded overflow-hidden">
                                     <thead class="bg-neutral-700/50">
                                         <tr>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Mes</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Mês</th>
                                             <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Fator R (%)</th>
                                         </tr>
                                     </thead>
@@ -201,15 +201,15 @@
                                             </td>
                                         </tr>
                                         <tr v-if="getFatorRRows(cc.id).length === 0">
-                                            <td colspan="2" class="px-4 py-3 text-center text-sm text-neutral-500">Nenhum mes cadastrado. Clique em Adicionar valor.</td>
+                                            <td colspan="2" class="px-4 py-3 text-center text-sm text-neutral-500">Nenhum mês cadastrado. Clique em Adicionar valor.</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
                             <div v-if="totalFatorRPages(cc.id) > 1" class="flex items-center justify-between mt-2 px-1 text-sm text-neutral-400">
                                 <button type="button" @click="fatorRPage = Math.max(1, fatorRPage - 1)" :disabled="fatorRPage <= 1" class="px-2 py-1 rounded hover:bg-neutral-700 disabled:opacity-50">Anterior</button>
-                                <span>Pagina {{ fatorRPage }} de {{ totalFatorRPages(cc.id) }}</span>
-                                <button type="button" @click="fatorRPage = Math.min(totalFatorRPages(cc.id), fatorRPage + 1)" :disabled="fatorRPage >= totalFatorRPages(cc.id)" class="px-2 py-1 rounded hover:bg-neutral-700 disabled:opacity-50">Proximo</button>
+                                <span>Página {{ fatorRPage }} de {{ totalFatorRPages(cc.id) }}</span>
+                                <button type="button" @click="fatorRPage = Math.min(totalFatorRPages(cc.id), fatorRPage + 1)" :disabled="fatorRPage >= totalFatorRPages(cc.id)" class="px-2 py-1 rounded hover:bg-neutral-700 disabled:opacity-50">Próximo</button>
                             </div>
                         </div>
                     </template>
@@ -220,7 +220,7 @@
                         <table class="min-w-full divide-y divide-neutral-700 rounded overflow-hidden">
                             <thead class="bg-neutral-700/50">
                                 <tr>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Municipio</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">Município</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">UF</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-neutral-400 uppercase">ISS (%)</th>
                                 </tr>
@@ -249,13 +249,13 @@
                 </div>
                 <form @submit.prevent="saveRule" class="p-4 space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-neutral-300 mb-1">Aliquota (%)</label>
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">Alíquota (%)</label>
                         <input v-model.number="ruleForm.percentage" type="number" step="0.01" min="0" max="100" class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white" />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-neutral-300 mb-1">Valor minimo / Limite (R$)</label>
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">Valor mínimo / Limite (R$)</label>
                         <input v-model.number="ruleForm.min_threshold" type="number" step="0.01" min="0" class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white" placeholder="215.05" />
-                        <p class="mt-1 text-xs text-neutral-400">Deixe vazio se nao houver minimo.</p>
+                        <p class="mt-1 text-xs text-neutral-400">Deixe vazio se não houver mínimo.</p>
                     </div>
                     <div class="flex justify-end gap-2">
                         <button type="button" @click="showRuleDialog = false" class="px-3 py-1.5 bg-neutral-600 hover:bg-neutral-500 rounded text-white text-sm">Cancelar</button>
@@ -269,15 +269,15 @@
         <div v-if="showIssDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4" style="backdrop-filter: blur(4px);">
             <div class="bg-neutral-800 rounded-lg shadow-lg w-full max-w-md">
                 <div class="p-4 border-b border-neutral-700 flex justify-between items-center">
-                    <h3 class="text-lg font-medium text-white">{{ editingIss ? 'Editar municipio' : 'Novo municipio' }}</h3>
+                    <h3 class="text-lg font-medium text-white">{{ editingIss ? 'Editar município' : 'Novo município' }}</h3>
                     <button @click="showIssDialog = false" class="text-neutral-400 hover:text-white">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
                 <form @submit.prevent="saveIss" class="p-4 space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-neutral-300 mb-1">Municipio <span class="text-red-500">*</span></label>
-                        <input v-model="issForm.municipality" type="text" class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white" placeholder="Sao Paulo" required />
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">Município <span class="text-red-500">*</span></label>
+                        <input v-model="issForm.municipality" type="text" class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white" placeholder="São Paulo" required />
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-neutral-300 mb-1">UF <span class="text-red-500">*</span></label>
@@ -316,7 +316,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-neutral-300 mb-1">Mes</label>
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">Mês</label>
                         <select v-model.number="addRevenueForm.month" class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white" required>
                             <option v-for="m in 12" :key="m" :value="m">{{ MONTH_LABELS[m - 1] }}</option>
                         </select>
@@ -350,7 +350,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-neutral-300 mb-1">Mes</label>
+                        <label class="block text-sm font-medium text-neutral-300 mb-1">Mês</label>
                         <select v-model.number="addFatorRForm.month" class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white" required>
                             <option v-for="m in 12" :key="m" :value="m">{{ MONTH_LABELS[m - 1] }}</option>
                         </select>
@@ -524,7 +524,7 @@ const getTaxSummary = (cc: any): TaxSummaryItem[] => {
     if (personType === 'EXTERIOR') {
         const iof = fp.exteriorIof != null ? Number(fp.exteriorIof) : 0;
         if (iof > 0) taxes.push({ name: 'IOF', percent: formatNum(iof) + '%', obs: 'Sobre remessa' });
-        if (taxes.length === 0) taxes.push({ name: '-', percent: '-', obs: 'Nenhum imposto configurado' });
+        if (taxes.length === 0) taxes.push({ name: '-', percent: '-', obs: 'Nenhum imposto configurado.' });
         return taxes;
     }
 
@@ -532,13 +532,13 @@ const getTaxSummary = (cc: any): TaxSummaryItem[] => {
         const inssRate = fp.inssRate != null ? Number(fp.inssRate) : 11;
         taxes.push({ name: 'INSS', percent: formatNum(inssRate) + '%', obs: 'Teto R$ 7.786,02' });
         const useProg = fp.irrfProgressiveTable === true;
-        taxes.push({ name: 'IRRF', percent: useProg ? 'Progressiva' : '1,50%', obs: useProg ? 'Tabela progressiva' : 'Aliquota fixa' });
+        taxes.push({ name: 'IRRF', percent: useProg ? 'Progressiva' : '1,50%', obs: useProg ? 'Tabela progressiva' : 'Alíquota fixa' });
         return taxes;
     }
 
     // PJ
     if (isMei || regimeCode === 'MEI') {
-        taxes.push({ name: '-', percent: '-', obs: 'MEI - sem retencoes' });
+        taxes.push({ name: '-', percent: '-', obs: 'MEI - sem retenções' });
         return taxes;
     }
 
@@ -580,7 +580,7 @@ const getTaxSummary = (cc: any): TaxSummaryItem[] => {
 
         const issM = getIssMunicipalityForCostCenter(cc);
         if (issM) taxes.push({ name: 'ISS', percent: formatNum(issM.percent) + '%', obs: issM.municipality + '/' + issM.uf });
-        taxes.push({ name: '', percent: '', obs: 'Presuncao: ' + formatNum(presRate) + '%' });
+        taxes.push({ name: '', percent: '', obs: 'Presunção: ' + formatNum(presRate) + '%' });
         return taxes;
     }
 
@@ -591,7 +591,7 @@ const getTaxSummary = (cc: any): TaxSummaryItem[] => {
         const csrfThreshold = csrfRule && csrfRule.min_threshold != null ? Number(csrfRule.min_threshold) : 215.05;
         taxes.push({ name: 'CSRF (PIS/COFINS/CSLL)', percent: formatNum(csrfPct) + '%', obs: 'Gatilho ' + formatCurrency(csrfThreshold) + '/mes' });
         const irrfPct = irrfRule ? Number(irrfRule.percentage) : 1.5;
-        taxes.push({ name: 'IRRF (servicos)', percent: formatNum(irrfPct) + '%', obs: 'Retencao na fonte' });
+        taxes.push({ name: 'IRRF (servicos)', percent: formatNum(irrfPct) + '%', obs: 'Retenção na fonte' });
         const issRetention = fp.issRetentionIndicator || '';
         if (issRetention === 'RETEM_NA_FONTE') {
             const issM = getIssMunicipalityForCostCenter(cc);
@@ -600,7 +600,7 @@ const getTaxSummary = (cc: any): TaxSummaryItem[] => {
         return taxes;
     }
 
-    taxes.push({ name: '-', percent: '-', obs: 'Regime nao configurado' });
+    taxes.push({ name: '-', percent: '-', obs: 'Regime não configurado' });
     return taxes;
 };
 
@@ -854,12 +854,12 @@ const saveIss = async () => {
         editingIss.value = null;
     } catch (e) {
         console.error(e);
-        alert('Erro ao salvar municipio.');
+        alert('Erro ao salvar município.');
     }
 };
 
 const deleteIss = async (id: string) => {
-    if (!confirm('Excluir este municipio da tabela de ISS?')) return;
+    if (!confirm('Excluir este município da tabela de ISS?')) return;
     try {
         await client.taxIssMunicipality.delete(id);
         await loadIss();
