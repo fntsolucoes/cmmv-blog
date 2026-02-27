@@ -153,6 +153,121 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- IRPJ Adicional Consolidado -->
+                        <div v-if="result.irpjAdicional && result.irpjAdicional.costCentersLucroPresumido?.length > 0"
+                            class="bg-neutral-700/50 rounded-lg border p-4"
+                            :class="irpjBorderClass"
+                        >
+                            <div class="flex items-center gap-2 mb-3">
+                                <p class="text-neutral-400 text-sm font-semibold">IRPJ Adicional - Lucro Presumido</p>
+                                <span v-if="result.irpjAdicional.isQuarterEnd"
+                                    class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-600 text-white uppercase"
+                                >Balanco Trimestral</span>
+                                <span v-else
+                                    class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-neutral-600 text-neutral-300 uppercase"
+                                >Provisao Mensal</span>
+                            </div>
+
+                            <div class="text-neutral-500 text-xs mb-3 space-y-0.5">
+                                <p>
+                                    Centros de custo:
+                                    <span v-for="(c, idx) in result.irpjAdicional.costCentersLucroPresumido" :key="c.id">
+                                        {{ c.name }}<template v-if="c.regimeStartDate"> (desde {{ formatDate(c.regimeStartDate) }})</template><template v-if="idx < result.irpjAdicional.costCentersLucroPresumido.length - 1">, </template>
+                                    </span>
+                                </p>
+                                <p>
+                                    Taxa de presuncao: {{ result.irpjAdicional.presumptionRate }}%
+                                    | {{ result.irpjAdicional.quarter }}o trimestre ({{ result.irpjAdicional.quarterMonths.map((m: number) => MONTH_NAMES_SHORT[m] || m).join(', ') }})
+                                </p>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Mensal -->
+                                <div class="space-y-2">
+                                    <p class="text-neutral-400 text-xs font-medium uppercase tracking-wide">Mensal</p>
+                                    <div class="flex justify-between text-sm text-white">
+                                        <span class="text-neutral-400">Bruto LP no mes</span>
+                                        <span>{{ formatCurrency(result.irpjAdicional.grossLucroPresumido, 'BRL') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm text-white">
+                                        <span class="text-neutral-400">Presumido mensal</span>
+                                        <span>{{ formatCurrency(result.irpjAdicional.presumidoMensal, 'BRL') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm text-white">
+                                        <span class="text-neutral-400">IRPJ Adic. calculado</span>
+                                        <span>{{ formatCurrency(result.irpjAdicional.irpjAdicionalMensalCalculado, 'BRL') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm text-white">
+                                        <span class="text-neutral-400">Ja descontado nas notas</span>
+                                        <span class="text-orange-400">-{{ formatCurrency(result.irpjAdicional.irpjAdicionalJaDescontadoNoMes, 'BRL') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm font-medium border-t border-neutral-600 pt-2">
+                                        <span class="text-neutral-300">Diferenca mensal</span>
+                                        <span :class="result.irpjAdicional.irpjAdicionalDiferencaMensal > 0 ? 'text-red-400' : 'text-green-400'">
+                                            {{ formatCurrency(result.irpjAdicional.irpjAdicionalDiferencaMensal, 'BRL') }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Trimestral -->
+                                <div class="space-y-2">
+                                    <p class="text-neutral-400 text-xs font-medium uppercase tracking-wide">Trimestral (acumulado)</p>
+                                    <div class="flex justify-between text-sm text-white">
+                                        <span class="text-neutral-400">Bruto LP trimestre</span>
+                                        <span>{{ formatCurrency(result.irpjAdicional.grossTrimestral, 'BRL') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm text-white">
+                                        <span class="text-neutral-400">Presumido trimestral</span>
+                                        <span>{{ formatCurrency(result.irpjAdicional.presumidoTrimestral, 'BRL') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm text-white">
+                                        <span class="text-neutral-400">IRPJ Adic. real (excede R$ 60k)</span>
+                                        <span>{{ formatCurrency(result.irpjAdicional.irpjAdicionalTrimestreReal, 'BRL') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm text-white">
+                                        <span class="text-neutral-400">Ja descontado no trimestre</span>
+                                        <span class="text-orange-400">-{{ formatCurrency(result.irpjAdicional.irpjAdicionalJaDescontadoTrimestre, 'BRL') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm font-medium border-t border-neutral-600 pt-2">
+                                        <span class="text-neutral-300">Diferenca trimestre</span>
+                                        <span :class="result.irpjAdicional.irpjAdicionalDiferencaTrimestre > 0 ? 'text-red-400' : 'text-green-400'">
+                                            {{ formatCurrency(result.irpjAdicional.irpjAdicionalDiferencaTrimestre, 'BRL') }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Ajuste final -->
+                            <div class="mt-4 pt-4 border-t border-neutral-600">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <p class="text-sm font-medium text-white">
+                                            {{ result.irpjAdicional.isQuarterEnd ? 'Ajuste final trimestral' : 'Provisao a descontar' }}
+                                        </p>
+                                        <p class="text-xs text-neutral-500">
+                                            <template v-if="result.irpjAdicional.isQuarterEnd">
+                                                <template v-if="result.irpjAdicional.ajusteFinalTrimestre > 0">
+                                                    Valor a descontar da divisao de lucro deste mes
+                                                </template>
+                                                <template v-else-if="result.irpjAdicional.ajusteFinalTrimestre < 0">
+                                                    Valor retido a mais sera devolvido na divisao de lucro
+                                                </template>
+                                                <template v-else>
+                                                    Nenhum ajuste necessario
+                                                </template>
+                                            </template>
+                                            <template v-else>
+                                                Diferenca entre o calculado e o ja descontado nas notas deste mes
+                                            </template>
+                                        </p>
+                                    </div>
+                                    <p class="text-xl font-bold" :class="irpjAjusteClass">
+                                        {{ result.irpjAdicional.ajusteFinalTrimestre > 0 ? '-' : result.irpjAdicional.ajusteFinalTrimestre < 0 ? '+' : '' }}{{ formatCurrency(Math.abs(result.irpjAdicional.ajusteFinalTrimestre), 'BRL') }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </template>
                 </div>
 
@@ -277,6 +392,10 @@ const MONTH_NAMES: Record<number, string> = {
     1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho',
     7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
 };
+const MONTH_NAMES_SHORT: Record<number, string> = {
+    1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun',
+    7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez'
+};
 
 const monthName = (month: number) => MONTH_NAMES[month] || String(month);
 
@@ -306,6 +425,22 @@ const modalOrdersRange = computed(() => {
     const from = (modalOrdersPage.value - 1) * ORDERS_PAGE_SIZE + 1;
     const to = Math.min(modalOrdersPage.value * ORDERS_PAGE_SIZE, total);
     return { from, to };
+});
+
+const irpjBorderClass = computed(() => {
+    const info = result.value?.irpjAdicional;
+    if (!info) return 'border-neutral-600';
+    if (info.ajusteFinalTrimestre > 0) return 'border-red-700';
+    if (info.ajusteFinalTrimestre < 0) return 'border-green-700';
+    return 'border-neutral-600';
+});
+
+const irpjAjusteClass = computed(() => {
+    const info = result.value?.irpjAdicional;
+    if (!info) return 'text-white';
+    if (info.ajusteFinalTrimestre > 0) return 'text-red-400';
+    if (info.ajusteFinalTrimestre < 0) return 'text-green-400';
+    return 'text-white';
 });
 
 const formatDate = (dateStr: string) => {
