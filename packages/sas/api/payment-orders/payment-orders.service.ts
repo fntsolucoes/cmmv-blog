@@ -637,6 +637,9 @@ export class PaymentOrdersService {
                     now.getUTCMilliseconds()
                 ));
             }
+        } else if (status === "Em litígio") {
+            // Em litígio: manter dados existentes, não limpar data/valor pago
+            // Não limpar finalizedForProfitSharingAt para manter histórico
         } else {
             // Se voltar para pendente, limpar data e valor pago
             payload.effectivePaymentDate = null;
@@ -879,7 +882,8 @@ export class PaymentOrdersService {
             const expectedPaymentMonth = parseInt(row.expectedPaymentMonth?.trim() || "1", 10);
             const expectedPaymentYear = parseInt(row.expectedPaymentYear?.trim() || String(new Date().getFullYear()), 10);
             const effectivePaymentDate = row.effectivePaymentDate?.trim() || null;
-            const status = (row.status?.trim() || "Pendente") === "Pago" ? "Pago" : "Pendente";
+            const rawStatus = row.status?.trim() || "Pendente";
+            const status = rawStatus === "Pago" ? "Pago" : rawStatus === "Em litígio" ? "Em litígio" : "Pendente";
             const paidValue = row.paidValue?.trim() ? parseFloat(row.paidValue.replace(",", ".")) : null;
             const paymentMethod = row.paymentMethod?.trim() || null;
             const observations = row.observations?.trim() || null;

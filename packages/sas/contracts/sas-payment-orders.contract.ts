@@ -98,7 +98,7 @@ export class SasPaymentOrdersContract extends AbstractContract {
         defaultValue: 'Pendente',
         index: true,
     })
-    status!: string; // Pendente, Pago
+    status!: string; // Pendente, Pago, Em litígio
 
     @ContractField({
         protoType: 'string',

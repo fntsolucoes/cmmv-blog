@@ -283,7 +283,7 @@
                                 {{ getPaymentMethodsDisplay(item) }}
                             </td>
                             <td class="px-4 py-3">
-                                <span :class="item.status === 'Pago' ? 'bg-green-500' : 'bg-yellow-500'" class="px-2 py-1 text-xs rounded-full text-white">
+                                <span :class="item.status === 'Pago' ? 'bg-green-500' : item.status === 'Em litígio' ? 'bg-red-500' : 'bg-yellow-500'" class="px-2 py-1 text-xs rounded-full text-white">
                                     {{ item.status }}
                                 </span>
                             </td>
@@ -314,7 +314,7 @@
                                         </svg>
                                     </button>
                                     <button
-                                        v-if="item.status === 'Pendente'"
+                                        v-if="item.status === 'Pendente' || item.status === 'Em litígio'"
                                         @click="markAsPaid(item)"
                                         class="text-green-400 hover:text-green-300 transition-colors p-1 rounded hover:bg-green-400/10"
                                         title="Marcar como pago"
@@ -545,7 +545,7 @@
                                 {{ getPaymentMethodsDisplay(item) }}
                             </td>
                             <td class="px-4 py-3">
-                                <span :class="item.status === 'Pago' ? 'bg-green-500' : 'bg-yellow-500'" class="px-2 py-1 text-xs rounded-full text-white">
+                                <span :class="item.status === 'Pago' ? 'bg-green-500' : item.status === 'Em litígio' ? 'bg-red-500' : 'bg-yellow-500'" class="px-2 py-1 text-xs rounded-full text-white">
                                     {{ item.status }}
                                 </span>
                             </td>
@@ -957,6 +957,7 @@
                             >
                                 <option value="Pendente">Pendente</option>
                                 <option value="Pago">Pago</option>
+                                <option value="Em litígio">Em litígio</option>
                             </select>
                         </div>
                         <div>
@@ -1481,6 +1482,7 @@ const calculateTaxPercentageNumber = (item: any): number => {
 const filteredTable1 = computed(() => {
     let result = filteredItems.value.filter(item => {
         if (item.status === 'Pendente') return true;
+        if (item.status === 'Em litígio') return true; // Em litígio sempre fica nas notas abertas
         if (item.status === 'Pago' && item.effectivePaymentDate) {
             const paymentDate = new Date(item.effectivePaymentDate);
             // Usar UTC para consistência com as datas armazenadas no backend
