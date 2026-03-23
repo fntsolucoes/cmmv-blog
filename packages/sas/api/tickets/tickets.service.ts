@@ -412,14 +412,14 @@ export class TicketsService {
         }
 
         // Validar transição (novos status permitem qualquer transição entre eles)
-        const validStatuses = ['Não Iniciado', 'Em andamento', 'Feito', 'Com Pendência'];
+        const validStatuses = ['Não Iniciado', 'Em andamento', 'Concluído', 'Com Pendência', 'Cancelado'];
         if (!validStatuses.includes(newStatus)) {
             throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
         }
 
-        // Validar se status "Feito" requer nota de resolução
-        if (newStatus === 'Feito' && !resolutionNote) {
-            throw new Error("Resolution note is required when marking ticket as 'Feito'");
+        // Validar se status "Cancelado" requer nota de resolução
+        if (newStatus === 'Cancelado' && !resolutionNote) {
+            throw new Error("Resolution note is required when marking ticket as 'Cancelado'");
         }
 
         const updates: any = {
@@ -427,9 +427,12 @@ export class TicketsService {
         };
 
         // Atualizar datas conforme status
-        if (newStatus === 'Feito') {
+        if (newStatus === 'Concluído') {
             updates.closedAt = new Date();
             updates.resolvedAt = new Date();
+            if (resolutionNote) updates.resolutionNote = resolutionNote;
+        } else if (newStatus === 'Cancelado') {
+            updates.closedAt = new Date();
             updates.resolutionNote = resolutionNote;
         } else if (newStatus === 'Em andamento' && !ticket.firstResponseAt) {
             updates.firstResponseAt = new Date();
@@ -466,9 +469,9 @@ export class TicketsService {
             throw new Error("Ticket not found");
         }
 
-        // Permitir reabertura apenas de tickets com status "Feito"
-        if (ticket.status !== 'Feito') {
-            throw new Error("Only tickets with status 'Feito' can be reopened");
+        // Permitir reabertura apenas de tickets com status "Concluído"
+        if (ticket.status !== 'Concluído') {
+            throw new Error("Only tickets with status 'Concluído' can be reopened");
         }
 
         if (ticket.permanentlyResolved) {

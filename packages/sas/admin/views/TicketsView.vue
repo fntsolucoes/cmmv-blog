@@ -23,8 +23,9 @@
                         <option value="">Todos</option>
                         <option value="Não Iniciado">Não Iniciado</option>
                         <option value="Em andamento">Em andamento</option>
-                        <option value="Feito">Feito</option>
+                        <option value="Concluído">Concluído</option>
                         <option value="Com Pendência">Com Pendência</option>
+                        <option value="Cancelado">Cancelado</option>
                     </select>
                 </div>
                 <div>
@@ -425,19 +426,20 @@
                                 >
                                     <option value="Não Iniciado">Não Iniciado</option>
                                     <option value="Em andamento">Em andamento</option>
-                                    <option value="Feito">Feito</option>
+                                    <option value="Concluído">Concluído</option>
                                     <option value="Com Pendência">Com Pendência</option>
+                                    <option value="Cancelado">Cancelado</option>
                                 </select>
                                 <textarea
-                                    v-if="statusForm.status === 'Feito'"
+                                    v-if="statusForm.status === 'Concluído' || statusForm.status === 'Cancelado'"
                                     v-model="statusForm.resolutionNote"
-                                    placeholder="Nota de resolução (obrigatória)"
+                                    :placeholder="statusForm.status === 'Cancelado' ? 'Motivo do cancelamento (obrigatório)' : 'Nota de resolução (opcional)'"
                                     rows="3"
                                     class="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-md text-white text-sm placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                                 ></textarea>
                                 <button
                                     @click="updateStatus"
-                                    :disabled="updating || !statusForm.status || (statusForm.status === 'Feito' && !statusForm.resolutionNote)"
+                                    :disabled="updating || !statusForm.status || (statusForm.status === 'Cancelado' && !statusForm.resolutionNote)"
                                     class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {{ updating ? 'Atualizando...' : 'Atualizar Status' }}
@@ -644,9 +646,9 @@ const filters = ref({
     search: ''
 });
 
-// Função auxiliar para verificar se um ticket foi concluído há mais de 5 dias
+// Função auxiliar para verificar se um ticket foi concluído/cancelado há mais de 5 dias
 const isTicketClosedMoreThan5Days = (ticket: any): boolean => {
-    if (ticket.status !== 'Feito') {
+    if (ticket.status !== 'Concluído' && ticket.status !== 'Cancelado') {
         return false;
     }
     
@@ -687,17 +689,17 @@ const openTickets = computed(() => {
 
     // Filtrar apenas tickets em aberto
     return result.filter(ticket => {
-        // Se não está concluído, está em aberto
-        if (ticket.status !== 'Feito') {
+        // Se não está concluído nem cancelado, está em aberto
+        if (ticket.status !== 'Concluído' && ticket.status !== 'Cancelado') {
             return true;
         }
-        
-        // Se está concluído mas há menos de 5 dias, ainda está em aberto
+
+        // Se está concluído/cancelado mas há menos de 5 dias, ainda aparece em aberto
         return !isTicketClosedMoreThan5Days(ticket);
     });
 });
 
-// Tickets Concluídos: apenas tickets "Feito" há mais de 5 dias
+// Tickets Concluídos: apenas tickets "Concluído" ou "Cancelado" há mais de 5 dias
 const closedTickets = computed(() => {
     let result = tickets.value;
 
@@ -764,10 +766,12 @@ const getStatusClass = (status: string) => {
             return 'bg-gray-500 text-white';
         case 'Em andamento':
             return 'bg-yellow-500 text-white';
-        case 'Feito':
+        case 'Concluído':
             return 'bg-green-500 text-white';
         case 'Com Pendência':
             return 'bg-orange-500 text-white';
+        case 'Cancelado':
+            return 'bg-red-500 text-white';
         default:
             return 'bg-neutral-500 text-white';
     }

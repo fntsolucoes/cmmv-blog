@@ -69,7 +69,7 @@ export class SasTicketsContract extends AbstractContract {
         defaultValue: 'Não Iniciado',
         index: true,
     })
-    status!: string; // Não Iniciado, Em andamento, Feito, Com Pendência
+    status!: string; // Não Iniciado, Em andamento, Concluído, Com Pendência, Cancelado
 
     @ContractField({
         protoType: 'string',
